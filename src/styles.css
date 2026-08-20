@@ -1,0 +1,585 @@
+:root {
+  --color-bg: #0b0712;
+  --color-panel: #1a1226;
+  --color-panel-2: #241a35;
+  --color-border: #3a2b52;
+  --color-text: #f1e9ff;
+  --color-text-muted: #a996c4;
+  --color-player: #4ade80;
+  --color-enemy: #f87171;
+  --color-cyan: #38bdf8;
+  --color-yellow: #fbbf24;
+  --color-purple: #a855f7;
+  --radius-md: 14px;
+  --radius-pill: 999px;
+  font-family: 'Segoe UI', 'Hiragino Sans', 'Yu Gothic', sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  background: radial-gradient(circle at 50% -10%, #241a3d, var(--color-bg) 60%);
+  color: var(--color-text);
+  overflow-x: hidden;
+}
+
+button {
+  font-family: inherit;
+  color: inherit;
+}
+
+.app-root {
+  min-height: 100vh;
+  max-width: 480px;
+  margin: 0 auto;
+  padding: 10px 10px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.muted {
+  color: var(--color-text-muted);
+}
+
+.btn {
+  padding: 8px 14px;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--color-border);
+  background: var(--color-panel-2);
+  color: var(--color-text);
+  cursor: pointer;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+.btn:active {
+  transform: scale(0.96);
+}
+.btn--active {
+  background: linear-gradient(90deg, var(--color-cyan), var(--color-purple));
+  border-color: transparent;
+}
+
+/* --- タイトル / 選択画面 --- */
+.select-screen {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.select-screen h1 {
+  font-size: 1.15rem;
+  margin: 4px 0 0;
+}
+.select-screen__lead {
+  font-size: 0.78rem;
+  color: var(--color-text-muted);
+  line-height: 1.5;
+}
+.enemy-pick {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px;
+  background: var(--color-panel);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  text-align: left;
+}
+.enemy-pick:active {
+  transform: scale(0.98);
+}
+.enemy-pick__head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 800;
+  font-size: 1rem;
+}
+.enemy-pick__icon {
+  font-size: 1.8rem;
+}
+.enemy-pick__desc {
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+}
+.enemy-pick__stats {
+  display: flex;
+  gap: 10px;
+  font-size: 0.7rem;
+  color: var(--color-text-muted);
+}
+
+/* --- 戦闘画面 --- */
+.battle-screen {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.battle-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.battle-header h1 {
+  font-size: 0.95rem;
+  margin: 0;
+}
+.badge {
+  padding: 2px 8px;
+  font-size: 0.6rem;
+  font-weight: 800;
+  border-radius: var(--radius-pill);
+  background: var(--color-cyan);
+  color: #06121c;
+}
+
+/* --- 行動順(CTB order) --- */
+.ctb-order {
+  padding: 8px 10px;
+  background: var(--color-panel);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+.ctb-order__title {
+  font-size: 0.65rem;
+  color: var(--color-text-muted);
+  margin-bottom: 6px;
+  letter-spacing: 0.05em;
+}
+.ctb-order__track {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+}
+.ctb-order__slot {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 34px;
+  padding: 4px 5px;
+  border-radius: 8px;
+  opacity: 0.7;
+  font-size: 1.05rem;
+  transition: transform 0.15s ease, opacity 0.15s ease;
+}
+.ctb-order__slot--player {
+  background: rgba(74, 222, 128, 0.16);
+  border: 1px solid rgba(74, 222, 128, 0.5);
+}
+.ctb-order__slot--enemy {
+  background: rgba(248, 113, 113, 0.14);
+  border: 1px solid rgba(248, 113, 113, 0.45);
+}
+.ctb-order__slot--now {
+  opacity: 1;
+  transform: scale(1.18);
+  box-shadow: 0 0 10px rgba(255, 255, 255, 0.4);
+}
+.ctb-order__now-label {
+  position: absolute;
+  bottom: -13px;
+  font-size: 0.5rem;
+  font-weight: 800;
+  color: var(--color-yellow);
+  white-space: nowrap;
+}
+.ctb-order__telegraph {
+  position: absolute;
+  top: -8px;
+  right: -4px;
+  font-size: 0.75rem;
+}
+
+/* --- BATTLE START / ENEMY FIRST 演出 --- */
+.intro-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: rgba(6, 3, 12, 0.72);
+  border-radius: var(--radius-md);
+  animation: intro-fade 0.25s ease;
+}
+.intro-overlay__title {
+  font-size: 1.8rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-shadow: 0 0 18px rgba(168, 85, 247, 0.8);
+}
+.intro-overlay__title--enemy {
+  color: var(--color-enemy);
+  text-shadow: 0 0 18px rgba(248, 113, 113, 0.8);
+}
+.intro-overlay__sub {
+  font-size: 0.8rem;
+  color: var(--color-text-muted);
+}
+@keyframes intro-fade {
+  from {
+    opacity: 0;
+    transform: scale(0.94);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* --- ステージ(左プレイヤー / 右敵) --- */
+.stage {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px;
+  background: var(--color-panel);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  min-height: 190px;
+}
+.stage__combatants {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  flex: 1;
+}
+.combatant {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  width: 46%;
+}
+.combatant--enemy {
+  align-items: flex-end;
+}
+.combatant__figure {
+  font-size: 3rem;
+  line-height: 1;
+  filter: drop-shadow(0 6px 8px rgba(0, 0, 0, 0.45));
+  transition: transform 0.12s ease;
+}
+.combatant__figure--attack {
+  animation: fx-attack 0.18s ease-out;
+}
+.combatant__figure--hit {
+  animation: fx-hit 0.22s ease-in-out;
+}
+@keyframes fx-attack {
+  0% {
+    transform: translateY(0) scale(1);
+  }
+  45% {
+    transform: translateY(-6px) scale(1.05);
+  }
+  100% {
+    transform: translateY(0) scale(1);
+  }
+}
+@keyframes fx-hit {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  25% {
+    transform: translateX(-5px);
+  }
+  50% {
+    transform: translateX(5px);
+  }
+  75% {
+    transform: translateX(-3px);
+  }
+}
+.combatant__name {
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+.combatant__badges {
+  display: flex;
+  gap: 4px;
+  font-size: 0.65rem;
+  min-height: 14px;
+}
+
+.hp-bar {
+  position: relative;
+  width: 100%;
+  height: 13px;
+  background: var(--color-panel-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-pill);
+  overflow: hidden;
+}
+.hp-bar__fill {
+  height: 100%;
+  transition: width 0.35s ease;
+}
+.hp-bar__label {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.55rem;
+  font-weight: 800;
+  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.6);
+}
+
+.floater-layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+.floater {
+  position: absolute;
+  bottom: 40%;
+  font-weight: 900;
+  font-size: 1.1rem;
+  animation: floater-rise 1.05s ease-out forwards;
+  text-shadow: 0 2px 3px rgba(0, 0, 0, 0.6);
+}
+.floater--player {
+  left: 20%;
+  color: var(--color-player);
+}
+.floater--enemy {
+  right: 20%;
+  color: var(--color-enemy);
+}
+.floater--evade {
+  color: var(--color-text-muted);
+}
+.floater--burn {
+  color: #fb923c;
+}
+@keyframes floater-rise {
+  0% {
+    opacity: 0;
+    transform: translateY(6px) scale(0.9);
+  }
+  20% {
+    opacity: 1;
+    transform: translateY(-6px) scale(1.05);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-42px) scale(1);
+  }
+}
+
+.telegraph-banner {
+  position: absolute;
+  top: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 10;
+  padding: 4px 12px;
+  background: rgba(248, 113, 113, 0.16);
+  border: 1px solid rgba(248, 113, 113, 0.6);
+  border-radius: var(--radius-pill);
+  color: #fecaca;
+  font-size: 0.68rem;
+  font-weight: 800;
+  white-space: nowrap;
+  animation: intro-fade 0.2s ease;
+}
+
+.stage--shake {
+  animation: stage-shake 0.22s ease-in-out;
+}
+@keyframes stage-shake {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  25% {
+    transform: translateX(-4px);
+  }
+  50% {
+    transform: translateX(4px);
+  }
+  75% {
+    transform: translateX(-2px);
+  }
+}
+
+/* --- 代謝 --- */
+.metabolism-bar {
+  position: relative;
+  height: 15px;
+  background: var(--color-panel-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-pill);
+  overflow: hidden;
+}
+.metabolism-bar__fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--color-cyan), var(--color-purple));
+  transition: width 0.3s ease;
+}
+.metabolism-bar__label {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.62rem;
+  font-weight: 800;
+  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.6);
+}
+
+/* --- コマンドUI(仕様書8〜15章) --- */
+.command-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+.command-grid__ultra {
+  grid-column: 1 / -1;
+}
+.command {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  min-width: 0;
+  padding: 10px 6px;
+  min-height: 60px;
+  background: var(--color-panel-2);
+  border: 2px solid var(--color-border);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  opacity: 0.55;
+  transition: all 0.16s ease;
+}
+.command:disabled {
+  cursor: not-allowed;
+}
+.command--usable {
+  opacity: 1;
+}
+.command--dimmed {
+  opacity: 0.32;
+}
+.command__icon {
+  font-size: 1.3rem;
+}
+.command__name {
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+.command--selected {
+  grid-column: 1 / -1;
+  transform: scale(1.02);
+  border-color: var(--color-yellow);
+  box-shadow: 0 0 18px rgba(250, 204, 21, 0.55);
+  background: linear-gradient(165deg, var(--color-panel-2), var(--color-panel));
+  padding: 12px 10px;
+  align-items: stretch;
+}
+.command--selected .command__icon {
+  font-size: 1.6rem;
+}
+.command__selected-tag {
+  align-self: center;
+  font-size: 0.55rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  color: var(--color-yellow);
+  margin-top: 2px;
+}
+.command__detail {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px 10px;
+  margin-top: 4px;
+  font-size: 0.68rem;
+}
+.command__detail-desc {
+  width: 100%;
+  text-align: center;
+  font-size: 0.66rem;
+  color: var(--color-text-muted);
+  margin-top: 2px;
+}
+.command__stat {
+  font-weight: 700;
+}
+.command__hint {
+  margin-top: 4px;
+  font-size: 0.6rem;
+  color: var(--color-text-muted);
+  text-align: center;
+}
+
+/* --- 補助UI --- */
+.controls-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+}
+.log-panel {
+  max-height: 100px;
+  overflow-y: auto;
+  padding: 6px 10px;
+  background: var(--color-panel);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  font-size: 0.65rem;
+  color: var(--color-text-muted);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.end-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 25;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  background: rgba(6, 3, 12, 0.82);
+  border-radius: var(--radius-md);
+  border: none;
+  cursor: pointer;
+  color: var(--color-text);
+}
+.end-overlay__text {
+  font-size: 1.9rem;
+  font-weight: 900;
+}
+.end-overlay--won .end-overlay__text {
+  color: var(--color-yellow);
+  text-shadow: 0 0 20px rgba(251, 191, 36, 0.7);
+}
+.end-overlay--lost .end-overlay__text {
+  color: var(--color-enemy);
+  text-shadow: 0 0 20px rgba(248, 113, 113, 0.7);
+}
+.end-overlay__hint {
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+}
