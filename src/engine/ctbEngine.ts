@@ -1,7 +1,7 @@
 import { COMMANDS, getCommand } from '../data/commands';
 import { activeSynergies, computePlayerModifiers, type PlayerModifiers } from './modifiers';
 import type { CommandDef, EnemyDef, EnemyIntent, EnemyMoveDef, EnemyTier, PartDef, Side, StatusApply, StatusKind } from '../data/types';
-import { CT_DELAY_UNITS_CEILING, CT_WEIGHT_INTERVAL_MULT, CT_WEIGHT_LABEL, CT_WEIGHT_MULT_FLOOR, TIER_DELAY_RESISTANCE_PCT } from '../data/types';
+import { CT_DELAY_UNITS_CEILING, CT_WEIGHT_INTERVAL_MULT, CT_WEIGHT_LABEL, CT_WEIGHT_MULT_FLOOR, STATUS_LABEL, TIER_DELAY_RESISTANCE_PCT } from '../data/types';
 
 // ============================================================
 // キメラバトル CTB 再設計データ 第1弾 の戦闘エンジン。
@@ -323,7 +323,7 @@ export class CtbEngine {
     } else {
       target.statuses.push({ kind: apply.kind, magnitude: apply.magnitude, turnsLeft: apply.turns });
     }
-    this.pushLog(`${target.name}に${apply.kind}状態が付与された`);
+    this.pushLog(`${STATUS_LABEL[apply.kind].icon} ${target.name}に${STATUS_LABEL[apply.kind].name}状態が付与された`);
     this.pushEvent({ type: 'status_apply', side: target.side, kind: apply.kind });
   }
 
