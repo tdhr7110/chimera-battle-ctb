@@ -421,8 +421,8 @@ button {
   }
 }
 
-/* --- 代謝 --- */
-.metabolism-bar {
+/* --- MP(旧・代謝ゲージ) --- */
+.mp-bar {
   position: relative;
   height: 15px;
   background: var(--color-panel-2);
@@ -430,12 +430,12 @@ button {
   border-radius: var(--radius-pill);
   overflow: hidden;
 }
-.metabolism-bar__fill {
+.mp-bar__fill {
   height: 100%;
-  background: linear-gradient(90deg, var(--color-cyan), var(--color-purple));
+  background: linear-gradient(90deg, #6366f1, #38bdf8);
   transition: width 0.3s ease;
 }
-.metabolism-bar__label {
+.mp-bar__label {
   position: absolute;
   inset: 0;
   display: flex;

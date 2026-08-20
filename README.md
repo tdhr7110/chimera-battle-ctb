@@ -20,9 +20,9 @@ npm run dev
 | 2〜3 | リアルタイム進行しない・固定ラウンド制にしない | `engine/ctbEngine.ts` の ATBゲージ(`nextAt`)モデル。プレイヤー/敵の速度と使用したコマンドのCT重量で次行動時刻が決まる |
 | 4 | 戦闘開始のUX改善(BATTLE START→初期表示→ENEMY FIRST) | `CtbEngine`の`battle_start → order_reveal → (enemy_first_announce →) player_turn`という明示的なフェーズ遷移。`BattleScreen`がsetTimeoutで各段階を演出する |
 | 5 | 5〜8行動先までの行動順表示 | `previewOrder()` (既定7手)。画面上部に常時表示 |
-| 6〜7 | コマンドごとのCT重量(軽量/標準/重量/超重量)、代謝コスト | `data/commands.ts`、`data/types.ts`の`CtWeight` |
+| 6〜7 | コマンドごとのCT重量(軽量/標準/重量/超重量)、MPコスト | `data/commands.ts`、`data/types.ts`の`CtWeight`。ATTACK(標準)→RUSH(軽量・低威力・低MP)/SMASH(重量・高威力・高MP)という「通常攻撃の派生」系統をFF10のダメージ vs 行動順トレードオフを参考に構成している。ULTRAはこの系統から独立した大技 |
 | 8〜15 | 2段階タップのコマンドUI(1回目=選択+プレビュー、2回目=実行、決定ボタンなし) | `BattleScreen.tsx`の`handleCommandTap`。選択中のコマンド自身が展開して詳細を表示する |
-| 16 | CTと代謝の両方を見て判断させる | コマンド展開時に「ダメージ / 代謝 / 次回CT」を同時表示 |
+| 16 | CTとリソースの両方を見て判断させる | コマンド展開時に「ダメージ / MP / 次回CT」を同時表示。リソースは「代謝ゲージ」ではなくMP(マジックポイント)として実装(挙動はプレイヤーターン開始時に一定量回復する仮仕様のまま) |
 | 17〜19 | 将来のCT操作コマンド・部位・シナジー拡張 | `CommandDef`/`EnemyMoveDef`の型に`ctWeight`・`applyStatus`を持たせ、将来の効果追加が型を壊さず行えるように分離している(未実装の拡張ポイントとして意図的に残している) |
 | 20〜21 | 敵側もCTBルールで行動・大技の予兆 | `data/enemies.ts`(3種のプリセット)。`EnemyMoveDef.telegraph`が設定された技は行動順タイムラインに⚠️バッジで事前表示され、発動時にも警告バナーが出る |
 | 22 | AUTO | `CtbEngine.decideAutoCommand()` + `BattleScreen`のAUTOトグル |
@@ -30,7 +30,7 @@ npm run dev
 
 ## 仮実装であることの明記
 
-- 数値(威力・代謝コスト・CT倍率・HP等)はすべて仮。最終バランス調整は別途行う
+- 数値(威力・MPコスト・CT倍率・HP等)はすべて仮。最終バランス調整は別途行う
 - 部位・シナジー・敵AIの高度化・CT操作コマンド(加速/遅延/割り込み/待機/チャージ/カウンター)は
   未実装(型と拡張ポイントのみ用意)
 - 状態異常は「炎上」のみ実装(強打の効果例として仕様書9章に明示されていたため)

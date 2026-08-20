@@ -39,7 +39,7 @@ export interface CommandDef {
   icon: string;
   kind: CommandKind;
   powerMult: number; // 基礎攻撃力に対する倍率。0 = ダメージを与えない(防御など)
-  metabolismCost: number;
+  mpCost: number;
   ctWeight: CtWeight;
   guardReductionPct?: number; // 防御系コマンドのみ: 次に受ける1回のダメージを軽減する割合
   applyStatus?: StatusApply; // 命中時に付与する状態異常(仮実装のフレーバー)

@@ -252,10 +252,10 @@ export function BattleScreen({ enemy, onExit }: { enemy: EnemyDef; onExit: (resu
         )}
       </div>
 
-      <div className="metabolism-bar" title="代謝ゲージ: プレイヤーターン開始時に回復し、コマンド発動に消費する">
-        <div className="metabolism-bar__fill" style={{ width: `${(snapshot.metabolism.current / snapshot.metabolism.max) * 100}%` }} />
-        <div className="metabolism-bar__label">
-          💧代謝 {snapshot.metabolism.current} / {snapshot.metabolism.max}
+      <div className="mp-bar" title="MPゲージ: プレイヤーターン開始時に回復し、コマンド発動に消費する">
+        <div className="mp-bar__fill" style={{ width: `${(snapshot.mp.current / snapshot.mp.max) * 100}%` }} />
+        <div className="mp-bar__label">
+          🔷MP {snapshot.mp.current} / {snapshot.mp.max}
         </div>
       </div>
 
@@ -279,7 +279,7 @@ export function BattleScreen({ enemy, onExit }: { enemy: EnemyDef; onExit: (resu
                 <>
                   <div className="command__detail">
                     {cmd.damageEstimate !== null && <span className="command__stat">⚔️ {cmd.damageEstimate} DAMAGE</span>}
-                    <span className="command__stat">💧代謝 {cmd.metabolismCost}</span>
+                    <span className="command__stat">🔷MP {cmd.mpCost}</span>
                     <span className="command__stat">次回：{cmd.ctLabel}</span>
                     {cmd.applyStatusLabel && <span className="command__stat">{cmd.applyStatusLabel}</span>}
                   </div>

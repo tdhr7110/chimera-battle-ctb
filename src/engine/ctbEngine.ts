@@ -34,9 +34,12 @@ type EventWithoutTime<T> = T extends CtbEvent ? Omit<T, 'time'> : never;
 const CTB_BASE_INTERVAL = 100;
 const CTB_PREVIEW_STEPS = 7; // 5〜8行動を見せる(仕様書5章)
 const CTB_MAX_RESOLVE_STEPS = 60;
-const CTB_METABOLISM_MAX = 100;
-const CTB_METABOLISM_START = 40;
-const CTB_METABOLISM_REGEN_PER_TURN = 16;
+// MP: 「代謝ゲージ」を廃止し、古典的なMP(マジックポイント)ゲージへ置き換えたもの。
+// 挙動自体(プレイヤーターン開始時に一定量回復する)は元の代謝ゲージと同じ仮実装のまま、
+// 呼び名・見た目だけをMPへ変更している。
+const CTB_MP_MAX = 100;
+const CTB_MP_START = 40;
+const CTB_MP_REGEN_PER_TURN = 16;
 
 const PLAYER_BASE = { name: 'キメラ', icon: '🧬', color: '#4ade80', maxHp: 130, defense: 3, power: 15, evasionPct: 5, speed: 100 };
 
@@ -82,7 +85,7 @@ export interface CommandPreviewInfo {
   icon: string;
   kind: CommandDef['kind'];
   damageEstimate: number | null; // ガード等はnull
-  metabolismCost: number;
+  mpCost: number;
   ctLabel: string;
   applyStatusLabel: string | null;
   affordable: boolean;
@@ -112,7 +115,7 @@ export interface CtbSnapshot {
   turnCount: number;
   player: CtbActorSnapshot;
   enemy: CtbActorSnapshot;
-  metabolism: { current: number; max: number };
+  mp: { current: number; max: number };
   order: OrderSlot[];
   commands: CommandPreviewInfo[];
   log: string[];
@@ -129,7 +132,7 @@ export class CtbEngine {
   private player: RuntimeActor;
   private enemy: EnemyRuntime;
   private nextAt: { player: number; enemy: number };
-  private metabolism = CTB_METABOLISM_START;
+  private mp = CTB_MP_START;
   private log: string[] = [];
   private events: CtbEvent[] = [];
   private seq = 0;
@@ -217,7 +220,7 @@ export class CtbEngine {
       this.tickBurnAtTurnStart('player');
       if (this.checkEnd()) return;
       this.phase = 'player_turn';
-      this.regenMetabolismForNewPlayerTurn();
+      this.regenMpForNewPlayerTurn();
       return;
     }
     // 敵が先制: まだダメージは発生させず、告知だけ行う(要件: 画面表示直後に突然被弾しない)。
@@ -326,8 +329,8 @@ export class CtbEngine {
     this.applyStatusToTarget(this.enemy, cmd);
   }
 
-  private regenMetabolismForNewPlayerTurn() {
-    this.metabolism = Math.min(CTB_METABOLISM_MAX, this.metabolism + CTB_METABOLISM_REGEN_PER_TURN);
+  private regenMpForNewPlayerTurn() {
+    this.mp = Math.min(CTB_MP_MAX, this.mp + CTB_MP_REGEN_PER_TURN);
   }
 
   private resolveUntilPlayerOrEnd() {
@@ -339,7 +342,7 @@ export class CtbEngine {
         this.tickBurnAtTurnStart('player');
         if (this.checkEnd()) return;
         this.phase = 'player_turn';
-        this.regenMetabolismForNewPlayerTurn();
+        this.regenMpForNewPlayerTurn();
         return;
       }
       this.tickBurnAtTurnStart('enemy');
@@ -378,9 +381,9 @@ export class CtbEngine {
     if (this.phase !== 'player_turn') return { ok: false, reason: 'まだ行動順ではありません' };
     const cmd = getCommand(commandId);
     if (!cmd) return { ok: false, reason: '不明なコマンドです' };
-    if (this.metabolism < cmd.metabolismCost) return { ok: false, reason: `代謝ゲージが足りません（必要${cmd.metabolismCost}）` };
+    if (this.mp < cmd.mpCost) return { ok: false, reason: `MPが足りません（必要${cmd.mpCost}）` };
 
-    this.metabolism -= cmd.metabolismCost;
+    this.mp -= cmd.mpCost;
     this.resolvePlayerCommand(cmd);
     this.nextAt.player += actionInterval(this.player.speed, CT_WEIGHT_INTERVAL_MULT[cmd.ctWeight]);
     this.turnCount += 1;
@@ -421,16 +424,16 @@ export class CtbEngine {
     return order;
   }
 
-  // 仕様書22章: AUTOの簡易AI。攻撃コマンド優先・代謝不足なら通常攻撃・HPが低ければ防御。
+  // 仕様書22章: AUTOの簡易AI。攻撃コマンド優先・MP不足なら通常攻撃・HPが低ければ防御。
   decideAutoCommand(): CommandDef {
     const hpPct = this.player.maxHp > 0 ? this.player.hp / this.player.maxHp : 1;
     const guard = getCommand('guard')!;
     const smash = getCommand('smash')!;
     const rush = getCommand('rush')!;
     const attack = getCommand('attack')!;
-    if (hpPct < 0.3 && this.metabolism >= guard.metabolismCost) return guard;
-    if (this.metabolism >= smash.metabolismCost && Math.random() < 0.45) return smash;
-    if (this.metabolism >= rush.metabolismCost && Math.random() < 0.5) return rush;
+    if (hpPct < 0.3 && this.mp >= guard.mpCost) return guard;
+    if (this.mp >= smash.mpCost && Math.random() < 0.45) return smash;
+    if (this.mp >= rush.mpCost && Math.random() < 0.5) return rush;
     return attack;
   }
 
@@ -458,7 +461,7 @@ export class CtbEngine {
   }
 
   private commandPreview(cmd: CommandDef): CommandPreviewInfo {
-    const affordable = this.metabolism >= cmd.metabolismCost;
+    const affordable = this.mp >= cmd.mpCost;
     const usable = this.status === 'ongoing' && this.phase === 'player_turn' && affordable;
     const damageEstimate = cmd.powerMult > 0 ? Math.max(1, Math.round(this.player.power * cmd.powerMult - this.enemy.defense)) : null;
     const weightMult = CT_WEIGHT_INTERVAL_MULT[cmd.ctWeight];
@@ -469,7 +472,7 @@ export class CtbEngine {
       icon: cmd.icon,
       kind: cmd.kind,
       damageEstimate,
-      metabolismCost: cmd.metabolismCost,
+      mpCost: cmd.mpCost,
       ctLabel: `${labelPrefix}${CT_WEIGHT_LABEL[cmd.ctWeight]}`,
       applyStatusLabel: cmd.applyStatus ? '🔥炎上付与' : null,
       affordable,
@@ -485,7 +488,7 @@ export class CtbEngine {
       turnCount: this.turnCount,
       player: this.actorSnapshot(this.player),
       enemy: this.actorSnapshot(this.enemy),
-      metabolism: { current: Math.round(this.metabolism), max: CTB_METABOLISM_MAX },
+      mp: { current: Math.round(this.mp), max: CTB_MP_MAX },
       order: this.previewOrder(null),
       commands: COMMANDS.map((c) => this.commandPreview(c)),
       log: this.log.slice(0, 30),
