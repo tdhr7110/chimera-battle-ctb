@@ -14,6 +14,7 @@ export function EnemySelectScreen({ onPick }: { onPick: (enemy: EnemyDef) => voi
           <div className="enemy-pick__head">
             <span className="enemy-pick__icon">{e.icon}</span>
             {e.name}
+            <span className={`tier-badge tier-badge--${e.tier}`}>{e.tier === 'boss' ? 'BOSS' : e.tier === 'elite' ? 'ELITE' : 'NORMAL'}</span>
           </div>
           <div className="enemy-pick__desc">{e.description}</div>
           <div className="enemy-pick__stats">

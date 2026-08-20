@@ -1,15 +1,13 @@
 import type { CommandDef } from './types';
 
 // ============================================================
-// 仕様書7章のコマンド例をそのまま実装する。数値はすべて仮。
+// CTB再設計データ 第1弾(仕様書「CHIMERA BATTLE CTB 再設計データ 第1弾実装」3章)。
+// Excelの60コマンドを一括実装せず、まずこの10種類で
+// 「MP0でも戦える／MP技はより強い戦術を使うためのリソース」という設計方針と、
+// 高速・重量・状態異常・CT操作・準備行動という各カテゴリが成立するかを検証する。
 //
-// ATTACK/RUSH/SMASHは「通常攻撃の派生(強弱)」として一つながりの系統になっている
-// (FF10のような、威力を上げるほど次の行動が遅くなるトレードオフを軸にした構成):
-//   RUSH(軽量・低威力・低MP) → ATTACK(標準) → SMASH(重量・高威力・高MP)
-// GUARDは防御、ULTRAはこの系統から独立した「大技」という位置づけ。
-//
-// リソースは「代謝ゲージ」を廃止し、MP(マジックポイント)として実装している。
-// 挙動(プレイヤーターン開始時に一定量回復)は元のままの仮実装。
+// 重要: 通常攻撃・速撃・防御・待機・チャージの5つはMP0で使用できる基本行動。
+// MP技(強打・火炎牙・毒針・遅延打撃・加速)は「より強い戦術のための追加リソース」。
 // ============================================================
 
 export const COMMANDS: CommandDef[] = [
@@ -21,17 +19,17 @@ export const COMMANDS: CommandDef[] = [
     powerMult: 1.0,
     mpCost: 0,
     ctWeight: 'standard',
-    description: '威力・MP・CTのすべてが標準のコマンド。迷ったらこれ。',
+    description: 'CTBの基準となる攻撃。威力・MP・CTのすべてが標準。',
   },
   {
-    id: 'rush',
-    name: '高速攻撃',
+    id: 'quick',
+    name: '速撃',
     icon: '⚡',
     kind: 'attack',
-    powerMult: 0.55,
-    mpCost: 10,
+    powerMult: 0.6,
+    mpCost: 0,
     ctWeight: 'light',
-    description: '通常攻撃の軽量版。威力は低いが次の行動が非常に早く、敵より先にもう一度動けることもある。',
+    description: '通常攻撃より威力は低いが、MP0のまま次の自分の行動を早められる。',
   },
   {
     id: 'guard',
@@ -39,10 +37,23 @@ export const COMMANDS: CommandDef[] = [
     icon: '🛡️',
     kind: 'guard',
     powerMult: 0,
-    mpCost: 6,
+    mpCost: 0,
     ctWeight: 'light',
     guardReductionPct: 50,
-    description: '次に受ける1回のダメージを軽減する。敵の大技を受けつつ早く次へつなげる。',
+    mpRestoreOnUse: 6,
+    description: '次に受ける1回のダメージを軽減し、MPも少量回復する。',
+  },
+  {
+    id: 'wait',
+    name: '待機',
+    icon: '⏸️',
+    kind: 'wait',
+    powerMult: 0,
+    mpCost: 0,
+    ctWeight: 'very_light',
+    hasteSelfBy: 24,
+    mpRestoreOnUse: 8,
+    description: '攻撃しない代わりに、次回行動をさらに早め、MPも回復するCTB調整用の行動。',
   },
   {
     id: 'smash',
@@ -50,20 +61,65 @@ export const COMMANDS: CommandDef[] = [
     icon: '💥',
     kind: 'attack',
     powerMult: 2.0,
-    mpCost: 20,
+    mpCost: 5,
     ctWeight: 'heavy',
-    applyStatus: { kind: 'burn', dps: 3, turns: 3 },
-    description: '通常攻撃を強化した一撃。大ダメージ＋炎上と引き換えに、次の行動が遅くなる。',
+    description: '大ダメージと引き換えに、次の行動が遅くなる。',
   },
   {
-    id: 'ultra',
-    name: '大技',
-    icon: '🌋',
-    kind: 'ultimate',
-    powerMult: 2.6,
-    mpCost: 45,
-    ctWeight: 'very_heavy',
-    description: '通常攻撃の系統からは独立した奥義。非常に高い威力と引き換えに、使用後は敵へ複数回の行動を許してしまう。',
+    id: 'flame_fang',
+    name: '火炎牙',
+    icon: '🔥',
+    kind: 'attack',
+    powerMult: 1.0,
+    mpCost: 6,
+    ctWeight: 'standard',
+    applyStatus: { kind: 'burn', magnitude: 4, turns: 3 },
+    description: 'ダメージに加えて炎上を付与する。',
+  },
+  {
+    id: 'poison_needle',
+    name: '毒針',
+    icon: '🧪',
+    kind: 'attack',
+    powerMult: 0.5,
+    mpCost: 5,
+    ctWeight: 'light',
+    applyStatus: { kind: 'poison', magnitude: 3, turns: 4 },
+    description: '威力は低いが、毒を蓄積させる。',
+  },
+  {
+    id: 'delay_strike',
+    name: '遅延打撃',
+    icon: '⏳',
+    kind: 'attack',
+    powerMult: 0.8,
+    mpCost: 8,
+    ctWeight: 'standard',
+    delayEnemyBy: 70,
+    description: 'ダメージを与えながら、敵の次回行動を後ろへ送る。CTBの妨害戦術の要。',
+  },
+  {
+    id: 'haste_self',
+    name: '加速',
+    icon: '🌀',
+    kind: 'wait',
+    powerMult: 0,
+    mpCost: 8,
+    ctWeight: 'very_light',
+    hasteSelfBy: 55,
+    applySelfStatus: { kind: 'haste', magnitude: 20, turns: 2 },
+    description: '攻撃せず、自分の次回行動を大きく前へ移動し、しばらくCTが短縮された状態になる。',
+  },
+  {
+    id: 'charge',
+    name: 'チャージ',
+    icon: '🔋',
+    kind: 'charge',
+    powerMult: 0,
+    mpCost: 0,
+    ctWeight: 'light',
+    chargeNextAttackMultBonus: 1.1,
+    description: '今回の攻撃を放棄する代わりに、次の攻撃系コマンドの威力を大きく強化する。',
   },
 ];
 

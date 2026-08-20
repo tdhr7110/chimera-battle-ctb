@@ -119,6 +119,115 @@ button {
   color: var(--color-text-muted);
 }
 
+.tier-badge {
+  margin-left: auto;
+  padding: 1px 7px;
+  font-size: 0.55rem;
+  font-weight: 900;
+  border-radius: var(--radius-pill);
+  letter-spacing: 0.04em;
+}
+.tier-badge--normal {
+  background: var(--color-panel-2);
+  color: var(--color-text-muted);
+  border: 1px solid var(--color-border);
+}
+.tier-badge--elite {
+  background: rgba(56, 189, 248, 0.18);
+  color: var(--color-cyan);
+  border: 1px solid rgba(56, 189, 248, 0.5);
+}
+.tier-badge--boss {
+  background: rgba(248, 113, 113, 0.2);
+  color: var(--color-enemy);
+  border: 1px solid rgba(248, 113, 113, 0.55);
+}
+
+/* --- 装備選択画面(PrepScreen) --- */
+.preset-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.preset-btn {
+  padding: 7px 11px;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--color-border);
+  background: var(--color-panel-2);
+  color: var(--color-text);
+  font-size: 0.72rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+.preset-btn:active {
+  transform: scale(0.96);
+}
+.preset-btn--clear {
+  opacity: 0.7;
+}
+.part-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+.part-card {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px;
+  min-width: 0;
+  background: var(--color-panel);
+  border: 2px solid var(--color-border);
+  border-radius: var(--radius-md);
+  color: var(--color-text);
+  text-align: left;
+  cursor: pointer;
+}
+.part-card:active {
+  transform: scale(0.97);
+}
+.part-card--selected {
+  border-color: var(--color-cyan);
+  box-shadow: 0 0 12px rgba(56, 189, 248, 0.45);
+  background: linear-gradient(165deg, var(--color-panel-2), var(--color-panel));
+}
+.part-card__head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.8rem;
+  font-weight: 800;
+}
+.part-card__icon {
+  font-size: 1.2rem;
+}
+.part-card__desc {
+  font-size: 0.65rem;
+  color: var(--color-text-muted);
+  line-height: 1.35;
+}
+.synergy-panel {
+  padding: 8px 10px;
+  background: rgba(56, 189, 248, 0.08);
+  border: 1px solid rgba(56, 189, 248, 0.35);
+  border-radius: var(--radius-md);
+  font-size: 0.68rem;
+}
+.synergy-panel__title {
+  font-weight: 800;
+  margin-bottom: 4px;
+  color: var(--color-cyan);
+}
+.synergy-panel__item {
+  color: var(--color-text-muted);
+  line-height: 1.5;
+}
+.btn--block {
+  width: 100%;
+  padding: 12px;
+  font-size: 0.9rem;
+}
+
 /* --- 戦闘画面 --- */
 .battle-screen {
   position: relative;
@@ -200,6 +309,35 @@ button {
   top: -8px;
   right: -4px;
   font-size: 0.75rem;
+}
+.ctb-order__intent {
+  position: absolute;
+  bottom: -13px;
+  font-size: 0.42rem;
+  font-weight: 800;
+  color: var(--color-enemy);
+  white-space: nowrap;
+}
+.next-enemy-action {
+  margin-top: 14px;
+  padding-top: 8px;
+  border-top: 1px dashed var(--color-border);
+  font-size: 0.7rem;
+  color: var(--color-text-muted);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.next-enemy-action__intent {
+  padding: 1px 7px;
+  border-radius: var(--radius-pill);
+  background: rgba(248, 113, 113, 0.16);
+  border: 1px solid rgba(248, 113, 113, 0.5);
+  color: var(--color-enemy);
+  font-weight: 800;
+  font-size: 0.6rem;
+  letter-spacing: 0.03em;
 }
 
 /* --- BATTLE START / ENEMY FIRST 演出 --- */
@@ -369,6 +507,56 @@ button {
 }
 .floater--burn {
   color: #fb923c;
+}
+.floater--poison {
+  color: #c084fc;
+}
+.floater--counter {
+  color: var(--color-yellow);
+}
+.floater--delay {
+  color: var(--color-cyan);
+}
+.floater--haste {
+  color: var(--color-player);
+}
+
+.toast-layer {
+  position: absolute;
+  top: 30%;
+  left: 0;
+  right: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  pointer-events: none;
+}
+.toast {
+  padding: 3px 10px;
+  border-radius: var(--radius-pill);
+  background: rgba(10, 6, 14, 0.75);
+  border: 1px solid var(--color-border);
+  font-size: 0.65rem;
+  font-weight: 800;
+  animation: toast-pop 1s ease-out forwards;
+}
+@keyframes toast-pop {
+  0% {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  15% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  80% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
 }
 @keyframes floater-rise {
   0% {
