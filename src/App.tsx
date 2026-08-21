@@ -195,6 +195,7 @@ export default function App() {
       {state.phase === 'reward' && (
         <RewardScreen
           candidateIds={state.dropCandidateIds}
+          fromEnemyId={state.lastDefeatedEnemyId}
           onAccept={(partId) => setState((s) => acceptDrop(s, partId, true))}
           onSkip={() => setState((s) => skipDrop(s))}
         />

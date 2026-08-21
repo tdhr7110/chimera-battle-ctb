@@ -1,4 +1,5 @@
 import { ENEMIES, getEnemy } from '../data/enemies';
+import { getEnemyDrop, RARE_DROP_CHANCE_PCT } from '../data/enemyDrops';
 import { PARTS, getPart } from '../data/parts';
 import { getStarter } from '../data/starters';
 import { CTB_MP_MAX_BASE, PLAYER_BASE } from './ctbEngine';
@@ -47,6 +48,7 @@ export interface RunState {
   currentEnemyId: string | null;
   enemyCandidateIds: string[];
   dropCandidateIds: string[];
+  lastDefeatedEnemyId: string | null; // Phase 1: 報酬画面で「どの敵が落としたか」を示すため
   resultOutcome: 'victory' | 'defeat' | null;
   seenIntro: boolean; // 遊び方を一度でも見たか(GAME STARTのたび強制表示しないため)
 }
@@ -63,6 +65,7 @@ export function createTitleState(seenIntro: boolean): RunState {
     currentEnemyId: null,
     enemyCandidateIds: [],
     dropCandidateIds: [],
+    lastDefeatedEnemyId: null,
     resultOutcome: null,
     seenIntro,
   };
@@ -132,6 +135,66 @@ function pickRandom<T>(arr: T[], count: number): T[] {
   return out;
 }
 
+export const DROP_CANDIDATE_COUNT = 3;
+
+// ------------------------------------------------------------
+// 報酬候補の抽選(Phase 1: 敵所持部位ドロップ)。
+//
+// 「全PARTSから未所持をランダム」ではなく、倒した敵のドロップ定義(Excelのドロップタグ由来)を
+// 中心に抽選する。これにより敵選択が単なる危険度選択ではなく、ビルドの方向を選ぶ行為になる。
+//
+// 所持済み部位の扱いは既存仕様(finishBattleが未所持のみを候補にしていた)をそのまま踏襲し、
+// どの枠でも所持済みは候補から除外する。
+//
+// 敵のプールを引き切った場合の縮退順序(Excelのタグ分布の偏りでプールが小さい敵があるため、
+// 報酬画面が空になるのを必ず防ぐ): 敵の通常枠 → 敵のレア枠 → 全未所持部位。
+//
+// rollFn は 0<=x<1 を返す乱数。テストから決定的な値を渡せるよう引数にしている。
+// ------------------------------------------------------------
+export function rollDropCandidates(
+  enemyId: string,
+  ownedIds: string[],
+  rollFn: () => number = Math.random
+): string[] {
+  const owned = new Set(ownedIds);
+  const drop = getEnemyDrop(enemyId);
+  const enemy = getEnemy(enemyId);
+  const unowned = (ids: string[]) => ids.filter((id) => !owned.has(id));
+
+  if (!drop || !enemy) {
+    return pickRandom(unowned(PARTS.map((p) => p.id)), DROP_CANDIDATE_COUNT);
+  }
+
+  const normalPool = unowned(drop.bodyPartIds);
+  const rarePool = unowned(drop.rareDropPartIds);
+  const rareChance = RARE_DROP_CHANCE_PCT[enemy.tier];
+
+  const picked: string[] = [];
+  const taken = new Set<string>();
+  const takeFrom = (pool: string[]): boolean => {
+    const available = pool.filter((id) => !taken.has(id));
+    if (available.length === 0) return false;
+    const id = available[Math.min(available.length - 1, Math.floor(rollFn() * available.length))];
+    picked.push(id);
+    taken.add(id);
+    return true;
+  };
+
+  while (picked.length < DROP_CANDIDATE_COUNT) {
+    // 1枠ごとに独立してレア枠かどうかを判定し、外れた/引き切った場合は通常枠へ落とす。
+    const wantRare = rollFn() * 100 < rareChance;
+    const got = wantRare ? takeFrom(rarePool) || takeFrom(normalPool) : takeFrom(normalPool) || takeFrom(rarePool);
+    if (!got) break;
+  }
+
+  // 敵のプールを引き切ってもまだ枠が余る場合だけ、全未所持部位から補充する。
+  if (picked.length < DROP_CANDIDATE_COUNT) {
+    const fallback = unowned(PARTS.map((p) => p.id)).filter((id) => !taken.has(id));
+    for (const id of pickRandom(fallback, DROP_CANDIDATE_COUNT - picked.length)) picked.push(id);
+  }
+  return picked;
+}
+
 export function enterEnemySelect(state: RunState): RunState {
   const tier = BATTLE_SEQUENCE[Math.min(state.battleIndex, TOTAL_BATTLES) - 1];
   const pool = ENEMIES.filter((e) => e.tier === tier);
@@ -154,16 +217,17 @@ export function finishBattle(state: RunState, result: 'won' | 'lost', finalHp: n
   if (state.battleIndex >= TOTAL_BATTLES) {
     return { ...state, phase: 'result', resultOutcome: 'victory', coreHp: recovered, mp: recoveredMp, currentEnemyId: null };
   }
-  const owned = new Set(ownedPartIds(state));
-  const candidatePool = PARTS.filter((p) => !owned.has(p.id));
-  const candidates = pickRandom(candidatePool, Math.min(3, candidatePool.length));
+  // Phase 1: 報酬候補は「倒した敵が落とす部位」から抽選する。ここで一度だけ確定させ、
+  // RunStateへ保存する(RewardScreenは再描画されても再抽選しない)。
+  const defeatedEnemyId = state.currentEnemyId;
   return {
     ...state,
     phase: 'reward',
     coreHp: recovered,
     mp: recoveredMp,
     currentEnemyId: null,
-    dropCandidateIds: candidates.map((p) => p.id),
+    lastDefeatedEnemyId: defeatedEnemyId,
+    dropCandidateIds: defeatedEnemyId ? rollDropCandidates(defeatedEnemyId, ownedPartIds(state)) : [],
   };
 }
 

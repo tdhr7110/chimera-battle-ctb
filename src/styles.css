@@ -1214,3 +1214,65 @@ button {
   color: var(--color-player);
   font-weight: 800;
 }
+
+/* ============================================================
+   Phase 1: 敵所持部位ドロップ
+   敵選択カードの「主なドロップ」表示と、折りたたみ式の詳細。
+   常時表示は名前・危険度・主なドロップだけに保ち、画面を縦に伸ばさない。
+   ============================================================ */
+.enemy-pick-wrap {
+  margin-bottom: 10px;
+}
+.enemy-pick-wrap .enemy-pick {
+  margin-bottom: 0;
+}
+.enemy-pick__drop {
+  color: var(--color-accent, #fbbf24);
+  font-weight: 700;
+}
+.enemy-pick__more {
+  width: 100%;
+  padding: 4px 8px;
+  font-size: 0.62rem;
+  color: #94a3b8;
+  background: rgba(148, 163, 184, 0.08);
+  border: none;
+  border-radius: 0 0 8px 8px;
+  cursor: pointer;
+}
+.enemy-pick__detail {
+  padding: 8px 10px;
+  font-size: 0.62rem;
+  line-height: 1.5;
+  background: rgba(15, 23, 42, 0.6);
+  border-radius: 0 0 8px 8px;
+}
+.enemy-pick__detail-row {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 4px;
+}
+.enemy-pick__detail-label {
+  flex: 0 0 84px;
+  font-weight: 700;
+  color: #94a3b8;
+}
+.enemy-pick__detail-desc {
+  margin-top: 6px;
+  color: #cbd5e1;
+}
+
+/* 部位のレア度(Excel「レア度」列)をカード色で示す */
+.rarity-badge {
+  margin-left: 6px;
+  padding: 0 5px;
+  font-size: 0.55rem;
+  font-weight: 800;
+  border-radius: 4px;
+}
+.rarity-badge--common { background: #475569; color: #e2e8f0; }
+.rarity-badge--rare { background: #1d4ed8; color: #dbeafe; }
+.rarity-badge--epic { background: #7e22ce; color: #f3e8ff; }
+.rarity-badge--legendary { background: #b45309; color: #fef3c7; }
+.reward-card--epic { border-color: #a855f7; }
+.reward-card--legendary { border-color: #f59e0b; }

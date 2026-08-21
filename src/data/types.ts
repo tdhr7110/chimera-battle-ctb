@@ -258,6 +258,9 @@ export interface EnemyDef {
   moves: EnemyMoveDef[]; // 単純な周期パターンで順番に使用する(仮のAI)。フェーズ1の行動パターン。
   phases?: EnemyPhase[]; // HP閾値で行動パターンそのものが変わる敵(エリート/ボス級)のみ設定
   counter?: EnemyCounter; // 反撃型: 被弾時に一定確率で即時反撃する
+  // Excel「敵」シートの「ドロップタグ」列そのまま(アーキタイプ語彙: 高速/炎上/遅延/MP破壊/変異 等)。
+  // 部位のPartTag語彙とは一部ずれるため、data/enemyDrops.tsの対応表で変換してから使う。
+  dropTags: string[];
   description: string;
 }
 
@@ -334,11 +337,16 @@ export type PartEffect =
   | { kind: 'utility_ct_bonus_pct'; pct: number } // 知性シナジー: 補助系コマンド(powerMult<=0)のCTをさらに短縮
   | { kind: 'utility_mp_cost_reduction_pct'; pct: number }; // 知性シナジー: 補助系コマンドのMPコストを軽減
 
+// Excel「部位」シートの「レア度」列。効果の数値自体はレア度でスケールしないが(parts.tsの
+// ヘッダ参照)、敵ドロップの「通常枠/レア枠」の振り分けにはこのExcel値をそのまま使う。
+export type PartRarity = 'Common' | 'Rare' | 'Epic' | 'Legendary';
+
 export interface PartDef {
   id: string;
   name: string;
   icon: string;
   type: PartType;
+  rarity: PartRarity;
   tags: PartTag[];
   effects: PartEffect[];
   description: string;
