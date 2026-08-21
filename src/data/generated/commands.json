@@ -79,7 +79,7 @@
     "tags": [
       "防御"
     ],
-    "effect": "次被ダメージ50%軽減+MP回復",
+    "effect": "次被ダメージ50%軽減",
     "statusEffect": "",
     "ctOperation": "",
     "conditionOrCost": "攻撃しない",
@@ -101,7 +101,7 @@
     "tags": [
       "高速"
     ],
-    "effect": "何もせず次手番を早めMP+4",
+    "effect": "何もせず次手番を早める",
     "statusEffect": "",
     "ctOperation": "自分CT短縮",
     "conditionOrCost": "攻撃しない",

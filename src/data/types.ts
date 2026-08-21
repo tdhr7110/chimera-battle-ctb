@@ -41,12 +41,49 @@ export const CT_WEIGHT_MULT_FLOOR = 0.28; // 短縮効果をどれだけ積ん�
 export const CT_DELAY_UNITS_CEILING = 140; // 遅延打撃1回で加算できる時間の上限(耐性適用前の基礎量に対して)
 
 // ------------------------------------------------------------
-// 状態異常(仕様書9章): 第1弾は5種類のみ。
+// 状態異常(仕様書9章 + Excel状態異常24種のうち、既存エンジンに無い解決フックが
+// 必要なものから代表的な系統を追加実装): 現在13種類。
 // burn/poison = 継続ダメージ(毎ターン開始時にmagnitude分)。
 // vulnerable = 被ダメージ増加(magnitude%)。
 // haste/slow = CT倍率の一時的な補正(magnitude%。hasteは負方向、slowは正方向に効く)。
+// bleed = 出血。ターン開始時ではなく「被弾するたび」にmagnitude分ダメージ(新フック)。
+// paralyze = 麻痺。継続ターンではなく「次の1行動だけ」CTをmagnitude%増加させる単発型(新フック)。
+// accuracy_down = 盲目。自分の攻撃が外れる確率をmagnitude%上乗せする(新しい判定軸)。
+// regen = 再生。ターン開始時にmagnitude分HP回復する(DOTの逆)。
+// silence = 沈黙。MPを消費するコマンドを選択不可にする(コマンド選択可否への新フック)。
+// undying = 不死。致死ダメージを1回だけ無効化し、発動後にCTを遅らせる単発型。
+// mp_leak = MP漏出。行動するたびmagnitude分MPを追加消費する(新しい資源減少フック)。
+// shock = 感電。加算スタックし、一定スタック数(SHOCK_TRIGGER_STACKS)に達すると
+//   自動でCT遅延が発動してスタックがリセットされる(閾値トリガー型の新フック)。
+// fear = 恐怖。攻撃力DOWN(magnitude%)とCT増加(同magnitude%)を同時に受ける複合型。
+//   Excelの主な付与元は「咆哮系」(CMD015)。
+// predation_mark = 捕食印。撃破時の回復量ボーナス(killBonus.healPct)をmagnitude%上乗せする。
+//   Excelの主な付与元は「捕食系」(CMD032)。
+// time_wound = 時間傷。CT遅延を受けるたび、そのダメージ量がmagnitude%ずつ増幅される複利型。
+//   Excelの主な付与元は「時間系」(CMD023)。
+// (「反撃」はExcel上の主な付与元が「カウンター姿勢」=CMD014そのものであり、
+//   既にcounterStance(単発反撃)として実装済みのため、別枠のStatusKindは設けていない。)
 // ------------------------------------------------------------
-export type StatusKind = 'burn' | 'poison' | 'vulnerable' | 'haste' | 'slow';
+export type StatusKind =
+  | 'burn'
+  | 'poison'
+  | 'vulnerable'
+  | 'haste'
+  | 'slow'
+  | 'bleed'
+  | 'paralyze'
+  | 'accuracy_down'
+  | 'regen'
+  | 'silence'
+  | 'undying'
+  | 'mp_leak'
+  | 'shock'
+  | 'frozen'
+  | 'defense_down'
+  | 'frenzy'
+  | 'fear'
+  | 'predation_mark'
+  | 'time_wound';
 
 export const STATUS_LABEL: Record<StatusKind, { icon: string; name: string }> = {
   burn: { icon: '🔥', name: '炎上' },
@@ -54,7 +91,25 @@ export const STATUS_LABEL: Record<StatusKind, { icon: string; name: string }> = 
   vulnerable: { icon: '💥', name: '脆弱' },
   haste: { icon: '💨', name: '加速' },
   slow: { icon: '🐌', name: '減速' },
+  bleed: { icon: '🩸', name: '出血' },
+  paralyze: { icon: '💫', name: '麻痺' },
+  accuracy_down: { icon: '🌫️', name: '盲目' },
+  regen: { icon: '💚', name: '再生' },
+  silence: { icon: '🔇', name: '沈黙' },
+  undying: { icon: '🌟', name: '不死' },
+  mp_leak: { icon: '🕳️', name: 'MP漏出' },
+  shock: { icon: '⚡', name: '感電' },
+  frozen: { icon: '🧊', name: '凍結' },
+  defense_down: { icon: '🦴', name: '腐食' },
+  frenzy: { icon: '💢', name: '狂化' },
+  fear: { icon: '😱', name: '恐怖' },
+  predation_mark: { icon: '🍖', name: '捕食印' },
+  time_wound: { icon: '⏱️', name: '時間傷' },
 };
+
+// 感電: このスタック数(magnitude合計)に達すると自動でCT遅延が発動し、スタックがリセットされる。
+export const SHOCK_TRIGGER_STACKS = 3;
+export const SHOCK_TRIGGER_DELAY_BASE = 60;
 
 export interface StatusApply {
   kind: StatusKind;
@@ -67,6 +122,10 @@ export interface StatusApply {
 // ------------------------------------------------------------
 export type CommandKind = 'attack' | 'guard' | 'wait' | 'charge';
 
+// Excelコマンド60種の接続(段階2)で追加した効果フィールド群。1つずつ個別の解決フックを
+// engine/ctbEngine.tsに持つ(自由記述の効果文をそのまま実装するのではなく、共通パターン
+// ごとに構造化データへ落とし込んでいる)。どのコマンドがどのフィールドを使うかは
+// data/commands.tsのコメントを参照。
 export interface CommandDef {
   id: string;
   name: string;
@@ -76,19 +135,55 @@ export interface CommandDef {
   mpCost: number;
   ctWeight: CtWeight;
   guardReductionPct?: number; // 防御: 次に受ける1回のダメージを軽減する割合
-  mpRestoreOnUse?: number; // 防御/待機: 使用時に少量MPを回復
   delayEnemyBy?: number; // 遅延打撃: 敵のnextAtへ加算する基礎量(耐性適用前)
   hasteSelfBy?: number; // 加速: 自分のnextAtから減算する基礎量
   chargeNextAttackMultBonus?: number; // チャージ: 次の攻撃系コマンドの威力倍率に加算するボーナス
   applyStatus?: StatusApply; // 命中時に敵へ付与する状態異常
   applySelfStatus?: StatusApply; // 自分自身へ付与する状態異常(加速のhaste状態など)
   description: string; // 1回目タップで展開する短い説明
+
+  // --- コマンド60種接続で追加(Excel「効果」列の個別実装) ---
+  hits?: number; // 連撃・粉砕連打・疾風連打等: 固定Hit数(省略時1)
+  randomHitsRange?: [number, number]; // 乱撃: ランダムHit数([最小,最大])。hitsより優先
+  vulnerableStackPerHit?: StatusApply; // 粉砕連打: ヒットごとに敵へ追加付与する状態異常
+  lifestealPct?: number; // 吸血・血狂い系: 与えたダメージの一部を自分のHPへ変換
+  ignoreDefense?: boolean; // 穿孔: 敵の防御力を無視
+  executeBonus?: { hpPctThreshold: number; bonusMult: number }; // 処刑: 敵が閾値以下HPなら威力倍加
+  missingHpPowerBonusPctPerMissing?: number; // 背水撃・血狂い: 自分の失ったHP割合1%ごとに威力+n%
+  hpCostPct?: number; // 自壊砲等: 使用時に自分の現在HPの割合を代償として消費する
+  hpCostPowerBonusMult?: number; // 上記のHP消費と対になる威力倍率ボーナス
+  hpCostForMp?: { hpCost: number; mpGain: number }; // 血の契約: HPを消費してMPを得る
+  mpFullRestore?: number; // 精神集中: 使用時にMPを大回復する(固定量)
+  consumeAllMpForPower?: { powerMultPerMp: number }; // 魔力暴発: 残MPを消費し威力へ変換してから0にする
+  damageImmuneOnce?: boolean; // 完全防御: 次の1回の被ダメージを完全無効化する
+  counterStance?: { powerMult: number }; // カウンター姿勢・受け流し: 次の被弾時に反撃する
+  reflectPct?: number; // 棘返し: 次の被弾時、受けたダメージの一部を敵へ反射する
+  statusConsumeNuke?: { kind: StatusKind; damagePerMagnitude: number }; // 炎上爆破・毒爆・凍砕: 敵の状態異常を消費し追加ダメージ
+  statusConsumeSelfHaste?: { kind: StatusKind; hasteUnitsPerMagnitude: number }; // 雷鎖: 敵の状態異常量に応じ自分のCTを短縮
+  statusPresentBonusMult?: { kind: StatusKind; mult: number }; // 凍砕: 敵が特定状態異常を持っていれば威力倍加(消費はしない)
+  killBonus?: { healPct?: number; mpGain?: number; instantNextAction?: boolean }; // 捕食・捕食連鎖: 敵撃破時のボーナス
+  followUpNextAttack?: { powerMult: number }; // 追撃命令: 次の攻撃系コマンドの後に追撃が発生する
+  firstActionCtBonusMult?: number; // 先制爪: 戦闘最初の行動でのみCT倍率にさらに掛ける係数
+  mimicPreviousCommand?: boolean; // 模倣: 直前に使った自分のコマンドを(このコマンドのMPで)再使用する
+  refundLastMpSpentPct?: number; // 巻き戻し: 直前に消費したMPの一部を返す
 }
 
 // ------------------------------------------------------------
 // 敵の意図表示(仕様書11章): 行動順プレビュー・次行動表示に常時出すタグ。
 // ------------------------------------------------------------
-export type EnemyIntent = 'ATTACK' | 'STRONG' | 'POISON' | 'DEBUFF' | 'DELAY' | 'CHARGE' | 'COUNTER_STANCE' | 'ULTIMATE';
+export type EnemyIntent =
+  | 'ATTACK'
+  | 'STRONG'
+  | 'POISON'
+  | 'DEBUFF'
+  | 'DELAY'
+  | 'CHARGE'
+  | 'COUNTER_STANCE'
+  | 'ULTIMATE'
+  // --- 段階6(敵45接続)で追加 ---
+  | 'WAIT' // 待機系: ダメージを与えない、CTB調整用の行動
+  | 'GUARD' // 防御・再生殻系: 自分を守る/回復する行動
+  | 'BUFF'; // 狂化系: 自分自身を強化する行動
 
 export const ENEMY_INTENT_LABEL: Record<EnemyIntent, string> = {
   ATTACK: 'ATTACK',
@@ -99,6 +194,9 @@ export const ENEMY_INTENT_LABEL: Record<EnemyIntent, string> = {
   CHARGE: 'CHARGE',
   COUNTER_STANCE: 'COUNTER',
   ULTIMATE: 'ULTIMATE',
+  WAIT: 'WAIT',
+  GUARD: 'GUARD',
+  BUFF: 'BUFF',
 };
 
 export interface EnemyMoveDef {
@@ -111,6 +209,11 @@ export interface EnemyMoveDef {
   applyStatus?: StatusApply;
   delayTargetBy?: number; // CT遅延型: プレイヤーのnextAtへ加算する基礎量(耐性の概念はプレイヤー側には適用しない)
   telegraph?: string; // ボスの大技等、専用の警告文(通常のintentタグに加えて表示する)
+  // --- 段階6(敵45接続)で追加。プレイヤー側の同名フィールドと対になる、敵専用の追加効果。 ---
+  selfHeal?: { pct: number }; // 再生系: この技を使うたび自分の最大HPの一定割合を回復する
+  hits?: number; // 多段系: この技が複数回命中し、命中のたびapplyStatusを積み重ねる(プレイヤーのvulnerable等)
+  executeBonus?: { hpPctThreshold: number; bonusMult: number }; // 処刑系: プレイヤーのHP割合が閾値以下なら威力UP
+  selfApplyStatus?: StatusApply; // 暴走/雷/氷系: 自分自身に状態異常を付与する(狂化・不死・加速など)
 }
 
 // 仕様書12章: 通常/エリート/ボスで遅延耐性を変えられるデータ構造。
@@ -128,6 +231,15 @@ export interface EnemyCounter {
   powerMult: number; // 敵の基礎攻撃力に対する反撃倍率
 }
 
+// Excelの「フェーズ変化」(現行エンジンに無かった仕組み): HP割合がhpPctThreshold以下に
+// なった瞬間、以降の行動パターンをmovesから丸ごとphaseのmovesへ切り替える。
+// thresholdの高い順に並べ、HPが下がるたびに該当する最初のフェーズへ1回だけ遷移する。
+export interface EnemyPhase {
+  hpPctThreshold: number;
+  moves: EnemyMoveDef[];
+  announceText: string; // フェーズ移行時に一度だけ表示する演出テキスト
+}
+
 export interface EnemyDef {
   id: string;
   name: string;
@@ -139,31 +251,84 @@ export interface EnemyDef {
   power: number;
   evasionPct: number;
   baseSpeed: number; // CTB上の基礎速度(プレイヤーの基準値100に対する相対値)
-  moves: EnemyMoveDef[]; // 単純な周期パターンで順番に使用する(仮のAI)
+  moves: EnemyMoveDef[]; // 単純な周期パターンで順番に使用する(仮のAI)。フェーズ1の行動パターン。
+  phases?: EnemyPhase[]; // HP閾値で行動パターンそのものが変わる敵(エリート/ボス級)のみ設定
   counter?: EnemyCounter; // 反撃型: 被弾時に一定確率で即時反撃する
   description: string;
 }
 
 // ------------------------------------------------------------
-// 部位(仕様書7章): 第1弾10種類。全80種の実装はまだ行わない。
-// PartEffectを増やすだけで将来の部位追加に対応できるデータ構造にしている。
+// 部位(仕様書7章 + 段階4: Excel80種接続)。
+// typeとtagはExcelの「カテゴリ」「タグ1/タグ2」の日本語表記をそのまま型として使う
+// (英語識別子への変換を挟むと、Excel更新のたびに対応表がずれるリスクがあるため)。
+// PartEffectはExcelの基礎効果/CTB効果/MP効果/コマンド連動列を個別解釈した結果。
 // ------------------------------------------------------------
-export type PartType = 'leg' | 'heart' | 'arm' | 'eye' | 'tail';
-// シナジー判定用の横断タグ(仕様書8章の「重量」「時間」シナジー用)。
-export type PartTag = 'heavy' | 'time';
+export type PartType = '頭' | '目' | '口' | '腕' | '脚' | '心臓' | '胴' | '尻尾' | '翼' | '角' | '器官' | 'コア';
+export type PartTag =
+  | 'MP'
+  | 'コア'
+  | '再生'
+  | '処刑'
+  | '反撃'
+  | '吸血'
+  | '器官'
+  | '多心臓'
+  | '多段'
+  | '多眼'
+  | '多脚'
+  | '多腕'
+  | '妨害'
+  | '捕食'
+  | '攻撃'
+  | '時間'
+  | '暴走'
+  | '毒'
+  | '炎'
+  | '状態異常'
+  | '知性'
+  | '翼'
+  | '貫通'
+  | '進化'
+  | '重量'
+  | '防御'
+  | '雷'
+  | '高速';
 
 export type PartEffect =
   | { kind: 'speed_flat'; amount: number } // 俊足脚: 速度そのものを底上げ
-  | { kind: 'ct_mult_all_pct'; pct: number } // 俊足脚: 全行動のCTをさらに短縮(負値)
-  | { kind: 'ct_mult_light_pct'; pct: number } // 六節脚: 軽量系コマンドのみCT短縮
+  | { kind: 'ct_mult_all_pct'; pct: number } // 俊足脚: 全行動のCTをさらに短縮(負値)。正値は「速度低下」等のペナルティにも使う
+  | { kind: 'ct_mult_light_pct'; pct: number } // 六節脚: 軽量系コマンドのみCT短縮(正値はペナルティ)
   | { kind: 'ct_heavy_penalty_reduction_pct'; pct: number } // 重装脚: 重量系コマンドのCTペナルティを軽減
   | { kind: 'low_hp_ct_bonus'; hpPctThreshold: number; ctMultPct: number } // 暴走心臓: HP割合以下でCT短縮
-  | { kind: 'mp_regen_bonus'; amount: number } // 第二心臓: ターン開始時MP回復量UP
+  | { kind: 'post_battle_mp_regen_bonus'; amount: number } // 第二心臓系: 戦闘後MP回復量UP(MP改定: 戦闘中は回復しないため)
   | { kind: 'max_mp_bonus'; amount: number } // 魔力嚢: 最大MP増加
-  | { kind: 'power_bonus_light_pct'; pct: number } // 多腕: 通常攻撃・速撃など軽量attack系の威力UP
-  | { kind: 'power_bonus_heavy_pct'; pct: number } // 豪腕: 強打など重量attack系の威力UP
-  | { kind: 'delay_effect_bonus_pct'; pct: number } // 時喰い眼: 遅延打撃の効果量UP
-  | { kind: 'counter_on_hit'; chancePct: number; powerMult: number }; // 反撃尾: 被弾時に反撃(将来の割り込み系の仮実装)
+  | { kind: 'max_hp_bonus'; amount: number } // 第二心臓系: 最大HP増加
+  | { kind: 'power_bonus_light_pct'; pct: number } // 多腕系: 通常攻撃・速撃など軽量attack系の威力UP
+  | { kind: 'power_bonus_heavy_pct'; pct: number } // 豪腕系: 強打など重量attack系の威力UP
+  | { kind: 'delay_effect_bonus_pct'; pct: number } // 時喰い眼系: 遅延打撃の効果量UP
+  | { kind: 'counter_on_hit'; chancePct: number; powerMult: number } // 反撃尾系: 被弾時に反撃
+  // --- 段階4(部位80接続)で追加 ---
+  | { kind: 'power_bonus_all_pct'; pct: number } // 火炎頭系: 系統を問わない全attack系の威力UP
+  | { kind: 'on_hit_apply_status'; status: StatusApply } // 火炎頭/毒腺口系: 自分の攻撃が命中するたび状態異常を追加付与
+  | { kind: 'defense_flat_bonus'; amount: number } // 反射腕/巨殻系: 防御力を底上げ
+  | { kind: 'defense_pct_penalty'; pct: number } // 狂戦頭系: 防御力DOWN(代償)
+  | { kind: 'evasion_bonus_pct'; pct: number } // 加速翼系: 回避率UP
+  | { kind: 'accuracy_bonus_pct'; pct: number } // 複眼: 自分の命中率UP(敵の回避率を実質的に下げる)
+  | { kind: 'execute_bonus_passive'; hpPctThreshold: number; bonusMult: number } // 処刑眼: 低HP敵への全attack威力UPを常時適用
+  | { kind: 'lifesteal_bonus_pct'; pct: number } // 血吸口系: 吸血コマンドの回復量をさらに上乗せ
+  | { kind: 'status_magnitude_bonus'; target: StatusKind; flatAmount?: number; pctAmount?: number } // 毒腺口/毒嚢系: 自分が付与する特定状態異常の量を強化
+  | { kind: 'passive_regen_per_turn'; amount: number } // 再生胴系: 自分の手番開始時、常時HPが少量回復
+  | { kind: 'reflect_on_hit_pct'; pct: number } // 棘甲系: 被弾するたび、常時ダメージの一部を反射(消費されない)
+  | { kind: 'mp_move_power_bonus_pct'; pct: number } // 魔導心臓系: MPを消費するコマンドの威力UP
+  | { kind: 'first_mp_move_free' } // ゼロコスト核: 戦闘最初のMP技のMPコストを0にする(1戦1回)
+  | { kind: 'ignore_defense_pct'; pct: number } // 穿孔角系: 自分の攻撃が敵の防御力を一部無視する
+  | { kind: 'on_kill_ct_bonus_pct'; pct: number } // 黒翼: 敵撃破時、自分の次回行動をさらに早める
+  // --- 段階5(シナジー36接続)で追加。個別部位ではなくシナジー効果専用 ---
+  | { kind: 'bonus_hits_flat'; amount: number } // 多段シナジー: hits指定コマンドの命中回数を底上げ
+  | { kind: 'low_hp_mp_regen_per_turn'; hpPctThreshold: number; amount: number } // 暴走シナジー: 低HP時、自分の手番開始時にMPも回復
+  | { kind: 'on_kill_mp_gain'; amount: number } // 捕食シナジー: 敵撃破時、MPも回復
+  | { kind: 'utility_ct_bonus_pct'; pct: number } // 知性シナジー: 補助系コマンド(powerMult<=0)のCTをさらに短縮
+  | { kind: 'utility_mp_cost_reduction_pct'; pct: number }; // 知性シナジー: 補助系コマンドのMPコストを軽減
 
 export interface PartDef {
   id: string;
@@ -176,16 +341,42 @@ export interface PartDef {
 }
 
 // ------------------------------------------------------------
-// シナジー(仕様書8章): 第1弾4種類。全36種の実装はまだ行わない。
-// 装着中の部位をtype/tagで数え、閾値以上ならeffectを追加で1つ適用する。
+// シナジー(仕様書8章): Excel正式マスターの36種(12系統×3段階)をすべて接続済み。
+// 装着中の部位をtype/tagで数え、各段階の閾値を満たすたびeffectsを積み上げで適用する。
+// 最終段階にはruleChangeを持たせられ、単純な数値補正では表現できない
+// 「戦闘ルールそのものの変化」(即時再行動・致死回避など)をエンジン側フックで実現する。
 // ------------------------------------------------------------
 export type SynergyCountBy = { kind: 'type'; type: PartType } | { kind: 'tag'; tag: PartTag };
+
+export type SynergyRuleChange =
+  | { kind: 'extra_action_chance'; afterCtWeight: CtWeight; chancePct: number } // 指定CT区分の行動後、確率でCTを消費せず即再行動
+  | { kind: 'revive_once' } // 戦闘中1回だけ、致死ダメージをHP1で耐えて即行動する
+  // --- 段階5(シナジー36接続)で追加 ---
+  | { kind: 'follow_up_after_attack'; powerMult: number } // 多段: 攻撃系コマンドの後に自動で追撃する
+  | { kind: 'full_mp_ct_bonus'; ctMultPct: number } // MP: MPが満タンの時、MP技のCTをさらに短縮する
+  | { kind: 'delay_mp_refund'; mpGain: number } // 時間: 敵への遅延が成功するたびMPを回復する
+  | { kind: 'compounding_delay'; pctPerStack: number } // 時間: 遅延を成功させるたび、次の遅延効果量が積み上がって強化される
+  | { kind: 'very_heavy_delays_enemy'; amount: number } // 重量: 超重量技を使うと、威力に加えて敵のCTも遅延させる
+  | { kind: 'revive_once_instant_action' } // 暴走: 戦闘中1回、致死ダメージをHP1で耐えたうえ即座にもう一度行動する
+  | { kind: 'poison_explode'; stackThreshold: number; bonusDamage: number } // 毒: 敵の毒スタックが一定値に達すると自動で追加ダメージが発生する
+  | { kind: 'attack_burning_ct_bonus'; ctMultPct: number } // 炎: 炎上中の敵を攻撃すると、自分の次回行動がさらに早まる
+  | { kind: 'reflect_next_free' } // 反撃: 常時反射(reflect_on_hit_pct)が発動した直後、次のコマンドのMPコストが0になる
+  | { kind: 'guard_mp_gain'; amount: number } // 再生: 防御コマンドを使うとMPも回復する
+  | { kind: 'overheal_shield' } // 再生: 自分の手番開始時の自動回復がHP上限を超えた分、被ダメージを肩代わりするシールドになる
+  | { kind: 'kill_instant_action' } // 捕食: 敵を撃破すると即座にもう一度行動できる
+  | { kind: 'repeat_utility_bonus'; extraHaste: number }; // 知性: 直前と同じ補助系コマンドを連続で使うと、自分のCTがさらに早まる
+
+export interface SynergyStage {
+  threshold: number;
+  effects: PartEffect[];
+  ruleChange?: SynergyRuleChange;
+  ruleChangeLabel?: string; // UI表示用の短い説明(ruleChangeとセットで使う)
+}
 
 export interface SynergyDef {
   id: string;
   name: string;
   description: string;
   countBy: SynergyCountBy;
-  threshold: number;
-  effect: PartEffect;
+  stages: SynergyStage[]; // 閾値の昇順で並べる。達成した段階のeffectはすべて積み上げで適用される。
 }

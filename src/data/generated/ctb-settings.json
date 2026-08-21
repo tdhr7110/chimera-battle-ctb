@@ -56,18 +56,11 @@
     "validationPoint": "部位で拡張可能"
   },
   {
-    "key": "行動開始MP回復",
-    "value": 4,
+    "key": "戦闘後MP回復",
+    "value": 20,
     "category": "MP",
-    "description": "自分の手番開始時",
-    "validationPoint": "MP0技との役割分担"
-  },
-  {
-    "key": "防御追加MP回復",
-    "value": 6,
-    "category": "MP",
-    "description": "防御成功時",
-    "validationPoint": "守りが攻めにつながる"
+    "description": "戦闘終了(勝利)後にまとめて回復",
+    "validationPoint": "戦闘中はMPを使い切る緊張感を保つ"
   },
   {
     "key": "CT短縮下限",
