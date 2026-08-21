@@ -69,7 +69,10 @@ export type StatusKind =
   | 'silence'
   | 'undying'
   | 'mp_leak'
-  | 'shock';
+  | 'shock'
+  | 'frozen'
+  | 'defense_down'
+  | 'frenzy';
 
 export const STATUS_LABEL: Record<StatusKind, { icon: string; name: string }> = {
   burn: { icon: '🔥', name: '炎上' },
@@ -85,6 +88,9 @@ export const STATUS_LABEL: Record<StatusKind, { icon: string; name: string }> = 
   undying: { icon: '🌟', name: '不死' },
   mp_leak: { icon: '🕳️', name: 'MP漏出' },
   shock: { icon: '⚡', name: '感電' },
+  frozen: { icon: '🧊', name: '凍結' },
+  defense_down: { icon: '🦴', name: '腐食' },
+  frenzy: { icon: '💢', name: '狂化' },
 };
 
 // 感電: このスタック数(magnitude合計)に達すると自動でCT遅延が発動し、スタックがリセットされる。
@@ -102,6 +108,10 @@ export interface StatusApply {
 // ------------------------------------------------------------
 export type CommandKind = 'attack' | 'guard' | 'wait' | 'charge';
 
+// Excelコマンド60種の接続(段階2)で追加した効果フィールド群。1つずつ個別の解決フックを
+// engine/ctbEngine.tsに持つ(自由記述の効果文をそのまま実装するのではなく、共通パターン
+// ごとに構造化データへ落とし込んでいる)。どのコマンドがどのフィールドを使うかは
+// data/commands.tsのコメントを参照。
 export interface CommandDef {
   id: string;
   name: string;
@@ -117,6 +127,31 @@ export interface CommandDef {
   applyStatus?: StatusApply; // 命中時に敵へ付与する状態異常
   applySelfStatus?: StatusApply; // 自分自身へ付与する状態異常(加速のhaste状態など)
   description: string; // 1回目タップで展開する短い説明
+
+  // --- コマンド60種接続で追加(Excel「効果」列の個別実装) ---
+  hits?: number; // 連撃・粉砕連打・疾風連打等: 固定Hit数(省略時1)
+  randomHitsRange?: [number, number]; // 乱撃: ランダムHit数([最小,最大])。hitsより優先
+  vulnerableStackPerHit?: StatusApply; // 粉砕連打: ヒットごとに敵へ追加付与する状態異常
+  lifestealPct?: number; // 吸血・血狂い系: 与えたダメージの一部を自分のHPへ変換
+  ignoreDefense?: boolean; // 穿孔: 敵の防御力を無視
+  executeBonus?: { hpPctThreshold: number; bonusMult: number }; // 処刑: 敵が閾値以下HPなら威力倍加
+  missingHpPowerBonusPctPerMissing?: number; // 背水撃・血狂い: 自分の失ったHP割合1%ごとに威力+n%
+  hpCostPct?: number; // 自壊砲等: 使用時に自分の現在HPの割合を代償として消費する
+  hpCostPowerBonusMult?: number; // 上記のHP消費と対になる威力倍率ボーナス
+  hpCostForMp?: { hpCost: number; mpGain: number }; // 血の契約: HPを消費してMPを得る
+  mpFullRestore?: number; // 精神集中: 使用時にMPを大回復する(固定量)
+  consumeAllMpForPower?: { powerMultPerMp: number }; // 魔力暴発: 残MPを消費し威力へ変換してから0にする
+  damageImmuneOnce?: boolean; // 完全防御: 次の1回の被ダメージを完全無効化する
+  counterStance?: { powerMult: number }; // カウンター姿勢・受け流し: 次の被弾時に反撃する
+  reflectPct?: number; // 棘返し: 次の被弾時、受けたダメージの一部を敵へ反射する
+  statusConsumeNuke?: { kind: StatusKind; damagePerMagnitude: number }; // 炎上爆破・毒爆・凍砕: 敵の状態異常を消費し追加ダメージ
+  statusConsumeSelfHaste?: { kind: StatusKind; hasteUnitsPerMagnitude: number }; // 雷鎖: 敵の状態異常量に応じ自分のCTを短縮
+  statusPresentBonusMult?: { kind: StatusKind; mult: number }; // 凍砕: 敵が特定状態異常を持っていれば威力倍加(消費はしない)
+  killBonus?: { healPct?: number; mpGain?: number; instantNextAction?: boolean }; // 捕食・捕食連鎖: 敵撃破時のボーナス
+  followUpNextAttack?: { powerMult: number }; // 追撃命令: 次の攻撃系コマンドの後に追撃が発生する
+  firstActionCtBonusMult?: number; // 先制爪: 戦闘最初の行動でのみCT倍率にさらに掛ける係数
+  mimicPreviousCommand?: boolean; // 模倣: 直前に使った自分のコマンドを(このコマンドのMPで)再使用する
+  refundLastMpSpentPct?: number; // 巻き戻し: 直前に消費したMPの一部を返す
 }
 
 // ------------------------------------------------------------
