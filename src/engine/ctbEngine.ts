@@ -194,6 +194,7 @@ export class CtbEngine {
   private lastPlayerCommandId: string | null = null; // 模倣(mimicPreviousCommand)が参照する直前の自分のコマンド
   private lastMpSpent = 0; // 巻き戻し(refundLastMpSpentPct)が参照する直前のコマンドのMP消費量
   private killGrantedInstantAction = false; // 捕食連鎖等(killBonus.instantNextAction)がuseCommandへ伝える一時フラグ
+  private firstMpMoveFreeUsed = false; // ゼロコスト核(first_mp_move_free): 1戦1回だけ消費する
 
   // startingHp/startingMp: 統合版(本編)がラン中のHP・MPを戦闘間で持ち越すための追加パラメータ。
   // 省略時はフルHP・Excel初期MPで開始する単発デモ挙動のまま(既存の呼び出し元・挙動は変わらない)。
@@ -206,17 +207,18 @@ export class CtbEngine {
       r.kind === 'extra_action_chance' ? [{ afterCtWeight: r.afterCtWeight, chancePct: r.chancePct }] : []
     );
     const maxMp = CTB_MP_MAX_BASE + mods.maxMpBonus;
+    const maxHp = PLAYER_BASE.maxHp + mods.maxHpBonus;
 
     this.player = {
       side: 'player',
       name: PLAYER_BASE.name,
       icon: PLAYER_BASE.icon,
       color: PLAYER_BASE.color,
-      hp: startingHp !== undefined ? Math.max(1, Math.min(PLAYER_BASE.maxHp, Math.round(startingHp))) : PLAYER_BASE.maxHp,
-      maxHp: PLAYER_BASE.maxHp,
+      hp: startingHp !== undefined ? Math.max(1, Math.min(maxHp, Math.round(startingHp))) : maxHp,
+      maxHp,
       defense: PLAYER_BASE.defense,
       power: PLAYER_BASE.power,
-      evasionPct: PLAYER_BASE.evasionPct,
+      evasionPct: PLAYER_BASE.evasionPct + mods.evasionBonusPct,
       speed: PLAYER_BASE.speed + mods.speedFlatBonus,
       guardReductionPct: 0,
       statuses: [],
@@ -338,6 +340,13 @@ export class CtbEngine {
   private tickStatusesAtTurnStart(side: Side) {
     const actor = side === 'player' ? this.player : this.enemy;
     if (actor.isDead) return;
+    // 再生胴系(passive_regen_per_turn): 状態異常ではなく部位由来の常時パッシブ回復。
+    if (side === 'player' && this.player.mods.passiveRegenPerTurn > 0 && actor.hp > 0) {
+      const heal = Math.round(this.player.mods.passiveRegenPerTurn);
+      actor.hp = Math.min(actor.maxHp, actor.hp + heal);
+      this.pushLog(`💚 ${actor.name}は再生胴で${heal}回復`);
+      this.pushEvent({ type: 'status_heal', side, kind: 'regen', amount: heal });
+    }
     for (const s of actor.statuses) {
       if ((s.kind === 'burn' || s.kind === 'poison') && actor.hp > 0) {
         const dmg = Math.round(s.magnitude);
@@ -371,6 +380,18 @@ export class CtbEngine {
     this.pushLog(`${STATUS_LABEL[apply.kind].icon} ${target.name}に${STATUS_LABEL[apply.kind].name}状態が付与された`);
     this.pushEvent({ type: 'status_apply', side: target.side, kind: apply.kind });
     if (apply.kind === 'shock') this.checkShockTrigger(target);
+  }
+
+  // 毒腺口/毒嚢系(status_magnitude_bonus): プレイヤーが敵へ付与する状態異常のうち、
+  // 部位で強化対象に指定された種類だけmagnitudeを底上げしてから適用する。
+  private boostOutgoingStatus(apply: StatusApply | undefined): StatusApply | undefined {
+    if (!apply) return apply;
+    const bonuses = this.player.mods.statusMagnitudeBonuses.filter((b) => b.target === apply.kind);
+    if (bonuses.length === 0) return apply;
+    let magnitude = apply.magnitude;
+    for (const b of bonuses) magnitude += b.flatAmount;
+    for (const b of bonuses) magnitude *= 1 + b.pctAmount / 100;
+    return { ...apply, magnitude };
   }
 
   private statusMagnitude(actor: RuntimeActor, kind: StatusKind): number {
@@ -468,10 +489,16 @@ export class CtbEngine {
     return Math.max(1, Math.round(d));
   }
 
-  // 腐食(defense_down)・狂化(frenzy)の防御DOWN成分を反映した実効防御力。
+  // 腐食(defense_down)・狂化(frenzy)の防御DOWN成分、および(プレイヤーのみ)部位由来の
+  // 防御UP/DOWNを反映した実効防御力。
   private effectiveDefense(actor: RuntimeActor): number {
-    const downPct = this.statusMagnitude(actor, 'defense_down') + this.statusMagnitude(actor, 'frenzy');
-    return Math.max(0, actor.defense * (1 - downPct / 100));
+    let base = actor.defense;
+    let downPct = this.statusMagnitude(actor, 'defense_down') + this.statusMagnitude(actor, 'frenzy');
+    if (actor.side === 'player') {
+      base += this.player.mods.defenseFlatBonus;
+      downPct += this.player.mods.defensePctPenalty;
+    }
+    return Math.max(0, base * (1 - downPct / 100));
   }
 
   private randomInt(min: number, max: number): number {
@@ -503,6 +530,16 @@ export class CtbEngine {
         this.enemy.hp = Math.max(0, this.enemy.hp - reflectDmg);
         this.pushLog(`🦔 ${reflectDmg}ダメージを反射した`);
         this.pushEvent({ type: 'counter', side: 'player', targetSide: 'enemy', damage: reflectDmg });
+        if (this.enemy.hp <= 0 && !this.preventLethalIfPossible(this.enemy)) this.enemy.isDead = true;
+      }
+    }
+    // 棘甲系(reflect_on_hit_pct): 消費型のreflectPctと違い、被弾するたび常時発動する。
+    if (this.player.mods.reflectOnHitPct > 0 && !this.enemy.isDead) {
+      const passiveReflectDmg = Math.round((rawDmg * this.player.mods.reflectOnHitPct) / 100);
+      if (passiveReflectDmg > 0) {
+        this.enemy.hp = Math.max(0, this.enemy.hp - passiveReflectDmg);
+        this.pushLog(`🦔 棘甲で${passiveReflectDmg}ダメージを反射した`);
+        this.pushEvent({ type: 'counter', side: 'player', targetSide: 'enemy', damage: passiveReflectDmg });
         if (this.enemy.hp <= 0 && !this.preventLethalIfPossible(this.enemy)) this.enemy.isDead = true;
       }
     }
@@ -626,7 +663,7 @@ export class CtbEngine {
       // 上で処理済み。妨害系(咆哮の敵CT遅延、腐食液/盲目粉/麻痺針の敵状態異常)は攻撃判定
       // (回避ロール)を経ないコマンドのため、ここで確定して適用する。
       if (cmd.delayEnemyBy && !this.enemy.isDead) this.applyDelayToEnemy(cmd.delayEnemyBy);
-      if (cmd.applyStatus && !this.enemy.isDead) this.applyStatus(this.enemy, cmd.applyStatus);
+      if (cmd.applyStatus && !this.enemy.isDead) this.applyStatus(this.enemy, this.boostOutgoingStatus(cmd.applyStatus));
       this.pushLog(`${cmd.icon} ${cmd.name}！`);
       this.pushEvent(
         cmd.kind === 'guard' ? { type: 'guard', side: 'player' } : cmd.hasteSelfBy ? { type: 'haste_self', side: 'player' } : { type: 'wait', side: 'player' }
@@ -636,7 +673,8 @@ export class CtbEngine {
 
     // ---- attack系 ----
     const selfAccuracyDown = this.statusMagnitude(this.player, 'accuracy_down');
-    if (Math.random() * 100 < this.enemy.evasionPct + selfAccuracyDown) {
+    const enemyEffectiveEvasion = Math.max(0, this.enemy.evasionPct - this.player.mods.accuracyBonusPct);
+    if (Math.random() * 100 < enemyEffectiveEvasion + selfAccuracyDown) {
       this.pushLog(`💨 ${this.enemy.name}が回避した`);
       this.pushEvent({ type: 'evade', side: 'player', targetSide: 'enemy', commandName: cmd.name, icon: cmd.icon });
       return;
@@ -646,6 +684,8 @@ export class CtbEngine {
     power *= 1 + this.attackPowerCategoryBonusPct(cmd.ctWeight, this.player.mods) / 100;
     power *= 1 + this.statusMagnitude(this.player, 'frenzy') / 100;
     power *= 1 - this.statusMagnitude(this.player, 'fear') / 100;
+    power *= 1 + this.player.mods.powerBonusAllPct / 100;
+    if (cmd.mpCost > 0) power *= 1 + this.player.mods.mpMovePowerBonusPct / 100;
     if (this.player.chargeBonusMult > 0) {
       power *= 1 + this.player.chargeBonusMult;
       this.player.chargeBonusMult = 0;
@@ -653,6 +693,10 @@ export class CtbEngine {
     if (cmd.executeBonus) {
       const enemyHpPct = this.enemy.maxHp > 0 ? (this.enemy.hp / this.enemy.maxHp) * 100 : 100;
       if (enemyHpPct <= cmd.executeBonus.hpPctThreshold) power *= cmd.executeBonus.bonusMult;
+    }
+    for (const passiveExecute of this.player.mods.executeBonuses) {
+      const enemyHpPct = this.enemy.maxHp > 0 ? (this.enemy.hp / this.enemy.maxHp) * 100 : 100;
+      if (enemyHpPct <= passiveExecute.hpPctThreshold) power *= passiveExecute.bonusMult;
     }
     if (cmd.statusPresentBonusMult && this.statusMagnitude(this.enemy, cmd.statusPresentBonusMult.kind) > 0) {
       power *= cmd.statusPresentBonusMult.mult;
@@ -677,7 +721,7 @@ export class CtbEngine {
     }
     if (this.player.isDead) return; // HP消費コストで力尽きた場合はここで終了
 
-    const enemyDefense = cmd.ignoreDefense ? 0 : this.effectiveDefense(this.enemy);
+    const enemyDefense = cmd.ignoreDefense ? 0 : this.effectiveDefense(this.enemy) * (1 - this.player.mods.ignoreDefensePct / 100);
     const hitCount = cmd.randomHitsRange ? this.randomInt(cmd.randomHitsRange[0], cmd.randomHitsRange[1]) : (cmd.hits ?? 1);
     const perHitPower = power / hitCount;
     let totalDmg = 0;
@@ -689,6 +733,9 @@ export class CtbEngine {
       this.pushEvent({ type: 'attack', side: 'player', targetSide: 'enemy', commandName: cmd.name, icon: cmd.icon, damage: dmg });
       if (this.enemy.hp <= 0 && !this.preventLethalIfPossible(this.enemy)) this.enemy.isDead = true;
       if (cmd.vulnerableStackPerHit && !this.enemy.isDead) this.applyStatus(this.enemy, cmd.vulnerableStackPerHit);
+      if (!this.enemy.isDead) {
+        for (const onHit of this.player.mods.onHitApplyStatuses) this.applyStatus(this.enemy, this.boostOutgoingStatus(onHit));
+      }
     }
 
     if (cmd.statusConsumeNuke && !this.enemy.isDead) {
@@ -709,16 +756,21 @@ export class CtbEngine {
       if (mag > 0) this.applyHasteToSelf(mag * cmd.statusConsumeSelfHaste.hasteUnitsPerMagnitude);
     }
     if (cmd.lifestealPct && totalDmg > 0) {
-      const healed = Math.round((totalDmg * cmd.lifestealPct) / 100);
+      const lifestealPct = cmd.lifestealPct * (1 + this.player.mods.lifestealBonusPct / 100);
+      const healed = Math.round((totalDmg * lifestealPct) / 100);
       this.player.hp = Math.min(this.player.maxHp, this.player.hp + healed);
       this.pushLog(`🩸 ${cmd.name}の吸収で${healed}回復`);
     }
 
-    this.applyStatus(this.enemy, cmd.applyStatus);
+    this.applyStatus(this.enemy, this.boostOutgoingStatus(cmd.applyStatus));
     if (cmd.delayEnemyBy && !this.enemy.isDead) this.applyDelayToEnemy(cmd.delayEnemyBy);
     if (!this.enemy.isDead) {
       this.triggerBleedOnHit(this.enemy);
       this.checkEnemyPhaseTransition();
+    }
+
+    if (this.enemy.isDead && this.player.mods.onKillCtBonusPct > 0) {
+      this.applyHasteToSelf((this.player.mods.onKillCtBonusPct / 100) * CTB_BASE_INTERVAL);
     }
 
     if (this.enemy.isDead && cmd.killBonus) {
@@ -825,12 +877,19 @@ export class CtbEngine {
     if (this.phase !== 'player_turn') return { ok: false, reason: 'まだ行動順ではありません' };
     const cmd = getCommand(commandId);
     if (!cmd) return { ok: false, reason: '不明なコマンドです' };
-    if (this.mp < cmd.mpCost) return { ok: false, reason: `MPが足りません（必要${cmd.mpCost}）` };
+    // ゼロコスト核(first_mp_move_free): 1戦1回だけ、MP技のコストを無料にする(所持MP不足でも使える)。
+    const usesFreeMpMove = cmd.mpCost > 0 && this.player.mods.firstMpMoveFree && !this.firstMpMoveFreeUsed;
+    if (!usesFreeMpMove && this.mp < cmd.mpCost) return { ok: false, reason: `MPが足りません（必要${cmd.mpCost}）` };
     if (cmd.mpCost > 0 && this.statusMagnitude(this.player, 'silence') > 0) {
       return { ok: false, reason: '沈黙中はMP技を使用できません' };
     }
 
-    this.mp -= cmd.mpCost;
+    if (usesFreeMpMove) {
+      this.firstMpMoveFreeUsed = true;
+      this.pushLog(`🔷 ゼロコスト核で${cmd.name}のMP消費が無料に！`);
+    } else {
+      this.mp -= cmd.mpCost;
+    }
     const mpLeak = this.statusMagnitude(this.player, 'mp_leak');
     if (mpLeak > 0) {
       const leaked = Math.min(this.mp, Math.round(mpLeak));
@@ -965,8 +1024,11 @@ export class CtbEngine {
       let power = this.player.power * cmd.powerMult;
       power *= 1 + this.attackPowerCategoryBonusPct(cmd.ctWeight, this.player.mods) / 100;
       power *= 1 + this.statusMagnitude(this.player, 'frenzy') / 100;
+      power *= 1 - this.statusMagnitude(this.player, 'fear') / 100;
+      power *= 1 + this.player.mods.powerBonusAllPct / 100;
+      if (cmd.mpCost > 0) power *= 1 + this.player.mods.mpMovePowerBonusPct / 100;
       if (this.player.chargeBonusMult > 0) power *= 1 + this.player.chargeBonusMult;
-      const defense = cmd.ignoreDefense ? 0 : this.effectiveDefense(this.enemy);
+      const defense = cmd.ignoreDefense ? 0 : this.effectiveDefense(this.enemy) * (1 - this.player.mods.ignoreDefensePct / 100);
       damageEstimate = Math.max(1, Math.round(power - defense));
     }
     const weightMult = this.effectiveWeightMult(this.player, cmd.ctWeight, this.player.mods);

@@ -238,25 +238,71 @@ export interface EnemyDef {
 }
 
 // ------------------------------------------------------------
-// 部位(仕様書7章): 第1弾10種類。全80種の実装はまだ行わない。
-// PartEffectを増やすだけで将来の部位追加に対応できるデータ構造にしている。
+// 部位(仕様書7章 + 段階4: Excel80種接続)。
+// typeとtagはExcelの「カテゴリ」「タグ1/タグ2」の日本語表記をそのまま型として使う
+// (英語識別子への変換を挟むと、Excel更新のたびに対応表がずれるリスクがあるため)。
+// PartEffectはExcelの基礎効果/CTB効果/MP効果/コマンド連動列を個別解釈した結果。
 // ------------------------------------------------------------
-export type PartType = 'leg' | 'heart' | 'arm' | 'eye' | 'tail';
-// シナジー判定用の横断タグ(仕様書8章の「重量」「時間」シナジー用)。
-export type PartTag = 'heavy' | 'time';
+export type PartType = '頭' | '目' | '口' | '腕' | '脚' | '心臓' | '胴' | '尻尾' | '翼' | '角' | '器官' | 'コア';
+export type PartTag =
+  | 'MP'
+  | 'コア'
+  | '再生'
+  | '処刑'
+  | '反撃'
+  | '吸血'
+  | '器官'
+  | '多心臓'
+  | '多段'
+  | '多眼'
+  | '多脚'
+  | '多腕'
+  | '妨害'
+  | '捕食'
+  | '攻撃'
+  | '時間'
+  | '暴走'
+  | '毒'
+  | '炎'
+  | '状態異常'
+  | '知性'
+  | '翼'
+  | '貫通'
+  | '進化'
+  | '重量'
+  | '防御'
+  | '雷'
+  | '高速';
 
 export type PartEffect =
   | { kind: 'speed_flat'; amount: number } // 俊足脚: 速度そのものを底上げ
-  | { kind: 'ct_mult_all_pct'; pct: number } // 俊足脚: 全行動のCTをさらに短縮(負値)
-  | { kind: 'ct_mult_light_pct'; pct: number } // 六節脚: 軽量系コマンドのみCT短縮
+  | { kind: 'ct_mult_all_pct'; pct: number } // 俊足脚: 全行動のCTをさらに短縮(負値)。正値は「速度低下」等のペナルティにも使う
+  | { kind: 'ct_mult_light_pct'; pct: number } // 六節脚: 軽量系コマンドのみCT短縮(正値はペナルティ)
   | { kind: 'ct_heavy_penalty_reduction_pct'; pct: number } // 重装脚: 重量系コマンドのCTペナルティを軽減
   | { kind: 'low_hp_ct_bonus'; hpPctThreshold: number; ctMultPct: number } // 暴走心臓: HP割合以下でCT短縮
-  | { kind: 'post_battle_mp_regen_bonus'; amount: number } // 第二心臓: 戦闘後MP回復量UP(MP改定: 戦闘中は回復しないため)
+  | { kind: 'post_battle_mp_regen_bonus'; amount: number } // 第二心臓系: 戦闘後MP回復量UP(MP改定: 戦闘中は回復しないため)
   | { kind: 'max_mp_bonus'; amount: number } // 魔力嚢: 最大MP増加
-  | { kind: 'power_bonus_light_pct'; pct: number } // 多腕: 通常攻撃・速撃など軽量attack系の威力UP
-  | { kind: 'power_bonus_heavy_pct'; pct: number } // 豪腕: 強打など重量attack系の威力UP
-  | { kind: 'delay_effect_bonus_pct'; pct: number } // 時喰い眼: 遅延打撃の効果量UP
-  | { kind: 'counter_on_hit'; chancePct: number; powerMult: number }; // 反撃尾: 被弾時に反撃(将来の割り込み系の仮実装)
+  | { kind: 'max_hp_bonus'; amount: number } // 第二心臓系: 最大HP増加
+  | { kind: 'power_bonus_light_pct'; pct: number } // 多腕系: 通常攻撃・速撃など軽量attack系の威力UP
+  | { kind: 'power_bonus_heavy_pct'; pct: number } // 豪腕系: 強打など重量attack系の威力UP
+  | { kind: 'delay_effect_bonus_pct'; pct: number } // 時喰い眼系: 遅延打撃の効果量UP
+  | { kind: 'counter_on_hit'; chancePct: number; powerMult: number } // 反撃尾系: 被弾時に反撃
+  // --- 段階4(部位80接続)で追加 ---
+  | { kind: 'power_bonus_all_pct'; pct: number } // 火炎頭系: 系統を問わない全attack系の威力UP
+  | { kind: 'on_hit_apply_status'; status: StatusApply } // 火炎頭/毒腺口系: 自分の攻撃が命中するたび状態異常を追加付与
+  | { kind: 'defense_flat_bonus'; amount: number } // 反射腕/巨殻系: 防御力を底上げ
+  | { kind: 'defense_pct_penalty'; pct: number } // 狂戦頭系: 防御力DOWN(代償)
+  | { kind: 'evasion_bonus_pct'; pct: number } // 加速翼系: 回避率UP
+  | { kind: 'accuracy_bonus_pct'; pct: number } // 複眼: 自分の命中率UP(敵の回避率を実質的に下げる)
+  | { kind: 'execute_bonus_passive'; hpPctThreshold: number; bonusMult: number } // 処刑眼: 低HP敵への全attack威力UPを常時適用
+  | { kind: 'lifesteal_bonus_pct'; pct: number } // 血吸口系: 吸血コマンドの回復量をさらに上乗せ
+  | { kind: 'status_magnitude_bonus'; target: StatusKind; flatAmount?: number; pctAmount?: number } // 毒腺口/毒嚢系: 自分が付与する特定状態異常の量を強化
+  | { kind: 'passive_regen_per_turn'; amount: number } // 再生胴系: 自分の手番開始時、常時HPが少量回復
+  | { kind: 'reflect_on_hit_pct'; pct: number } // 棘甲系: 被弾するたび、常時ダメージの一部を反射(消費されない)
+  | { kind: 'mp_move_power_bonus_pct'; pct: number } // 魔導心臓系: MPを消費するコマンドの威力UP
+  | { kind: 'first_mp_move_free' } // ゼロコスト核: 戦闘最初のMP技のMPコストを0にする(1戦1回)
+  | { kind: 'ignore_defense_pct'; pct: number } // 穿孔角系: 自分の攻撃が敵の防御力を一部無視する
+  | { kind: 'on_kill_ct_bonus_pct'; pct: number }; // 黒翼: 敵撃破時、自分の次回行動をさらに早める
 
 export interface PartDef {
   id: string;

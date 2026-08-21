@@ -1,4 +1,4 @@
-import type { PartDef, PartEffect, SynergyDef, SynergyRuleChange } from '../data/types';
+import type { PartDef, PartEffect, StatusApply, StatusKind, SynergyDef, SynergyRuleChange } from '../data/types';
 import { SYNERGIES } from '../data/synergies';
 
 // ============================================================
@@ -16,10 +16,27 @@ export interface PlayerModifiers {
   lowHpCtBonuses: { hpPctThreshold: number; ctMultPct: number }[];
   postBattleMpRegenBonus: number; // MP改定: 戦闘中の回復は廃止したため、戦闘後回復量への加算のみ
   maxMpBonus: number;
+  maxHpBonus: number;
   powerBonusLightPct: number;
   powerBonusHeavyPct: number;
   delayEffectBonusPct: number;
   counters: { chancePct: number; powerMult: number }[];
+  // --- 段階4(部位80接続)で追加 ---
+  powerBonusAllPct: number;
+  onHitApplyStatuses: StatusApply[];
+  defenseFlatBonus: number;
+  defensePctPenalty: number;
+  evasionBonusPct: number;
+  accuracyBonusPct: number;
+  executeBonuses: { hpPctThreshold: number; bonusMult: number }[];
+  lifestealBonusPct: number;
+  statusMagnitudeBonuses: { target: StatusKind; flatAmount: number; pctAmount: number }[];
+  passiveRegenPerTurn: number;
+  reflectOnHitPct: number;
+  mpMovePowerBonusPct: number;
+  firstMpMoveFree: boolean;
+  ignoreDefensePct: number;
+  onKillCtBonusPct: number;
 }
 
 function emptyModifiers(): PlayerModifiers {
@@ -31,10 +48,26 @@ function emptyModifiers(): PlayerModifiers {
     lowHpCtBonuses: [],
     postBattleMpRegenBonus: 0,
     maxMpBonus: 0,
+    maxHpBonus: 0,
     powerBonusLightPct: 0,
     powerBonusHeavyPct: 0,
     delayEffectBonusPct: 0,
     counters: [],
+    powerBonusAllPct: 0,
+    onHitApplyStatuses: [],
+    defenseFlatBonus: 0,
+    defensePctPenalty: 0,
+    evasionBonusPct: 0,
+    accuracyBonusPct: 0,
+    executeBonuses: [],
+    lifestealBonusPct: 0,
+    statusMagnitudeBonuses: [],
+    passiveRegenPerTurn: 0,
+    reflectOnHitPct: 0,
+    mpMovePowerBonusPct: 0,
+    firstMpMoveFree: false,
+    ignoreDefensePct: 0,
+    onKillCtBonusPct: 0,
   };
 }
 
@@ -61,6 +94,9 @@ function applyEffect(mods: PlayerModifiers, e: PartEffect) {
     case 'max_mp_bonus':
       mods.maxMpBonus += e.amount;
       break;
+    case 'max_hp_bonus':
+      mods.maxHpBonus += e.amount;
+      break;
     case 'power_bonus_light_pct':
       mods.powerBonusLightPct += e.pct;
       break;
@@ -72,6 +108,51 @@ function applyEffect(mods: PlayerModifiers, e: PartEffect) {
       break;
     case 'counter_on_hit':
       mods.counters.push({ chancePct: e.chancePct, powerMult: e.powerMult });
+      break;
+    case 'power_bonus_all_pct':
+      mods.powerBonusAllPct += e.pct;
+      break;
+    case 'on_hit_apply_status':
+      mods.onHitApplyStatuses.push(e.status);
+      break;
+    case 'defense_flat_bonus':
+      mods.defenseFlatBonus += e.amount;
+      break;
+    case 'defense_pct_penalty':
+      mods.defensePctPenalty += e.pct;
+      break;
+    case 'evasion_bonus_pct':
+      mods.evasionBonusPct += e.pct;
+      break;
+    case 'accuracy_bonus_pct':
+      mods.accuracyBonusPct += e.pct;
+      break;
+    case 'execute_bonus_passive':
+      mods.executeBonuses.push({ hpPctThreshold: e.hpPctThreshold, bonusMult: e.bonusMult });
+      break;
+    case 'lifesteal_bonus_pct':
+      mods.lifestealBonusPct += e.pct;
+      break;
+    case 'status_magnitude_bonus':
+      mods.statusMagnitudeBonuses.push({ target: e.target, flatAmount: e.flatAmount ?? 0, pctAmount: e.pctAmount ?? 0 });
+      break;
+    case 'passive_regen_per_turn':
+      mods.passiveRegenPerTurn += e.amount;
+      break;
+    case 'reflect_on_hit_pct':
+      mods.reflectOnHitPct += e.pct;
+      break;
+    case 'mp_move_power_bonus_pct':
+      mods.mpMovePowerBonusPct += e.pct;
+      break;
+    case 'first_mp_move_free':
+      mods.firstMpMoveFree = true;
+      break;
+    case 'ignore_defense_pct':
+      mods.ignoreDefensePct += e.pct;
+      break;
+    case 'on_kill_ct_bonus_pct':
+      mods.onKillCtBonusPct += e.pct;
       break;
   }
 }
