@@ -1,0 +1,118 @@
+/* TEST11: 自由合体レイヤー表示の合成キャンバス本体のスタイル。
+   FreeLayerFigureコンポーネントが使われる場所(検証画面・戦闘画面)どちらでも共通で必要なため、
+   FreeLayerFigure.tsx側でimportする(利用側での読み込み忘れを防ぐ)。 */
+
+/* 仕様書どおり、既定の表示領域はclamp(128px, 42vw, 190px)程度に収める。
+   戦闘画面など別の場所に置く場合は、外側から.free-layer-canvasの幅・高さを上書きする。 */
+.free-layer-canvas {
+  position: relative;
+  width: clamp(128px, 42vw, 190px);
+  aspect-ratio: 1 / 1;
+  background: radial-gradient(circle, #1c2530 0%, #0b0f14 75%);
+  border-radius: 12px;
+  border: 1px solid #263041;
+}
+
+.free-layer__img,
+.free-layer__fallback {
+  position: absolute;
+  image-rendering: pixelated;
+  pointer-events: none;
+  user-select: none;
+}
+
+.free-layer__fallback {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.4em;
+}
+
+.free-layer-canvas__badges {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+  z-index: 999;
+}
+
+.free-layer-canvas__badge {
+  font-size: 10px;
+  line-height: 1;
+  padding: 2px 5px;
+  border-radius: 999px;
+  background: rgba(239, 68, 68, 0.9);
+  color: #fff;
+  white-space: nowrap;
+}
+
+.free-layer-canvas__debug {
+  position: absolute;
+  inset: 0;
+  z-index: 998;
+  pointer-events: none;
+}
+
+.free-layer-canvas__debug-dot {
+  position: absolute;
+  width: 6px;
+  height: 6px;
+  margin: -3px 0 0 -3px;
+  border-radius: 50%;
+  background: #22d3ee;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.6);
+}
+
+/* --- 戦闘画面(BattleChimeraFigure)からこのキャンバスを使う場合の見た目調整 ---
+   検証画面用の背景・枠線・固定サイズは外し、既存の.battle-figureと同じくラッパーの
+   サイズ・位置(clamp(150px,42vw,210px)、position:relative、margin:0 auto)に追従させる。 */
+.battle-chimera-figure {
+  position: relative;
+  width: clamp(150px, 42vw, 210px);
+  height: clamp(150px, 42vw, 210px);
+  margin: 0 auto;
+  transition: filter 0.2s;
+}
+.battle-chimera-figure .free-layer-canvas {
+  width: 100%;
+  height: 100%;
+  aspect-ratio: auto;
+  background: none;
+  border: none;
+  border-radius: 0;
+}
+.battle-chimera-figure--dead {
+  filter: grayscale(1) brightness(0.5);
+}
+.battle-chimera-figure--rampage {
+  filter: drop-shadow(0 0 10px rgba(251, 146, 60, 0.85));
+}
+.battle-chimera-figure--glow-poison {
+  filter: drop-shadow(0 0 10px rgba(168, 85, 247, 0.75));
+}
+.battle-chimera-figure--glow-fire {
+  filter: drop-shadow(0 0 10px rgba(249, 115, 22, 0.8));
+}
+.battle-chimera-figure--glow-defense {
+  filter: drop-shadow(0 0 10px rgba(56, 219, 240, 0.75));
+}
+.battle-chimera-figure__shield {
+  position: absolute;
+  inset: 6%;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(56, 219, 240, 0.05), rgba(56, 219, 240, 0.32));
+  border: 2px solid rgba(56, 219, 240, 0.85);
+  animation: battle-chimera-shield-pulse 1.4s ease-in-out infinite;
+  z-index: 1000;
+}
+.battle-chimera-figure__shield--reflect {
+  border-color: rgba(250, 204, 21, 0.9);
+  background: radial-gradient(circle, rgba(250, 204, 21, 0.05), rgba(250, 204, 21, 0.28));
+}
+@keyframes battle-chimera-shield-pulse {
+  0%, 100% { opacity: 0.6; }
+  50% { opacity: 1; }
+}

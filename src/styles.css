@@ -1364,3 +1364,30 @@ button {
 @media (prefers-reduced-motion: reduce) {
   .unlock-card { animation: none; }
 }
+
+/* ============================================================
+   Phase 3: 自由合体レイヤーによるプレイヤー表示
+   .stage の min-height(190px)の内側に必ず収まるサイズへ抑え、
+   390x780 で戦闘画面の高さを増やさないようにする。
+   ============================================================ */
+.combatant--player .combatant__figure {
+  /* 絵文字フォールバック時の見た目は従来どおり。レイヤー合成時だけ下のサイズが効く。 */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+/* freeLayerCanvas.css と同じ詳細度だと読み込み順に左右されるため、親クラスを重ねて確実に上書きする。 */
+.combatant__figure .chimera-figure__canvas {
+  /* clamp(128px, 42vw, 190px) を上書きし、従来の絵文字(3rem≒48px)+stageの
+     余白ぶんに収まる大きさへ固定する(戦闘画面の高さを増やさない)。 */
+  width: min(84px, 22vw);
+  height: min(84px, 22vw);
+  /* 戦闘画面ではキャンバスを箱として見せない(検証画面用の枠・背景を打ち消す)。 */
+  background: none;
+  border: none;
+  border-radius: 0;
+}
+.combatant__figure--dead {
+  opacity: 0.4;
+  filter: grayscale(1) drop-shadow(0 6px 8px rgba(0, 0, 0, 0.45));
+}

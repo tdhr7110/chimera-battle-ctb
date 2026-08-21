@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { CtbEngine, type CtbEvent, type CtbSnapshot } from '../engine/ctbEngine';
 import type { EnemyDef, PartDef } from '../data/types';
 import { ENEMY_INTENT_LABEL, STATUS_LABEL } from '../data/types';
+import { ChimeraFigure } from './freeLayer/ChimeraFigure';
 
 const INTRO_START_MS = 900;
 const INTRO_ORDER_MS = 700;
@@ -274,7 +275,14 @@ export function BattleScreen({
 
         <div className="stage__combatants">
           <div className="combatant combatant--player">
-            <div className={`combatant__figure${playerAttackFx ? ' combatant__figure--attack' : ''}${playerHitFx ? ' combatant__figure--hit' : ''}`}>🧬</div>
+            {/* Phase 3: 装着部位を見た目へ反映する(表示専用。戦闘ロジックには影響しない)。
+                素材が読めない場合はChimeraFigure内で従来の🧬表示へフォールバックする。 */}
+            <ChimeraFigure
+              equippedParts={equippedParts}
+              attackFx={playerAttackFx}
+              hitFx={playerHitFx}
+              isDead={snapshot.player.isDead}
+            />
             <div className="combatant__name">キメラ {snapshot.player.isDead && '（機能停止）'}</div>
             <div className="hp-bar">
               <div className="hp-bar__fill" style={{ width: `${(snapshot.player.hp / snapshot.player.maxHp) * 100}%`, background: 'var(--color-player)' }} />

@@ -1,0 +1,166 @@
+{
+  "version": 1,
+  "canvas": { "width": 256, "height": 256 },
+  "assets": [
+    {
+      "id": "base-core",
+      "category": "base",
+      "file": "00-base-core.png",
+      "pivot": { "x": 128, "y": 128 },
+      "defaultScale": 1,
+      "mirrorable": false,
+      "rotatable": false,
+      "zGroup": 10
+    },
+    {
+      "id": "arm-trident",
+      "category": "arm",
+      "file": "01-arm-trident.png",
+      "pivot": { "x": 43, "y": 132 },
+      "defaultScale": 0.58,
+      "mirrorable": true,
+      "rotatable": true,
+      "zGroup": 30
+    },
+    {
+      "id": "arm-spiral",
+      "category": "arm",
+      "file": "02-arm-spiral.png",
+      "pivot": { "x": 40, "y": 130 },
+      "defaultScale": 0.58,
+      "mirrorable": true,
+      "rotatable": true,
+      "zGroup": 30
+    },
+    {
+      "id": "arm-void",
+      "category": "arm",
+      "file": "03-arm-void.png",
+      "pivot": { "x": 40, "y": 126 },
+      "defaultScale": 0.58,
+      "mirrorable": true,
+      "rotatable": true,
+      "zGroup": 30
+    },
+    {
+      "id": "wing-moon",
+      "category": "wing",
+      "file": "04-wing-moon.png",
+      "pivot": { "x": 132, "y": 215 },
+      "defaultScale": 0.58,
+      "mirrorable": true,
+      "rotatable": true,
+      "zGroup": 2
+    },
+    {
+      "id": "wing-crystal",
+      "category": "wing",
+      "file": "05-wing-crystal.png",
+      "pivot": { "x": 76, "y": 208 },
+      "defaultScale": 0.56,
+      "mirrorable": true,
+      "rotatable": true,
+      "zGroup": 3
+    },
+    {
+      "id": "tail-ghost",
+      "category": "tail",
+      "file": "06-tail-ghost.png",
+      "pivot": { "x": 218, "y": 142 },
+      "defaultScale": 0.58,
+      "mirrorable": true,
+      "rotatable": true,
+      "zGroup": 1
+    },
+    {
+      "id": "leg-lightning",
+      "category": "leg",
+      "file": "07-leg-lightning.png",
+      "pivot": { "x": 132, "y": 43 },
+      "defaultScale": 0.58,
+      "mirrorable": true,
+      "rotatable": true,
+      "zGroup": 8
+    },
+    {
+      "id": "horn-crown",
+      "category": "horn",
+      "file": "08-horn-crown.png",
+      "pivot": { "x": 128, "y": 220 },
+      "defaultScale": 0.48,
+      "mirrorable": true,
+      "rotatable": true,
+      "zGroup": 35
+    },
+    {
+      "id": "spine-crystal",
+      "category": "back",
+      "file": "09-spine-crystal.png",
+      "pivot": { "x": 128, "y": 220 },
+      "defaultScale": 0.48,
+      "mirrorable": true,
+      "rotatable": true,
+      "zGroup": 4
+    },
+    {
+      "id": "jaw-crescent",
+      "category": "face",
+      "file": "10-jaw-crescent.png",
+      "pivot": { "x": 128, "y": 128 },
+      "defaultScale": 0.44,
+      "mirrorable": false,
+      "rotatable": false,
+      "zGroup": 40
+    },
+    {
+      "id": "armor-shell",
+      "category": "armor",
+      "file": "11-armor-shell.png",
+      "pivot": { "x": 128, "y": 128 },
+      "defaultScale": 0.46,
+      "mirrorable": true,
+      "rotatable": true,
+      "zGroup": 6
+    },
+    {
+      "id": "organ-flame-heart",
+      "category": "organ",
+      "file": "12-organ-flame-heart.png",
+      "pivot": { "x": 128, "y": 128 },
+      "defaultScale": 0.30,
+      "mirrorable": false,
+      "rotatable": false,
+      "zGroup": 25
+    },
+    {
+      "id": "eye-square",
+      "category": "eye",
+      "file": "13-eye-square.png",
+      "pivot": { "x": 128, "y": 128 },
+      "defaultScale": 0.26,
+      "mirrorable": false,
+      "rotatable": true,
+      "zGroup": 45
+    },
+    {
+      "id": "organ-star-gland",
+      "category": "organ",
+      "file": "14-organ-star-gland.png",
+      "pivot": { "x": 128, "y": 128 },
+      "defaultScale": 0.22,
+      "mirrorable": false,
+      "rotatable": true,
+      "zGroup": 24
+    },
+    {
+      "id": "organ-nebula-lung",
+      "category": "organ",
+      "file": "15-organ-nebula-lung.png",
+      "pivot": { "x": 128, "y": 128 },
+      "defaultScale": 0.30,
+      "mirrorable": false,
+      "rotatable": false,
+      "zGroup": 23
+    }
+  ]
+}
