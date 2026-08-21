@@ -6,6 +6,7 @@ import { EnemySelectScreen } from './ui/EnemySelectScreen';
 import { BattleScreen } from './ui/BattleScreen';
 import { RewardScreen } from './ui/RewardScreen';
 import { ResultScreen } from './ui/ResultScreen';
+import { CodexModal } from './ui/CodexModal';
 import {
   acceptDrop,
   chooseEnemy,
@@ -15,6 +16,7 @@ import {
   equippedPartDefs,
   finishBattle,
   markIntroSeen,
+  ownedPartIds,
   selectStarter,
   skipDrop,
   startNewRun,
@@ -24,6 +26,8 @@ import {
 } from './engine/run';
 import { getEnemy } from './data/enemies';
 import { clearRunState, loadIntroSeen, loadRunState, saveIntroSeen, saveRunState } from './persistence/save';
+import { markEnemyDefeated, markEnemyEncountered, markPartsDiscovered } from './engine/codex';
+import { loadCodexState, saveCodexState } from './persistence/codex';
 
 // ============================================================
 // CHIMERA BATTLE 統合版(本編)のフェーズ制御。
@@ -37,6 +41,8 @@ export default function App() {
   const [pendingResume, setPendingResume] = useState<RunState | null>(null);
   const [incompatibleSaveNotice, setIncompatibleSaveNotice] = useState(false);
   const [state, setState] = useState<RunState>(() => createTitleState(loadIntroSeen()));
+  const [codex, setCodex] = useState(() => loadCodexState());
+  const [showCodex, setShowCodex] = useState(false);
 
   // 起動時: 保存されたランがあれば「続きから」の選択待ちにする(TEST18/19のラン途中保存を踏襲)。
   useEffect(() => {
@@ -50,6 +56,19 @@ export default function App() {
     if (pendingResume) return;
     saveRunState(state);
   }, [state, pendingResume]);
+
+  // 図鑑(仕様書3・28章): ランのリセットに関係なく蓄積する。所持部位は変化のたびに記録する。
+  // 敵の遭遇/撃破は、finishBattle()がcurrentEnemyIdをnullへ戻す前にID自体が分かる場所
+  // (敵選択時・戦闘終了時のイベントハンドラ内)で直接記録する(state監視だと再遭遇時に
+  // 「最後に遭遇したID」が更新されず誤判定するため、あえてuseEffectにはしていない)。
+  useEffect(() => {
+    saveCodexState(codex);
+  }, [codex]);
+  useEffect(() => {
+    const owned = ownedPartIds(state);
+    if (owned.length === 0) return;
+    setCodex((prev) => markPartsDiscovered(prev, owned));
+  }, [state.equippedPartIds, state.inventoryPartIds]);
 
   function dismissHowToAndRemember() {
     saveIntroSeen();
@@ -102,9 +121,17 @@ export default function App() {
     );
   }
 
+  const codexButtonVisible = state.phase !== 'battle';
+
   return (
     <div className="app-root">
       {incompatibleBanner}
+      {codexButtonVisible && (
+        <button type="button" className="codex-fab" onClick={() => setShowCodex(true)} title="図鑑">
+          📖
+        </button>
+      )}
+      {showCodex && <CodexModal codex={codex} onClose={() => setShowCodex(false)} />}
       {state.phase === 'title' && <TitleScreen onNewRun={() => setState((s) => startNewRun(s))} />}
 
       {state.phase === 'starterSelect' && <StarterSelectScreen onPick={(id) => setState((s) => selectStarter(s, id))} />}
@@ -137,7 +164,13 @@ export default function App() {
       )}
 
       {state.phase === 'enemySelect' && (
-        <EnemySelectScreen candidateIds={state.enemyCandidateIds} onPick={(enemyId) => setState((s) => chooseEnemy(s, enemyId))} />
+        <EnemySelectScreen
+          candidateIds={state.enemyCandidateIds}
+          onPick={(enemyId) => {
+            setCodex((prev) => markEnemyEncountered(prev, enemyId));
+            setState((s) => chooseEnemy(s, enemyId));
+          }}
+        />
       )}
 
       {state.phase === 'battle' &&
@@ -150,7 +183,10 @@ export default function App() {
               enemy={enemy}
               equippedParts={equippedPartDefs(state)}
               startingHp={state.coreHp}
-              onExit={(result, finalHp) => setState((s) => finishBattle(s, result, finalHp))}
+              onExit={(result, finalHp) => {
+                if (result === 'won') setCodex((prev) => markEnemyDefeated(prev, enemy.id));
+                setState((s) => finishBattle(s, result, finalHp));
+              }}
             />
           );
         })()}
