@@ -1,3 +1,4 @@
+import { getFusionPart } from './fusions';
 import type { PartDef } from './types';
 
 // ============================================================
@@ -815,6 +816,9 @@ export const PARTS: PartDef[] = [
   },
 ];
 
+// 融合部位(FUSxxx)はExcelの80部位ロスターには含まれないが、装備・セーブ・図鑑からは
+// 通常の部位と同じように引ける必要があるため、ここで一緒に解決する。
+// PARTS自体は「Excelの80部位」のままにしておく(ドロップ抽選や図鑑の母数がずれないように)。
 export function getPart(id: string): PartDef | undefined {
-  return PARTS.find((p) => p.id === id);
+  return PARTS.find((p) => p.id === id) ?? getFusionPart(id);
 }

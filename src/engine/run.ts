@@ -1,5 +1,6 @@
 import { ENEMIES, getEnemy } from '../data/enemies';
 import { getEnemyDrop, RARE_DROP_CHANCE_PCT } from '../data/enemyDrops';
+import { resolveFusion } from '../data/fusions';
 import { PARTS, getPart } from '../data/parts';
 import { getStarter } from '../data/starters';
 import { CTB_MP_MAX_BASE, PLAYER_BASE } from './ctbEngine';
@@ -19,7 +20,7 @@ import type { EnemyTier, PartDef } from '../data/types';
 //     (同じ敵に複数回遭遇することがあるのは既知の暫定仕様)。部位は80種すべて接続済み。
 // ============================================================
 
-export type GamePhase = 'title' | 'starterSelect' | 'prep' | 'enemySelect' | 'battle' | 'reward' | 'commandUnlock' | 'result';
+export type GamePhase = 'title' | 'starterSelect' | 'prep' | 'enemySelect' | 'battle' | 'reward' | 'commandUnlock' | 'fusion' | 'result';
 
 // 仕様書のTEST18パターン(通常/通常/エリート/通常/中ボス/通常/エリート/ボス)を踏襲しつつ、
 // 現行6敵ではミニボスまで区別できないためboss 1種類にまとめた7戦構成にしている。
@@ -52,6 +53,8 @@ export interface RunState {
   lastAcquiredPartId: string | null; // Phase 2: 解放演出で「どの部位のおかげか」を示すため
   pendingUnlockCommandIds: string[]; // Phase 2: 今まさに解放演出で見せるコマンド
   newCommandIds: string[]; // Phase 2: コマンドタブのNEWバッジ(タブを開くと既読になる)
+  fusionUsedForBattleIndex: number | null; // Phase 5: 融合を提示/実行済みの戦闘番号(1エリート1回)
+  lastFusionPartId: string | null; // Phase 5: 直前の融合で得た部位(結果表示用)
   resultOutcome: 'victory' | 'defeat' | null;
   seenIntro: boolean; // 遊び方を一度でも見たか(GAME STARTのたび強制表示しないため)
 }
@@ -72,6 +75,8 @@ export function createTitleState(seenIntro: boolean): RunState {
     lastAcquiredPartId: null,
     pendingUnlockCommandIds: [],
     newCommandIds: [],
+    fusionUsedForBattleIndex: null,
+    lastFusionPartId: null,
     resultOutcome: null,
     seenIntro,
   };
@@ -256,7 +261,7 @@ export function acceptDrop(state: RunState, partId: string, wantEquip: boolean):
 
   const unlocked = equipped ? newlyUnlockedCommands(equippedPartDefs(state), equippedPartDefs(next)) : [];
   const withDrop = { ...next, dropCandidateIds: [], lastAcquiredPartId: partId };
-  if (unlocked.length === 0) return advanceToNextBattle(withDrop);
+  if (unlocked.length === 0) return afterRewardFlow(withDrop);
 
   const unlockedIds = unlocked.map((c) => c.id);
   return {
@@ -267,16 +272,81 @@ export function acceptDrop(state: RunState, partId: string, wantEquip: boolean):
   };
 }
 
+// ------------------------------------------------------------
+// Phase 5: 任意の部位融合。
+//
+// 提示条件(強制はしない):
+//   - 直前に倒したのがエリートであること
+//   - 最終戦(ボス)の後ではないこと
+//   - そのエリート撃破につき、まだ融合していないこと(1回まで)
+//   - 素材が2つ以上あること
+// 提示された画面で「そのまま進む」を選べば何も起きない。
+// ------------------------------------------------------------
+export function canOfferFusion(state: RunState): boolean {
+  if (state.fusionUsedForBattleIndex === state.battleIndex) return false; // このエリートでは融合済み
+  if (state.battleIndex >= TOTAL_BATTLES) return false; // 最終ボス撃破後には出さない
+  const enemy = state.lastDefeatedEnemyId ? getEnemy(state.lastDefeatedEnemyId) : undefined;
+  if (enemy?.tier !== 'elite') return false;
+  return ownedPartIds(state).length >= 2;
+}
+
+// 融合を実行する。素材2つは所持から取り除かれ(装備中でも外れる)、結果の部位が手に入る。
+// 既に同じ融合部位を持っている場合は素材だけ消えることになるため、呼び出し側(UI)が
+// fusionResultFor()で事前に判定して選べないようにしている。
+export function performFusion(state: RunState, partIdA: string, partIdB: string): RunState {
+  const a = getPart(partIdA);
+  const b = getPart(partIdB);
+  if (!a || !b || partIdA === partIdB) return state;
+  const owned = new Set(ownedPartIds(state));
+  if (!owned.has(partIdA) || !owned.has(partIdB)) return state;
+
+  const rule = resolveFusion(a, b);
+  const consumed = [partIdA, partIdB];
+  const equipped = state.equippedPartIds.filter((id) => !consumed.includes(id));
+  const inventory = state.inventoryPartIds.filter((id) => !consumed.includes(id));
+  const alreadyHas = [...equipped, ...inventory].includes(rule.id);
+
+  // 空きがあればそのまま装着、無ければインベントリへ(通常の部位取得と同じ扱い)。
+  const next: RunState = alreadyHas
+    ? { ...state, equippedPartIds: equipped, inventoryPartIds: inventory }
+    : equipped.length < MAX_EQUIPPED_PARTS
+      ? { ...state, equippedPartIds: [...equipped, rule.id], inventoryPartIds: inventory }
+      : { ...state, equippedPartIds: equipped, inventoryPartIds: [...inventory, rule.id] };
+
+  // 融合でも装備が変われば新しいコマンドが解放されうるので、NEWバッジには反映する。
+  const unlockedIds = newlyUnlockedCommands(equippedPartDefs(state), equippedPartDefs(next)).map((c) => c.id);
+  return advanceToNextBattle(
+    clampMpToMax({
+      ...next,
+      fusionUsedForBattleIndex: state.battleIndex,
+      lastFusionPartId: rule.id,
+      newCommandIds: [...next.newCommandIds, ...unlockedIds],
+    })
+  );
+}
+
+// 融合せずに進む。
+export function skipFusion(state: RunState): RunState {
+  return advanceToNextBattle({ ...state, fusionUsedForBattleIndex: state.battleIndex });
+}
+
+// UIが「この組み合わせなら何ができるか」を先に見せるための参照用(抽選ではないので副作用なし)。
+export function fusionResultFor(partIdA: string, partIdB: string) {
+  const a = getPart(partIdA);
+  const b = getPart(partIdB);
+  return a && b ? resolveFusion(a, b) : undefined;
+}
+
 // 解放演出を閉じたら、そこで初めて次の戦闘の準備画面へ進む。
 // タップと自動送りの両方から呼ばれうるので、commandUnlockフェーズでない場合は何もしない
 // (二重に呼ばれてbattleIndexが2つ進んでしまうのを防ぐ)。
 export function dismissCommandUnlock(state: RunState): RunState {
   if (state.phase !== 'commandUnlock') return state;
-  return advanceToNextBattle({ ...state, pendingUnlockCommandIds: [] });
+  return afterRewardFlow({ ...state, pendingUnlockCommandIds: [] });
 }
 
 export function skipDrop(state: RunState): RunState {
-  return advanceToNextBattle({ ...state, dropCandidateIds: [] });
+  return afterRewardFlow({ ...state, dropCandidateIds: [] });
 }
 
 // コマンドタブを開いたらNEWを既読にする。
@@ -286,6 +356,12 @@ export function markCommandsSeen(state: RunState): RunState {
 
 function advanceToNextBattle(state: RunState): RunState {
   return { ...state, phase: 'prep', battleIndex: state.battleIndex + 1 };
+}
+
+// Phase 5: 報酬(と解放演出)が済んだあと、エリート撃破後だけ融合の提示を1回挟む。
+// 条件を満たさなければ従来どおり直接prepへ進む(中間画面を無闇に増やさない)。
+function afterRewardFlow(state: RunState): RunState {
+  return canOfferFusion(state) ? { ...state, phase: 'fusion' } : advanceToNextBattle(state);
 }
 
 export function tierOfCurrentBattle(state: RunState): EnemyTier {

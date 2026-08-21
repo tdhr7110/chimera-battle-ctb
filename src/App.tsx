@@ -6,6 +6,7 @@ import { EnemySelectScreen } from './ui/EnemySelectScreen';
 import { BattleScreen } from './ui/BattleScreen';
 import { RewardScreen } from './ui/RewardScreen';
 import { CommandUnlockScreen } from './ui/CommandUnlockScreen';
+import { FusionScreen } from './ui/FusionScreen';
 import { ResultScreen } from './ui/ResultScreen';
 import { CodexModal } from './ui/CodexModal';
 import {
@@ -16,6 +17,8 @@ import {
   enterEnemySelect,
   equipPart,
   markCommandsSeen,
+  performFusion,
+  skipFusion,
   equippedPartDefs,
   finishBattle,
   markIntroSeen,
@@ -221,6 +224,17 @@ export default function App() {
           commandIds={state.pendingUnlockCommandIds}
           fromPartId={state.lastAcquiredPartId}
           onDone={() => setState((s) => dismissCommandUnlock(s))}
+        />
+      )}
+
+      {state.phase === 'fusion' && (
+        <FusionScreen
+          state={state}
+          onFuse={(a, b) => {
+            playSE('part');
+            setState((s) => performFusion(s, a, b));
+          }}
+          onSkip={() => setState((s) => skipFusion(s))}
         />
       )}
 

@@ -11,9 +11,10 @@ import type { RunState } from '../engine/run';
 // v2: Phase 1(敵所持部位ドロップ)でRunStateへ lastDefeatedEnemyId を追加。
 // v3: Phase 2(コマンド解放演出)で lastAcquiredPartId / pendingUnlockCommandIds /
 //     newCommandIds を追加。
+// v4: Phase 5(任意の部位融合)で fusionUsedForBattleIndex / lastFusionPartId を追加。
 // いずれも安全な既定値(null / 空配列)を与えられる追加フィールドのみなので、
 // 古いセーブは破棄せず移行する。
-const SAVE_VERSION = 3;
+export const SAVE_VERSION = 4;
 const SAVE_KEY = 'chimera-battle-ctb:run:v1';
 const INTRO_SEEN_KEY = 'chimera-battle-ctb:intro-seen:v1';
 
@@ -48,6 +49,16 @@ export function migrate(version: number | undefined, state: RunState): RunState 
       newCommandIds: current.newCommandIds ?? [],
     };
     v = 3;
+  }
+  if (v === 3) {
+    // v3 -> v4: Phase 5 の融合用フィールド。過去のエリート撃破を遡って
+    // 「融合済み」にはしない(null始まり = 次のエリートから提示される)。
+    current = {
+      ...current,
+      fusionUsedForBattleIndex: current.fusionUsedForBattleIndex ?? null,
+      lastFusionPartId: current.lastFusionPartId ?? null,
+    };
+    v = 4;
   }
   return v === SAVE_VERSION ? current : null;
 }
