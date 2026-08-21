@@ -5,6 +5,7 @@ import { ENEMY_INTENT_LABEL, STATUS_LABEL } from '../data/types';
 import { ChimeraFigure } from './freeLayer/ChimeraFigure';
 import { getCommand } from '../data/commands';
 import { playSE } from '../engine/soundManager';
+import { recordBattleStart, recordCommandUse } from '../engine/metrics';
 
 const INTRO_START_MS = 900;
 const INTRO_ORDER_MS = 700;
@@ -55,6 +56,7 @@ export function BattleScreen({
   const attackFxRef = useRef<{ player: number; enemy: number }>({ player: 0, enemy: 0 });
   const hitFxRef = useRef<{ player: number; enemy: number }>({ player: 0, enemy: 0 });
   const [, forceTick] = useState(0);
+  const endSePlayedRef = useRef(false);
 
   function processEvents(events: CtbEvent[]) {
     if (events.length === 0) return;
@@ -127,6 +129,7 @@ export function BattleScreen({
     const engine = new CtbEngine(enemy, equippedParts, startingHp, startingMp);
     engineRef.current = engine;
     endSePlayedRef.current = false;
+    recordBattleStart();
     floatersRef.current = [];
     toastsRef.current = [];
     setSelectedId(null);
@@ -165,7 +168,6 @@ export function BattleScreen({
   }, [enemy, equippedParts]);
 
   // Phase 4: 決着がついた瞬間に一度だけ勝敗SEを鳴らす(statusが遷移した時のみ)。
-  const endSePlayedRef = useRef(false);
   useEffect(() => {
     if (!snapshot || snapshot.status === 'ongoing') return;
     if (endSePlayedRef.current) return;
@@ -202,6 +204,7 @@ export function BattleScreen({
     const cmd = getCommand(commandId);
     const result = engine.useCommand(commandId);
     if (result.ok) {
+      recordCommandUse(commandId); // Phase 6: 計測(読み取り専用。戦闘には影響しない)
       if (cmd && (cmd.ctWeight === 'heavy' || cmd.ctWeight === 'very_heavy')) playSE('heavy');
       processEvents(engine.drainEvents());
       setSelectedId(null);
