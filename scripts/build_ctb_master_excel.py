@@ -3,6 +3,7 @@ from __future__ import annotations
 
 # One-time bootstrap only. Remove after the valid editable Excel master is committed.
 import base64
+import hashlib
 import json
 import zlib
 from pathlib import Path
@@ -12,17 +13,26 @@ from openpyxl.styles import Alignment, Font, PatternFill
 from openpyxl.utils import get_column_letter
 
 ROOT = Path(__file__).resolve().parents[1]
-PAYLOAD = ROOT / "scripts/ctb_master_bootstrap.b64"
+CHUNKS_DIR = ROOT / "scripts/bootstrap_chunks"
 OUTPUT = ROOT / "docs/data/chimera_battle_ctb_redesign_v02_clean.xlsx"
+EXPECTED_LENGTH = 13524
+EXPECTED_SHA256 = "5da6d744486a25b31d78bf7cc0b49776f12ee95921d6a3380378746578a92647"
 
 
 def load_payload() -> dict:
-    encoded = PAYLOAD.read_text(encoding="utf-8").strip()
-    # The bootstrap is temporary transport data. GitHub text transport may leave
-    # harmless trailing base64 characters, so restore padding before decoding.
-    encoded += "=" * (-len(encoded) % 4)
-    compressed = base64.b64decode(encoded)
-    raw = zlib.decompress(compressed)
+    chunk_paths = sorted(CHUNKS_DIR.glob("part*.txt"))
+    if len(chunk_paths) != 8:
+        raise ValueError(f"expected 8 bootstrap chunks, found {len(chunk_paths)}")
+
+    encoded = "".join(path.read_text(encoding="utf-8").strip() for path in chunk_paths)
+    if len(encoded) != EXPECTED_LENGTH:
+        raise ValueError(f"bootstrap length mismatch: {len(encoded)} != {EXPECTED_LENGTH}")
+
+    digest = hashlib.sha256(encoded.encode("ascii")).hexdigest()
+    if digest != EXPECTED_SHA256:
+        raise ValueError(f"bootstrap SHA-256 mismatch: {digest} != {EXPECTED_SHA256}")
+
+    raw = zlib.decompress(base64.b64decode(encoded, validate=True))
     payload = json.loads(raw.decode("utf-8"))
 
     expected = {
