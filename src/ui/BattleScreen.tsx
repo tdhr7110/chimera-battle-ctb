@@ -10,7 +10,7 @@ const AUTO_DELAY_MS = 900;
 const FLOATER_TTL_MS = 1000;
 const SHAKE_MS = 240;
 
-type FloaterKind = 'normal' | 'evade' | 'burn' | 'poison' | 'counter' | 'delay' | 'haste' | 'heal';
+type FloaterKind = 'normal' | 'evade' | 'burn' | 'poison' | 'bleed' | 'counter' | 'delay' | 'haste' | 'heal';
 
 interface Floater {
   id: number;
@@ -31,12 +31,14 @@ export function BattleScreen({
   enemy,
   equippedParts,
   startingHp,
+  startingMp,
   onExit,
 }: {
   enemy: EnemyDef;
   equippedParts: PartDef[];
   startingHp?: number;
-  onExit: (result: 'won' | 'lost', finalHp: number) => void;
+  startingMp?: number;
+  onExit: (result: 'won' | 'lost', finalHp: number, finalMp: number) => void;
 }) {
   const engineRef = useRef<CtbEngine | null>(null);
   const [snapshot, setSnapshot] = useState<CtbSnapshot | null>(null);
@@ -73,9 +75,21 @@ export function BattleScreen({
           id: ++floaterIdRef.current,
           side: e.side,
           text: `${STATUS_LABEL[e.kind].icon}${e.damage}`,
-          kind: e.kind === 'burn' ? 'burn' : 'poison',
+          kind: e.kind,
           createdAt: now,
         });
+      } else if (e.type === 'status_heal') {
+        floatersRef.current.push({
+          id: ++floaterIdRef.current,
+          side: e.side,
+          text: `${STATUS_LABEL[e.kind].icon}+${e.amount}`,
+          kind: 'heal',
+          createdAt: now,
+        });
+      } else if (e.type === 'undying') {
+        toastsRef.current.push({ id: ++toastIdRef.current, side: e.side, label: '🌟 致死ダメージを耐えた！', createdAt: now });
+      } else if (e.type === 'extra_action') {
+        toastsRef.current.push({ id: ++toastIdRef.current, side: e.side, label: '🌀 即座にもう一度行動！', createdAt: now });
       } else if (e.type === 'status_apply') {
         toastsRef.current.push({ id: ++toastIdRef.current, side: e.side, label: `${STATUS_LABEL[e.kind].icon} ${STATUS_LABEL[e.kind].name}`, createdAt: now });
       } else if (e.type === 'delay_enemy') {
@@ -102,7 +116,7 @@ export function BattleScreen({
   // という段階的な戦闘開始シーケンス。engine自体はタイマーを持たない状態機械なので、
   // ここでsetTimeoutを使って各フェーズの遷移を演出込みで進める。
   useEffect(() => {
-    const engine = new CtbEngine(enemy, equippedParts, startingHp);
+    const engine = new CtbEngine(enemy, equippedParts, startingHp, startingMp);
     engineRef.current = engine;
     floatersRef.current = [];
     toastsRef.current = [];
@@ -324,7 +338,9 @@ export function BattleScreen({
           <button
             type="button"
             className={`end-overlay end-overlay--${snapshot.status}`}
-            onClick={() => onExit(snapshot.status === 'won' ? 'won' : 'lost', engineRef.current?.getFinalPlayerHp() ?? 0)}
+            onClick={() =>
+              onExit(snapshot.status === 'won' ? 'won' : 'lost', engineRef.current?.getFinalPlayerHp() ?? 0, engineRef.current?.getFinalPlayerMp() ?? 0)
+            }
           >
             <div className="end-overlay__text">{snapshot.status === 'won' ? '勝利！' : '敗北…'}</div>
             <div className="end-overlay__hint">タップして戻る</div>
@@ -332,7 +348,7 @@ export function BattleScreen({
         )}
       </div>
 
-      <div className="mp-bar" title="MPゲージ: プレイヤーターン開始時に回復し、コマンド発動に消費する">
+      <div className="mp-bar" title="MPゲージ: 戦闘中は回復しない。コマンド発動に消費し、勝利後にまとめて回復する">
         <div className="mp-bar__fill" style={{ width: `${(snapshot.mp.current / snapshot.mp.max) * 100}%` }} />
         <div className="mp-bar__label">
           🔷MP {snapshot.mp.current} / {snapshot.mp.max}

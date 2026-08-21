@@ -183,9 +183,10 @@ export default function App() {
               enemy={enemy}
               equippedParts={equippedPartDefs(state)}
               startingHp={state.coreHp}
-              onExit={(result, finalHp) => {
+              startingMp={state.mp}
+              onExit={(result, finalHp, finalMp) => {
                 if (result === 'won') setCodex((prev) => markEnemyDefeated(prev, enemy.id));
-                setState((s) => finishBattle(s, result, finalHp));
+                setState((s) => finishBattle(s, result, finalHp, finalMp));
               }}
             />
           );

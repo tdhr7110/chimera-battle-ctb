@@ -1,4 +1,4 @@
-import type { PartDef, PartEffect, SynergyDef } from '../data/types';
+import type { PartDef, PartEffect, SynergyDef, SynergyRuleChange } from '../data/types';
 import { SYNERGIES } from '../data/synergies';
 
 // ============================================================
@@ -14,7 +14,7 @@ export interface PlayerModifiers {
   ctMultLightPct: number;
   ctHeavyPenaltyReductionPct: number;
   lowHpCtBonuses: { hpPctThreshold: number; ctMultPct: number }[];
-  mpRegenBonus: number;
+  postBattleMpRegenBonus: number; // MP改定: 戦闘中の回復は廃止したため、戦闘後回復量への加算のみ
   maxMpBonus: number;
   powerBonusLightPct: number;
   powerBonusHeavyPct: number;
@@ -29,7 +29,7 @@ function emptyModifiers(): PlayerModifiers {
     ctMultLightPct: 0,
     ctHeavyPenaltyReductionPct: 0,
     lowHpCtBonuses: [],
-    mpRegenBonus: 0,
+    postBattleMpRegenBonus: 0,
     maxMpBonus: 0,
     powerBonusLightPct: 0,
     powerBonusHeavyPct: 0,
@@ -55,8 +55,8 @@ function applyEffect(mods: PlayerModifiers, e: PartEffect) {
     case 'low_hp_ct_bonus':
       mods.lowHpCtBonuses.push({ hpPctThreshold: e.hpPctThreshold, ctMultPct: e.ctMultPct });
       break;
-    case 'mp_regen_bonus':
-      mods.mpRegenBonus += e.amount;
+    case 'post_battle_mp_regen_bonus':
+      mods.postBattleMpRegenBonus += e.amount;
       break;
     case 'max_mp_bonus':
       mods.maxMpBonus += e.amount;
@@ -76,14 +76,15 @@ function applyEffect(mods: PlayerModifiers, e: PartEffect) {
   }
 }
 
-// 装備部位からPlayerModifiersを合成する。part.effects → シナジー判定 → シナジーeffect、の順で適用する。
+// 装備部位からPlayerModifiersを合成する。part.effects → シナジー判定(達成した段階すべて) →
+// 各段階のeffect積み上げ、の順で適用する。
 export function computePlayerModifiers(equippedParts: PartDef[]): PlayerModifiers {
   const mods = emptyModifiers();
   for (const part of equippedParts) {
     for (const e of part.effects) applyEffect(mods, e);
   }
   for (const syn of SYNERGIES) {
-    if (synergyPartCount(syn, equippedParts) >= syn.threshold) applyEffect(mods, syn.effect);
+    for (const stage of reachedSynergyStages(syn, equippedParts)) applyEffect(mods, stage.effect);
   }
   return mods;
 }
@@ -97,7 +98,24 @@ export function synergyPartCount(syn: SynergyDef, equippedParts: PartDef[]): num
   return equippedParts.filter((p) => p.tags.includes(countBy.tag)).length;
 }
 
-// 現在の装備で発動しているシナジーの一覧(UI表示用)。
+// 装備数が満たしている段階を、閾値の昇順ですべて返す(段階の効果は積み上げで適用されるため)。
+export function reachedSynergyStages(syn: SynergyDef, equippedParts: PartDef[]) {
+  const count = synergyPartCount(syn, equippedParts);
+  return syn.stages.filter((stage) => count >= stage.threshold);
+}
+
+// 現在の装備で1段階でも発動しているシナジーの一覧(UI表示用)。
 export function activeSynergies(equippedParts: PartDef[]) {
-  return SYNERGIES.filter((syn) => synergyPartCount(syn, equippedParts) >= syn.threshold);
+  return SYNERGIES.filter((syn) => reachedSynergyStages(syn, equippedParts).length > 0);
+}
+
+// 現在の装備で発動しているルール変化(即時再行動・致死回避等)の一覧。CtbEngineが参照する。
+export function activeSynergyRuleChanges(equippedParts: PartDef[]): SynergyRuleChange[] {
+  const out: SynergyRuleChange[] = [];
+  for (const syn of SYNERGIES) {
+    for (const stage of reachedSynergyStages(syn, equippedParts)) {
+      if (stage.ruleChange) out.push(stage.ruleChange);
+    }
+  }
+  return out;
 }

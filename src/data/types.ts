@@ -41,12 +41,35 @@ export const CT_WEIGHT_MULT_FLOOR = 0.28; // 短縮効果をどれだけ積ん�
 export const CT_DELAY_UNITS_CEILING = 140; // 遅延打撃1回で加算できる時間の上限(耐性適用前の基礎量に対して)
 
 // ------------------------------------------------------------
-// 状態異常(仕様書9章): 第1弾は5種類のみ。
+// 状態異常(仕様書9章 + Excel状態異常24種のうち、既存エンジンに無い解決フックが
+// 必要なものから代表的な系統を追加実装): 現在13種類。
 // burn/poison = 継続ダメージ(毎ターン開始時にmagnitude分)。
 // vulnerable = 被ダメージ増加(magnitude%)。
 // haste/slow = CT倍率の一時的な補正(magnitude%。hasteは負方向、slowは正方向に効く)。
+// bleed = 出血。ターン開始時ではなく「被弾するたび」にmagnitude分ダメージ(新フック)。
+// paralyze = 麻痺。継続ターンではなく「次の1行動だけ」CTをmagnitude%増加させる単発型(新フック)。
+// accuracy_down = 盲目。自分の攻撃が外れる確率をmagnitude%上乗せする(新しい判定軸)。
+// regen = 再生。ターン開始時にmagnitude分HP回復する(DOTの逆)。
+// silence = 沈黙。MPを消費するコマンドを選択不可にする(コマンド選択可否への新フック)。
+// undying = 不死。致死ダメージを1回だけ無効化し、発動後にCTを遅らせる単発型。
+// mp_leak = MP漏出。行動するたびmagnitude分MPを追加消費する(新しい資源減少フック)。
+// shock = 感電。加算スタックし、一定スタック数(SHOCK_TRIGGER_STACKS)に達すると
+//   自動でCT遅延が発動してスタックがリセットされる(閾値トリガー型の新フック)。
 // ------------------------------------------------------------
-export type StatusKind = 'burn' | 'poison' | 'vulnerable' | 'haste' | 'slow';
+export type StatusKind =
+  | 'burn'
+  | 'poison'
+  | 'vulnerable'
+  | 'haste'
+  | 'slow'
+  | 'bleed'
+  | 'paralyze'
+  | 'accuracy_down'
+  | 'regen'
+  | 'silence'
+  | 'undying'
+  | 'mp_leak'
+  | 'shock';
 
 export const STATUS_LABEL: Record<StatusKind, { icon: string; name: string }> = {
   burn: { icon: '🔥', name: '炎上' },
@@ -54,7 +77,19 @@ export const STATUS_LABEL: Record<StatusKind, { icon: string; name: string }> = 
   vulnerable: { icon: '💥', name: '脆弱' },
   haste: { icon: '💨', name: '加速' },
   slow: { icon: '🐌', name: '減速' },
+  bleed: { icon: '🩸', name: '出血' },
+  paralyze: { icon: '💫', name: '麻痺' },
+  accuracy_down: { icon: '🌫️', name: '盲目' },
+  regen: { icon: '💚', name: '再生' },
+  silence: { icon: '🔇', name: '沈黙' },
+  undying: { icon: '🌟', name: '不死' },
+  mp_leak: { icon: '🕳️', name: 'MP漏出' },
+  shock: { icon: '⚡', name: '感電' },
 };
+
+// 感電: このスタック数(magnitude合計)に達すると自動でCT遅延が発動し、スタックがリセットされる。
+export const SHOCK_TRIGGER_STACKS = 3;
+export const SHOCK_TRIGGER_DELAY_BASE = 60;
 
 export interface StatusApply {
   kind: StatusKind;
@@ -76,7 +111,6 @@ export interface CommandDef {
   mpCost: number;
   ctWeight: CtWeight;
   guardReductionPct?: number; // 防御: 次に受ける1回のダメージを軽減する割合
-  mpRestoreOnUse?: number; // 防御/待機: 使用時に少量MPを回復
   delayEnemyBy?: number; // 遅延打撃: 敵のnextAtへ加算する基礎量(耐性適用前)
   hasteSelfBy?: number; // 加速: 自分のnextAtから減算する基礎量
   chargeNextAttackMultBonus?: number; // チャージ: 次の攻撃系コマンドの威力倍率に加算するボーナス
@@ -128,6 +162,15 @@ export interface EnemyCounter {
   powerMult: number; // 敵の基礎攻撃力に対する反撃倍率
 }
 
+// Excelの「フェーズ変化」(現行エンジンに無かった仕組み): HP割合がhpPctThreshold以下に
+// なった瞬間、以降の行動パターンをmovesから丸ごとphaseのmovesへ切り替える。
+// thresholdの高い順に並べ、HPが下がるたびに該当する最初のフェーズへ1回だけ遷移する。
+export interface EnemyPhase {
+  hpPctThreshold: number;
+  moves: EnemyMoveDef[];
+  announceText: string; // フェーズ移行時に一度だけ表示する演出テキスト
+}
+
 export interface EnemyDef {
   id: string;
   name: string;
@@ -139,7 +182,8 @@ export interface EnemyDef {
   power: number;
   evasionPct: number;
   baseSpeed: number; // CTB上の基礎速度(プレイヤーの基準値100に対する相対値)
-  moves: EnemyMoveDef[]; // 単純な周期パターンで順番に使用する(仮のAI)
+  moves: EnemyMoveDef[]; // 単純な周期パターンで順番に使用する(仮のAI)。フェーズ1の行動パターン。
+  phases?: EnemyPhase[]; // HP閾値で行動パターンそのものが変わる敵(エリート/ボス級)のみ設定
   counter?: EnemyCounter; // 反撃型: 被弾時に一定確率で即時反撃する
   description: string;
 }
@@ -158,7 +202,7 @@ export type PartEffect =
   | { kind: 'ct_mult_light_pct'; pct: number } // 六節脚: 軽量系コマンドのみCT短縮
   | { kind: 'ct_heavy_penalty_reduction_pct'; pct: number } // 重装脚: 重量系コマンドのCTペナルティを軽減
   | { kind: 'low_hp_ct_bonus'; hpPctThreshold: number; ctMultPct: number } // 暴走心臓: HP割合以下でCT短縮
-  | { kind: 'mp_regen_bonus'; amount: number } // 第二心臓: ターン開始時MP回復量UP
+  | { kind: 'post_battle_mp_regen_bonus'; amount: number } // 第二心臓: 戦闘後MP回復量UP(MP改定: 戦闘中は回復しないため)
   | { kind: 'max_mp_bonus'; amount: number } // 魔力嚢: 最大MP増加
   | { kind: 'power_bonus_light_pct'; pct: number } // 多腕: 通常攻撃・速撃など軽量attack系の威力UP
   | { kind: 'power_bonus_heavy_pct'; pct: number } // 豪腕: 強打など重量attack系の威力UP
@@ -177,15 +221,28 @@ export interface PartDef {
 
 // ------------------------------------------------------------
 // シナジー(仕様書8章): 第1弾4種類。全36種の実装はまだ行わない。
-// 装着中の部位をtype/tagで数え、閾値以上ならeffectを追加で1つ適用する。
+// 装着中の部位をtype/tagで数え、各段階の閾値を満たすたびeffectを積み上げで適用する
+// (Excelの36シナジーが「段階」「必要数」で多段構造を持つことに合わせた拡張)。
+// 最終段階にはruleChangeを持たせられ、単純な数値補正では表現できない
+// 「戦闘ルールそのものの変化」(即時再行動・致死回避など)をエンジン側フックで実現する。
 // ------------------------------------------------------------
 export type SynergyCountBy = { kind: 'type'; type: PartType } | { kind: 'tag'; tag: PartTag };
+
+export type SynergyRuleChange =
+  | { kind: 'extra_action_chance'; afterCtWeight: CtWeight; chancePct: number } // 指定CT区分の行動後、確率でCTを消費せず即再行動
+  | { kind: 'revive_once' }; // 戦闘中1回だけ、致死ダメージをHP1で耐えて即行動する
+
+export interface SynergyStage {
+  threshold: number;
+  effect: PartEffect;
+  ruleChange?: SynergyRuleChange;
+  ruleChangeLabel?: string; // UI表示用の短い説明(ruleChangeとセットで使う)
+}
 
 export interface SynergyDef {
   id: string;
   name: string;
   description: string;
   countBy: SynergyCountBy;
-  threshold: number;
-  effect: PartEffect;
+  stages: SynergyStage[]; // 閾値の昇順で並べる。達成した段階のeffectはすべて積み上げで適用される。
 }

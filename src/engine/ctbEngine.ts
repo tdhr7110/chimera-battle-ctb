@@ -1,7 +1,16 @@
 import { COMMANDS, getCommand } from '../data/commands';
-import { activeSynergies, computePlayerModifiers, type PlayerModifiers } from './modifiers';
-import type { CommandDef, EnemyDef, EnemyIntent, EnemyMoveDef, EnemyTier, PartDef, Side, StatusApply, StatusKind } from '../data/types';
-import { CT_DELAY_UNITS_CEILING, CT_WEIGHT_INTERVAL_MULT, CT_WEIGHT_LABEL, CT_WEIGHT_MULT_FLOOR, STATUS_LABEL, TIER_DELAY_RESISTANCE_PCT } from '../data/types';
+import { activeSynergies, activeSynergyRuleChanges, computePlayerModifiers, type PlayerModifiers } from './modifiers';
+import type { CommandDef, EnemyDef, EnemyIntent, EnemyMoveDef, EnemyPhase, EnemyTier, PartDef, Side, StatusApply, StatusKind } from '../data/types';
+import {
+  CT_DELAY_UNITS_CEILING,
+  CT_WEIGHT_INTERVAL_MULT,
+  CT_WEIGHT_LABEL,
+  CT_WEIGHT_MULT_FLOOR,
+  SHOCK_TRIGGER_DELAY_BASE,
+  SHOCK_TRIGGER_STACKS,
+  STATUS_LABEL,
+  TIER_DELAY_RESISTANCE_PCT,
+} from '../data/types';
 
 // ============================================================
 // キメラバトル CTB 再設計データ 第1弾 の戦闘エンジン。
@@ -35,7 +44,10 @@ export type CtbEvent =
   | { type: 'delay_enemy'; time: number; side: Side; amount: number }
   | { type: 'counter'; time: number; side: Side; targetSide: Side; damage: number }
   | { type: 'status_apply'; time: number; side: Side; kind: StatusKind }
-  | { type: 'status_tick'; time: number; side: Side; kind: 'burn' | 'poison'; damage: number }
+  | { type: 'status_tick'; time: number; side: Side; kind: 'burn' | 'poison' | 'bleed'; damage: number }
+  | { type: 'status_heal'; time: number; side: Side; kind: 'regen'; amount: number }
+  | { type: 'undying'; time: number; side: Side }
+  | { type: 'extra_action'; time: number; side: Side }
   | { type: 'telegraph'; time: number; message: string }
   | { type: 'victory'; time: number }
   | { type: 'defeat'; time: number };
@@ -43,15 +55,15 @@ export type CtbEvent =
 type EventWithoutTime<T> = T extends CtbEvent ? Omit<T, 'time'> : never;
 
 const CTB_BASE_INTERVAL = 100;
-const CTB_PREVIEW_STEPS = 7; // 5〜8行動を見せる(仕様書5章)
+const CTB_PREVIEW_STEPS = 8; // Excel CTB設定「行動順表示」に合わせる
 const CTB_MAX_RESOLVE_STEPS = 60;
 
-// MP: 代謝ゲージを廃止した第1弾のMP仕様。挙動(プレイヤーターン開始時に一定量回復)は
-// 仮実装のまま、呼び名・見た目だけでなく「MPが0でも戦える」設計(通常攻撃/速撃/防御/待機/
-// チャージがMP0)を徹底している。
-const CTB_MP_MAX_BASE = 100;
-const CTB_MP_START_RATIO = 0.4;
-const CTB_MP_REGEN_PER_TURN_BASE = 14;
+// MP改定: 「戦闘中は回復せず、勝利後にまとめて回復する」方式へ変更(Excel CTB設定を
+// 同時に書き換え済み)。CtbEngineは戦闘中一切MPを増やさない。通常攻撃/速撃/防御/待機/
+// チャージがMP0で使える設計はそのまま維持している。
+export const CTB_MP_MAX_BASE = 100;
+const CTB_MP_START_FLAT_DEFAULT = 30; // startingMp省略時(単発デモ利用時)のフォールバック。Excel初期MPに一致。
+const UNDYING_DELAY_BASE = 90; // 不死/致死回避が発動した後にかかるCT遅延の基礎量
 
 // 統合版(本編)がラン全体の最大HP等を参照できるようexportする(値そのものは変更しない)。
 export const PLAYER_BASE = { name: 'キメラ', icon: '🧬', color: '#4ade80', maxHp: 130, defense: 3, power: 15, evasionPct: 5, speed: 100 };
@@ -85,7 +97,6 @@ interface RuntimeActor {
 interface PlayerRuntime extends RuntimeActor {
   mods: PlayerModifiers;
   maxMp: number;
-  mpRegenPerTurn: number;
   chargeBonusMult: number; // チャージで蓄積し、次の攻撃系コマンドで消費するダメージ倍率ボーナス
 }
 
@@ -172,12 +183,21 @@ export class CtbEngine {
   private autoMode = false;
   private pendingEnemyAnnounce: { moveName: string; icon: string; telegraph: string | null } | null = null;
   private activeSynergyNames: string[];
+  private playerReviveAvailable: boolean; // シナジー「多心臓」3段階目: 戦闘中1回だけ致死を耐える
+  private playerExtraActionRules: { afterCtWeight: CommandDef['ctWeight']; chancePct: number }[];
+  private enemyPhases: EnemyPhase[];
+  private enemyPhaseIndex = -1; // -1 = 基本(フェーズ1)。フェーズ変化のたびに増える。
 
-  // startingHp: 統合版(本編)がラン中のHPを戦闘間で持ち越すための追加パラメータ。
-  // 省略時はフルHPで開始する従来通りの単発デモ挙動のまま(既存の呼び出し元・挙動は変わらない)。
-  constructor(enemyDef: EnemyDef, equippedParts: PartDef[] = [], startingHp?: number) {
+  // startingHp/startingMp: 統合版(本編)がラン中のHP・MPを戦闘間で持ち越すための追加パラメータ。
+  // 省略時はフルHP・Excel初期MPで開始する単発デモ挙動のまま(既存の呼び出し元・挙動は変わらない)。
+  constructor(enemyDef: EnemyDef, equippedParts: PartDef[] = [], startingHp?: number, startingMp?: number) {
     const mods = computePlayerModifiers(equippedParts);
     this.activeSynergyNames = activeSynergies(equippedParts).map((s) => s.name);
+    const ruleChanges = activeSynergyRuleChanges(equippedParts);
+    this.playerReviveAvailable = ruleChanges.some((r) => r.kind === 'revive_once');
+    this.playerExtraActionRules = ruleChanges.flatMap((r) =>
+      r.kind === 'extra_action_chance' ? [{ afterCtWeight: r.afterCtWeight, chancePct: r.chancePct }] : []
+    );
     const maxMp = CTB_MP_MAX_BASE + mods.maxMpBonus;
 
     this.player = {
@@ -196,10 +216,10 @@ export class CtbEngine {
       isDead: false,
       mods,
       maxMp,
-      mpRegenPerTurn: CTB_MP_REGEN_PER_TURN_BASE + mods.mpRegenBonus,
       chargeBonusMult: 0,
     };
-    this.mp = Math.round(maxMp * CTB_MP_START_RATIO);
+    this.mp =
+      startingMp !== undefined ? Math.max(0, Math.min(maxMp, Math.round(startingMp))) : Math.min(maxMp, CTB_MP_START_FLAT_DEFAULT);
 
     this.enemy = {
       side: 'enemy',
@@ -221,6 +241,7 @@ export class CtbEngine {
       delayResistancePct: TIER_DELAY_RESISTANCE_PCT[enemyDef.tier],
       counter: enemyDef.counter,
     };
+    this.enemyPhases = [...(enemyDef.phases ?? [])].sort((a, b) => b.hpPctThreshold - a.hpPctThreshold);
 
     // 仕様書4章: 開始直後は半区間だけ待たせてから最初の行動時刻を迎える(ATBの一般的な作法)。
     this.nextAt = {
@@ -267,7 +288,6 @@ export class CtbEngine {
       this.tickStatusesAtTurnStart('player');
       if (this.checkEnd()) return;
       this.phase = 'player_turn';
-      this.regenMpForNewPlayerTurn();
       return;
     }
     const move = this.currentEnemyMove();
@@ -298,9 +318,11 @@ export class CtbEngine {
   }
 
   // ------------------------------------------------------------
-  // 状態異常(仕様書9章): burn/poisonは自分の行動順が来た瞬間に継続ダメージ。
-  // vulnerable/haste/slowはダメージ・CT計算式側から参照するだけで、ここでは
-  // 残りターン数の消化だけを行う。
+  // 状態異常(仕様書9章 + 拡張分): burn/poison/regenは自分の行動順が来た瞬間に継続ダメージ/回復。
+  // vulnerable/haste/slow/accuracy_downはダメージ・CT・命中の計算式側から参照するだけで、
+  // ここでは残りターン数の消化だけを行う。bleed(被弾トリガー)/paralyze(単発消費)/
+  // shock(閾値到達)/undying/mp_leak/silenceは、それぞれの発生ポイント(攻撃解決・行動解決・
+  // コマンド使用時)で個別に処理する。
   // ------------------------------------------------------------
   private tickStatusesAtTurnStart(side: Side) {
     const actor = side === 'player' ? this.player : this.enemy;
@@ -311,10 +333,19 @@ export class CtbEngine {
         actor.hp = Math.max(0, actor.hp - dmg);
         this.pushLog(`${s.kind === 'burn' ? '🔥' : '☠️'} ${actor.name}は${s.kind === 'burn' ? '炎上' : '毒'}で${dmg}ダメージ`);
         this.pushEvent({ type: 'status_tick', side, kind: s.kind, damage: dmg });
+      } else if (s.kind === 'regen' && actor.hp > 0) {
+        const heal = Math.round(s.magnitude);
+        actor.hp = Math.min(actor.maxHp, actor.hp + heal);
+        this.pushLog(`💚 ${actor.name}は再生で${heal}回復`);
+        this.pushEvent({ type: 'status_heal', side, kind: 'regen', amount: heal });
       }
     }
-    actor.statuses = actor.statuses.map((s) => ({ ...s, turnsLeft: s.turnsLeft - 1 })).filter((s) => s.turnsLeft > 0);
-    if (actor.hp <= 0) actor.isDead = true;
+    // paralyzeは「次の1行動」で消費されるまで残り続ける単発型のため、ターン経過による
+    // 自動減衰の対象から除外する(consumeParalyzeExtraMultが実際の行動解決時に明示的に消費する)。
+    actor.statuses = actor.statuses
+      .map((s) => (s.kind === 'paralyze' ? s : { ...s, turnsLeft: s.turnsLeft - 1 }))
+      .filter((s) => s.kind === 'paralyze' || s.turnsLeft > 0);
+    if (actor.hp <= 0 && !this.preventLethalIfPossible(actor)) actor.isDead = true;
   }
 
   private applyStatus(target: RuntimeActor, apply: StatusApply | undefined) {
@@ -328,10 +359,62 @@ export class CtbEngine {
     }
     this.pushLog(`${STATUS_LABEL[apply.kind].icon} ${target.name}に${STATUS_LABEL[apply.kind].name}状態が付与された`);
     this.pushEvent({ type: 'status_apply', side: target.side, kind: apply.kind });
+    if (apply.kind === 'shock') this.checkShockTrigger(target);
   }
 
   private statusMagnitude(actor: RuntimeActor, kind: StatusKind): number {
     return actor.statuses.filter((s) => s.kind === kind).reduce((sum, s) => sum + s.magnitude, 0);
+  }
+
+  // 感電(新フック): スタックがSHOCK_TRIGGER_STACKSに達すると自動でCT遅延が発動しリセットされる。
+  private checkShockTrigger(target: RuntimeActor) {
+    if (this.statusMagnitude(target, 'shock') < SHOCK_TRIGGER_STACKS) return;
+    target.statuses = target.statuses.filter((s) => s.kind !== 'shock');
+    this.pushLog(`⚡ ${target.name}に感電が蓄積し、大きな隙が生まれた！`);
+    if (target.side === 'player') this.applyDelayToPlayer(SHOCK_TRIGGER_DELAY_BASE);
+    else this.applyDelayToEnemy(SHOCK_TRIGGER_DELAY_BASE);
+  }
+
+  // 出血(新フック): ターン開始時ではなく、被弾するたびに追加ダメージが発生する。
+  private triggerBleedOnHit(target: RuntimeActor) {
+    const mag = this.statusMagnitude(target, 'bleed');
+    if (mag <= 0 || target.hp <= 0) return;
+    const dmg = Math.round(mag);
+    target.hp = Math.max(0, target.hp - dmg);
+    this.pushLog(`🩸 ${target.name}は出血で${dmg}ダメージ`);
+    this.pushEvent({ type: 'status_tick', side: target.side, kind: 'bleed', damage: dmg });
+    if (target.hp <= 0 && !this.preventLethalIfPossible(target)) target.isDead = true;
+    else if (target.side === 'enemy') this.checkEnemyPhaseTransition();
+  }
+
+  // 麻痺(新フック): 継続ターンではなく「次の1行動だけ」CTを重くする単発型。
+  // 実際の行動解決時に一度だけ呼び、消費(状態を除去)しながら倍率を返す。previewでは呼ばない。
+  private consumeParalyzeExtraMult(actor: RuntimeActor): number {
+    const mag = this.statusMagnitude(actor, 'paralyze');
+    if (mag <= 0) return 1;
+    actor.statuses = actor.statuses.filter((s) => s.kind !== 'paralyze');
+    this.pushLog(`💫 ${actor.name}は麻痺で行動が遅れた`);
+    return 1 + mag / 100;
+  }
+
+  // 不死/致死回避(新フック): undying状態、またはシナジー「多心臓」3段階目の revive_once を
+  // 消費して、致死ダメージをHP1で耐える。どちらも無ければfalseを返し、通常の死亡処理へ進む。
+  private preventLethalIfPossible(actor: RuntimeActor): boolean {
+    const undyingActive = this.statusMagnitude(actor, 'undying') > 0;
+    if (undyingActive) {
+      actor.statuses = actor.statuses.filter((s) => s.kind !== 'undying');
+    } else if (actor.side === 'player' && this.playerReviveAvailable) {
+      this.playerReviveAvailable = false;
+    } else {
+      return false;
+    }
+    actor.hp = 1;
+    actor.isDead = false;
+    if (actor.side === 'player') this.nextAt.player += UNDYING_DELAY_BASE;
+    else this.nextAt.enemy += UNDYING_DELAY_BASE;
+    this.pushLog(`🌟 ${actor.name}は致死ダメージを耐えた！`);
+    this.pushEvent({ type: 'undying', side: actor.side });
+    return true;
   }
 
   // ------------------------------------------------------------
@@ -409,7 +492,8 @@ export class CtbEngine {
       this.pushEvent({ type: 'telegraph', message: move.telegraph });
     }
 
-    if (Math.random() * 100 < this.player.evasionPct) {
+    const selfAccuracyDown = this.statusMagnitude(this.enemy, 'accuracy_down');
+    if (Math.random() * 100 < this.player.evasionPct + selfAccuracyDown) {
       this.pushLog(`💨 キメラは${this.enemy.name}の${move.name}を回避した`);
       this.pushEvent({ type: 'evade', side: 'enemy', targetSide: 'player', commandName: move.name, icon: move.icon });
     } else {
@@ -418,26 +502,26 @@ export class CtbEngine {
       const dmg = this.computeDamage(rawPower, this.player.defense, this.player.guardReductionPct, vulnerablePct);
       this.player.guardReductionPct = 0;
       this.player.hp = Math.max(0, this.player.hp - dmg);
-      if (this.player.hp <= 0) this.player.isDead = true;
       this.pushLog(`${this.enemy.icon}${this.enemy.name}の${move.name}が${dmg}ダメージ`);
       this.pushEvent({ type: 'attack', side: 'enemy', targetSide: 'player', commandName: move.name, icon: move.icon, damage: dmg });
+      if (this.player.hp <= 0 && !this.preventLethalIfPossible(this.player)) this.player.isDead = true;
       this.applyStatus(this.player, move.applyStatus);
       if (move.delayTargetBy && !this.player.isDead) this.applyDelayToPlayer(move.delayTargetBy);
+      if (!this.player.isDead) this.triggerBleedOnHit(this.player);
     }
-    this.nextAt.enemy += actionInterval(this.enemy.speed, this.effectiveWeightMult(this.enemy, move.ctWeight));
+    const weightMult = this.effectiveWeightMult(this.enemy, move.ctWeight) * this.consumeParalyzeExtraMult(this.enemy);
+    this.nextAt.enemy += actionInterval(this.enemy.speed, weightMult);
   }
 
   private resolvePlayerCommand(cmd: CommandDef) {
     if (cmd.kind === 'guard') {
       this.player.guardReductionPct = cmd.guardReductionPct ?? 0;
-      if (cmd.mpRestoreOnUse) this.mp = Math.min(this.player.maxMp, this.mp + cmd.mpRestoreOnUse);
       this.pushLog(`🛡️ ${cmd.name}！次に受けるダメージを軽減する`);
       this.pushEvent({ type: 'guard', side: 'player' });
       return;
     }
     if (cmd.kind === 'wait') {
       if (cmd.hasteSelfBy) this.applyHasteToSelf(cmd.hasteSelfBy);
-      if (cmd.mpRestoreOnUse) this.mp = Math.min(this.player.maxMp, this.mp + cmd.mpRestoreOnUse);
       this.applyStatus(this.player, cmd.applySelfStatus);
       this.pushLog(`${cmd.icon} ${cmd.name}！`);
       this.pushEvent(cmd.id === 'haste_self' ? { type: 'haste_self', side: 'player' } : { type: 'wait', side: 'player' });
@@ -451,7 +535,8 @@ export class CtbEngine {
     }
 
     // attack系
-    if (Math.random() * 100 < this.enemy.evasionPct) {
+    const selfAccuracyDown = this.statusMagnitude(this.player, 'accuracy_down');
+    if (Math.random() * 100 < this.enemy.evasionPct + selfAccuracyDown) {
       this.pushLog(`💨 ${this.enemy.name}が回避した`);
       this.pushEvent({ type: 'evade', side: 'player', targetSide: 'enemy', commandName: cmd.name, icon: cmd.icon });
       return;
@@ -464,11 +549,15 @@ export class CtbEngine {
     }
     const dmg = this.computeDamage(power, this.enemy.defense, 0, 0);
     this.enemy.hp = Math.max(0, this.enemy.hp - dmg);
-    if (this.enemy.hp <= 0) this.enemy.isDead = true;
     this.pushLog(`${cmd.icon}${cmd.name}が${this.enemy.name}に${dmg}ダメージ`);
     this.pushEvent({ type: 'attack', side: 'player', targetSide: 'enemy', commandName: cmd.name, icon: cmd.icon, damage: dmg });
+    if (this.enemy.hp <= 0 && !this.preventLethalIfPossible(this.enemy)) this.enemy.isDead = true;
     this.applyStatus(this.enemy, cmd.applyStatus);
     if (cmd.delayEnemyBy && !this.enemy.isDead) this.applyDelayToEnemy(cmd.delayEnemyBy);
+    if (!this.enemy.isDead) {
+      this.triggerBleedOnHit(this.enemy);
+      this.checkEnemyPhaseTransition();
+    }
 
     // 反撃型(仕様書10・17章): 被弾した敵が一定確率でCTを消費せず即座に反撃する。
     if (!this.enemy.isDead && this.enemy.counter && Math.random() * 100 < this.enemy.counter.chancePct) {
@@ -477,14 +566,24 @@ export class CtbEngine {
       const counterDmg = this.computeDamage(counterRaw, this.player.defense, this.player.guardReductionPct, counterVulnerable);
       this.player.guardReductionPct = 0;
       this.player.hp = Math.max(0, this.player.hp - counterDmg);
-      if (this.player.hp <= 0) this.player.isDead = true;
       this.pushLog(`🔁 ${this.enemy.name}の反撃！${counterDmg}ダメージ`);
       this.pushEvent({ type: 'counter', side: 'enemy', targetSide: 'player', damage: counterDmg });
+      if (this.player.hp <= 0 && !this.preventLethalIfPossible(this.player)) this.player.isDead = true;
+      if (!this.player.isDead) this.triggerBleedOnHit(this.player);
     }
   }
 
-  private regenMpForNewPlayerTurn() {
-    this.mp = Math.min(this.player.maxMp, this.mp + this.player.mpRegenPerTurn);
+  // フェーズ変化(新フック): HPが閾値以下になった瞬間、以降の行動パターンを丸ごと切り替える。
+  private checkEnemyPhaseTransition() {
+    if (this.enemy.isDead) return;
+    const hpPct = this.enemy.maxHp > 0 ? (this.enemy.hp / this.enemy.maxHp) * 100 : 100;
+    const phase = this.enemyPhases[this.enemyPhaseIndex + 1];
+    if (!phase || hpPct > phase.hpPctThreshold) return;
+    this.enemyPhaseIndex += 1;
+    this.enemy.moves = phase.moves;
+    this.enemy.moveIndex = 0;
+    this.pushLog(phase.announceText);
+    this.pushEvent({ type: 'telegraph', message: phase.announceText });
   }
 
   private resolveUntilPlayerOrEnd() {
@@ -496,7 +595,6 @@ export class CtbEngine {
         this.tickStatusesAtTurnStart('player');
         if (this.checkEnd()) return;
         this.phase = 'player_turn';
-        this.regenMpForNewPlayerTurn();
         return;
       }
       this.tickStatusesAtTurnStart('enemy');
@@ -536,10 +634,30 @@ export class CtbEngine {
     const cmd = getCommand(commandId);
     if (!cmd) return { ok: false, reason: '不明なコマンドです' };
     if (this.mp < cmd.mpCost) return { ok: false, reason: `MPが足りません（必要${cmd.mpCost}）` };
+    if (cmd.mpCost > 0 && this.statusMagnitude(this.player, 'silence') > 0) {
+      return { ok: false, reason: '沈黙中はMP技を使用できません' };
+    }
 
     this.mp -= cmd.mpCost;
+    const mpLeak = this.statusMagnitude(this.player, 'mp_leak');
+    if (mpLeak > 0) {
+      const leaked = Math.min(this.mp, Math.round(mpLeak));
+      this.mp -= leaked;
+      if (leaked > 0) this.pushLog(`🕳️ MP漏出で追加${leaked}MPを消費`);
+    }
+
     this.resolvePlayerCommand(cmd);
-    this.nextAt.player += actionInterval(this.player.speed, this.effectiveWeightMult(this.player, cmd.ctWeight, this.player.mods));
+
+    const weightMult = this.effectiveWeightMult(this.player, cmd.ctWeight, this.player.mods) * this.consumeParalyzeExtraMult(this.player);
+    const grantedExtraAction = this.playerExtraActionRules.some(
+      (rule) => rule.afterCtWeight === cmd.ctWeight && Math.random() * 100 < rule.chancePct
+    );
+    if (grantedExtraAction && this.status === 'ongoing') {
+      this.pushLog('🌀 シナジー効果で即座にもう一度行動できる！');
+      this.pushEvent({ type: 'extra_action', side: 'player' });
+    } else {
+      this.nextAt.player += actionInterval(this.player.speed, weightMult);
+    }
     this.turnCount += 1;
 
     if (this.checkEnd()) return { ok: true };
@@ -582,17 +700,18 @@ export class CtbEngine {
     const nextMove = this.currentEnemyMove();
     if (nextMove.intent === 'ULTIMATE' || nextMove.intent === 'STRONG') {
       const delayStrike = getCommand('delay_strike')!;
-      if (this.mp >= delayStrike.mpCost && Math.random() < 0.5) return delayStrike;
+      if (this.mp >= delayStrike.mpCost && this.statusMagnitude(this.player, 'silence') === 0 && Math.random() < 0.5) return delayStrike;
       return guard;
     }
 
+    const silenced = this.statusMagnitude(this.player, 'silence') > 0;
     const pool: { cmd: CommandDef; weight: number }[] = [
       { cmd: getCommand('attack')!, weight: 3 },
       { cmd: getCommand('quick')!, weight: 2 },
       { cmd: getCommand('smash')!, weight: 2 },
       { cmd: getCommand('flame_fang')!, weight: 1.4 },
       { cmd: getCommand('poison_needle')!, weight: 1 },
-    ].filter((p) => this.mp >= p.cmd.mpCost);
+    ].filter((p) => this.mp >= p.cmd.mpCost && !(silenced && p.cmd.mpCost > 0));
 
     const totalWeight = pool.reduce((s, p) => s + p.weight, 0);
     let roll = Math.random() * totalWeight;
@@ -612,9 +731,12 @@ export class CtbEngine {
   getStatus(): CtbStatus {
     return this.status;
   }
-  // 統合版(本編)が戦闘終了後にRunStateへHPを持ち越すための取得用API。
+  // 統合版(本編)が戦闘終了後にRunStateへHP・MPを持ち越すための取得用API。
   getFinalPlayerHp(): number {
     return Math.round(this.player.hp);
+  }
+  getFinalPlayerMp(): number {
+    return Math.round(this.mp);
   }
 
   private actorSnapshot(a: RuntimeActor): CtbActorSnapshot {
@@ -631,7 +753,8 @@ export class CtbEngine {
   }
 
   private commandPreview(cmd: CommandDef): CommandPreviewInfo {
-    const affordable = this.mp >= cmd.mpCost;
+    const silenced = cmd.mpCost > 0 && this.statusMagnitude(this.player, 'silence') > 0;
+    const affordable = this.mp >= cmd.mpCost && !silenced;
     const usable = this.status === 'ongoing' && this.phase === 'player_turn' && affordable;
     let damageEstimate: number | null = null;
     if (cmd.powerMult > 0) {

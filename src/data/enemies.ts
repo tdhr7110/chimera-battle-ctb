@@ -34,6 +34,15 @@ export const ENEMIES: EnemyDef[] = [
         intent: 'DEBUFF',
         applyStatus: { kind: 'vulnerable', magnitude: 20, turns: 2 },
       },
+      {
+        id: 'wolf_slash',
+        name: '切り裂き',
+        icon: '🩸',
+        powerMult: 0.6,
+        ctWeight: 'light',
+        intent: 'ATTACK',
+        applyStatus: { kind: 'bleed', magnitude: 3, turns: 4 },
+      },
     ],
   },
   {
@@ -77,6 +86,15 @@ export const ENEMIES: EnemyDef[] = [
     moves: [
       { id: 'spider_bite', name: '毒牙', icon: '🦷', powerMult: 0.6, ctWeight: 'light', intent: 'POISON', applyStatus: { kind: 'poison', magnitude: 4, turns: 4 } },
       { id: 'spider_web', name: '糸絡め', icon: '🕸️', powerMult: 0.8, ctWeight: 'standard', intent: 'ATTACK' },
+      {
+        id: 'spider_drain',
+        name: '魔喰い',
+        icon: '🕳️',
+        powerMult: 0.5,
+        ctWeight: 'standard',
+        intent: 'DEBUFF',
+        applyStatus: { kind: 'mp_leak', magnitude: 4, turns: 3 },
+      },
     ],
   },
   {
@@ -94,6 +112,15 @@ export const ENEMIES: EnemyDef[] = [
     moves: [
       { id: 'chrono_bolt', name: '刻の矢', icon: '🔹', powerMult: 0.8, ctWeight: 'standard', intent: 'ATTACK' },
       { id: 'chrono_delay', name: '時封じ', icon: '⏳', powerMult: 0.4, ctWeight: 'standard', intent: 'DELAY', delayTargetBy: 65 },
+      {
+        id: 'chrono_seal',
+        name: '封魔の矢',
+        icon: '🔇',
+        powerMult: 0.5,
+        ctWeight: 'standard',
+        intent: 'DEBUFF',
+        applyStatus: { kind: 'silence', magnitude: 1, turns: 2 },
+      },
     ],
   },
   {
@@ -125,7 +152,7 @@ export const ENEMIES: EnemyDef[] = [
     power: 14,
     evasionPct: 5,
     baseSpeed: 90,
-    description: '【ボス型】力を溜めたあと放つ「滅びの咆哮」は事前に予告される。防御・遅延・加速・チャージのどれで備えるかが問われる。',
+    description: '【ボス型】力を溜めたあと放つ「滅びの咆哮」は事前に予告される。防御・遅延・加速・チャージのどれで備えるかが問われる。HP50%で行動パターンが変化する。',
     moves: [
       { id: 'dragon_claw', name: '爪撃', icon: '🐾', powerMult: 1.0, ctWeight: 'standard', intent: 'ATTACK' },
       { id: 'dragon_claw2', name: '尾撃', icon: '🦖', powerMult: 1.1, ctWeight: 'standard', intent: 'ATTACK' },
@@ -146,6 +173,44 @@ export const ENEMIES: EnemyDef[] = [
         ctWeight: 'very_heavy',
         intent: 'ULTIMATE',
         telegraph: '古龍が「滅びの咆哮」を放とうとしている…!!',
+      },
+    ],
+    // フェーズ変化(新フック): HP50%以下になった瞬間、爪撃を捨てて業火の息(炎上蓄積)を
+    // 主体とした攻撃的な行動パターンへ切り替わる。大技・チャージはフェーズ2でも健在。
+    phases: [
+      {
+        hpPctThreshold: 50,
+        announceText: '🔥 古龍が半身を焦がしながら牙を剥く…！行動パターンが変化した！',
+        moves: [
+          { id: 'dragon_claw2_p2', name: '尾撃', icon: '🦖', powerMult: 1.2, ctWeight: 'standard', intent: 'ATTACK' },
+          {
+            id: 'dragon_breath',
+            name: '業火の息',
+            icon: '🔥',
+            powerMult: 1.6,
+            ctWeight: 'standard',
+            intent: 'STRONG',
+            applyStatus: { kind: 'burn', magnitude: 5, turns: 3 },
+          },
+          {
+            id: 'dragon_charge_p2',
+            name: '力を溜める',
+            icon: '✨',
+            powerMult: 0,
+            ctWeight: 'light',
+            intent: 'CHARGE',
+            telegraph: '古龍が力を溜めている…！',
+          },
+          {
+            id: 'dragon_ultimate_p2',
+            name: '滅びの咆哮',
+            icon: '💀',
+            powerMult: 3.4,
+            ctWeight: 'very_heavy',
+            intent: 'ULTIMATE',
+            telegraph: '古龍が「滅びの咆哮」を放とうとしている…!!',
+          },
+        ],
       },
     ],
   },

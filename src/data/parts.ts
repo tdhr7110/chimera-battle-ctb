@@ -45,8 +45,8 @@ export const PARTS: PartDef[] = [
     icon: '💗',
     type: 'heart',
     tags: [],
-    effects: [{ kind: 'mp_regen_bonus', amount: 10 }],
-    description: 'ターン開始時のMP回復量を増やす。',
+    effects: [{ kind: 'post_battle_mp_regen_bonus', amount: 10 }],
+    description: '戦闘後のMP回復量を増やす(戦闘中は回復しない)。',
   },
   {
     id: 'berserk_heart',

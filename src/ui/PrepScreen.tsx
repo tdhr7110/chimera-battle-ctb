@@ -3,9 +3,9 @@ import { PARTS, getPart } from '../data/parts';
 import { COMMANDS } from '../data/commands';
 import { SYNERGIES } from '../data/synergies';
 import { PLAYER_BASE } from '../engine/ctbEngine';
-import { computePlayerModifiers, synergyPartCount } from '../engine/modifiers';
+import { activeSynergies, computePlayerModifiers, synergyPartCount } from '../engine/modifiers';
 import { CT_WEIGHT_LABEL } from '../data/types';
-import { equippedPartDefs, MAX_EQUIPPED_PARTS, TOTAL_BATTLES, tierOfCurrentBattle, type RunState } from '../engine/run';
+import { currentMaxMp, equippedPartDefs, MAX_EQUIPPED_PARTS, TOTAL_BATTLES, tierOfCurrentBattle, type RunState } from '../engine/run';
 
 // ============================================================
 // 統合版(本編)の戦闘待機/キメラビルド画面(仕様書3章)。
@@ -30,12 +30,10 @@ export function PrepScreen({
   const [tab, setTab] = useState<Tab>('status');
   const equippedDefs = useMemo(() => equippedPartDefs(state), [state.equippedPartIds]);
   const mods = useMemo(() => computePlayerModifiers(equippedDefs), [equippedDefs]);
-  const activeSynergyIds = useMemo(() => {
-    return SYNERGIES.filter((syn) => synergyPartCount(syn, equippedDefs) >= syn.threshold).map((s) => s.id);
-  }, [equippedDefs]);
+  const activeSynergyIds = useMemo(() => activeSynergies(equippedDefs).map((s) => s.id), [equippedDefs]);
 
   const speed = Math.round(PLAYER_BASE.speed + mods.speedFlatBonus);
-  const maxMp = 100 + mods.maxMpBonus;
+  const maxMp = currentMaxMp(state);
   const nextTier = TIER_LABEL[tierOfCurrentBattle(state)] ?? '通常戦';
 
   return (
@@ -84,8 +82,10 @@ export function PrepScreen({
               <strong>{speed}</strong>
             </div>
             <div className="status-row">
-              <span>🔷 最大MP</span>
-              <strong>{maxMp}</strong>
+              <span>🔷 MP</span>
+              <strong>
+                {Math.min(state.mp, maxMp)} / {maxMp}
+              </strong>
             </div>
             <div className="status-row">
               <span>🎯 回避率</span>
@@ -153,17 +153,23 @@ export function PrepScreen({
             {SYNERGIES.map((syn) => {
               const count = synergyPartCount(syn, equippedDefs);
               const active = activeSynergyIds.includes(syn.id);
-              const remaining = Math.max(0, syn.threshold - count);
               return (
                 <div key={syn.id} className={`synergy-row${active ? ' synergy-row--active' : ''}`}>
                   <div className="synergy-row__head">
                     <strong>{syn.name}</strong>
-                    <span>
-                      {count}/{syn.threshold}
-                    </span>
+                    <span>{count}個装着中</span>
                   </div>
                   <div className="synergy-row__desc">{syn.description}</div>
-                  <div className="synergy-row__status">{active ? '✅ 発動中' : `あと${remaining}個で発動`}</div>
+                  {syn.stages.map((stage, i) => {
+                    const reached = count >= stage.threshold;
+                    const remaining = Math.max(0, stage.threshold - count);
+                    return (
+                      <div key={i} className="synergy-row__status">
+                        {reached ? '✅' : '🔒'} {stage.threshold}個{stage.ruleChangeLabel ? `: ${stage.ruleChangeLabel}` : ''}
+                        {!reached && `（あと${remaining}個）`}
+                      </div>
+                    );
+                  })}
                 </div>
               );
             })}

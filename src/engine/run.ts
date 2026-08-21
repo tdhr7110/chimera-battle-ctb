@@ -1,7 +1,8 @@
 import { ENEMIES, getEnemy } from '../data/enemies';
 import { PARTS, getPart } from '../data/parts';
 import { getStarter } from '../data/starters';
-import { PLAYER_BASE } from './ctbEngine';
+import { CTB_MP_MAX_BASE, PLAYER_BASE } from './ctbEngine';
+import { computePlayerModifiers } from './modifiers';
 import type { EnemyTier, PartDef } from '../data/types';
 
 // ============================================================
@@ -28,10 +29,16 @@ export const MAX_EQUIPPED_PARTS = 4; // 暫定の装着上限(Excelの接続容�
 export const CORE_HP_BASE = PLAYER_BASE.maxHp;
 export const POST_VICTORY_RECOVERY_PCT = 0.4; // 勝利後の小休止による自然回復割合(TEST18を踏襲した仮値)
 
+// MP改定(Excel CTB設定を同時に書き換え済み): 戦闘中はMPを一切回復せず、勝利後にまとめて
+// 回復する。MPはHPと同様、ラン中は戦闘をまたいで持ち越す資源として管理する。
+export const MP_START = 30; // Excel「初期MP」に一致
+export const POST_BATTLE_MP_REGEN_BASE = 20; // Excel「戦闘後MP回復」に一致
+
 export interface RunState {
   phase: GamePhase;
   battleIndex: number; // 1-based
   coreHp: number;
+  mp: number;
   starterId: string | null;
   equippedPartIds: string[];
   inventoryPartIds: string[];
@@ -47,6 +54,7 @@ export function createTitleState(seenIntro: boolean): RunState {
     phase: 'title',
     battleIndex: 1,
     coreHp: CORE_HP_BASE,
+    mp: MP_START,
     starterId: null,
     equippedPartIds: [],
     inventoryPartIds: [],
@@ -56,6 +64,12 @@ export function createTitleState(seenIntro: boolean): RunState {
     resultOutcome: null,
     seenIntro,
   };
+}
+
+// 装備中の部位に応じた現在の最大MP(部位のmax_mp_bonusを含む)。装備変更でmpが上限を
+// 超えていた場合はequipPart/unequipPart側でクランプする。
+export function currentMaxMp(state: RunState): number {
+  return CTB_MP_MAX_BASE + computePlayerModifiers(equippedPartDefs(state)).maxMpBonus;
 }
 
 export function startNewRun(state: RunState): RunState {
@@ -80,23 +94,30 @@ export function ownedPartIds(state: RunState): string[] {
   return [...state.equippedPartIds, ...state.inventoryPartIds];
 }
 
+// 装備変更で最大MPが下がった場合、現在MPが上限を超えないようクランプする
+// (MP改定: MPはHPと同様に戦闘をまたいで持ち越す資源になったため必要になったガード)。
+function clampMpToMax(state: RunState): RunState {
+  const max = currentMaxMp(state);
+  return state.mp > max ? { ...state, mp: max } : state;
+}
+
 export function equipPart(state: RunState, partId: string): RunState {
   if (state.equippedPartIds.includes(partId)) return state;
   if (state.equippedPartIds.length >= MAX_EQUIPPED_PARTS) return state;
-  return {
+  return clampMpToMax({
     ...state,
     equippedPartIds: [...state.equippedPartIds, partId],
     inventoryPartIds: state.inventoryPartIds.filter((id) => id !== partId),
-  };
+  });
 }
 
 export function unequipPart(state: RunState, partId: string): RunState {
   if (!state.equippedPartIds.includes(partId)) return state;
-  return {
+  return clampMpToMax({
     ...state,
     equippedPartIds: state.equippedPartIds.filter((id) => id !== partId),
     inventoryPartIds: [...state.inventoryPartIds, partId],
-  };
+  });
 }
 
 function pickRandom<T>(arr: T[], count: number): T[] {
@@ -120,13 +141,16 @@ export function chooseEnemy(state: RunState, enemyId: string): RunState {
   return { ...state, phase: 'battle', currentEnemyId: enemyId, enemyCandidateIds: [] };
 }
 
-export function finishBattle(state: RunState, result: 'won' | 'lost', finalHp: number): RunState {
+export function finishBattle(state: RunState, result: 'won' | 'lost', finalHp: number, finalMp: number): RunState {
   if (result === 'lost') {
-    return { ...state, phase: 'result', resultOutcome: 'defeat', coreHp: 0 };
+    return { ...state, phase: 'result', resultOutcome: 'defeat', coreHp: 0, mp: finalMp };
   }
   const recovered = Math.min(CORE_HP_BASE, Math.round(finalHp + CORE_HP_BASE * POST_VICTORY_RECOVERY_PCT));
+  const mods = computePlayerModifiers(equippedPartDefs(state));
+  const maxMp = CTB_MP_MAX_BASE + mods.maxMpBonus;
+  const recoveredMp = Math.min(maxMp, Math.round(finalMp + POST_BATTLE_MP_REGEN_BASE + mods.postBattleMpRegenBonus));
   if (state.battleIndex >= TOTAL_BATTLES) {
-    return { ...state, phase: 'result', resultOutcome: 'victory', coreHp: recovered, currentEnemyId: null };
+    return { ...state, phase: 'result', resultOutcome: 'victory', coreHp: recovered, mp: recoveredMp, currentEnemyId: null };
   }
   const owned = new Set(ownedPartIds(state));
   const candidatePool = PARTS.filter((p) => !owned.has(p.id));
@@ -135,6 +159,7 @@ export function finishBattle(state: RunState, result: 'won' | 'lost', finalHp: n
     ...state,
     phase: 'reward',
     coreHp: recovered,
+    mp: recoveredMp,
     currentEnemyId: null,
     dropCandidateIds: candidates.map((p) => p.id),
   };
