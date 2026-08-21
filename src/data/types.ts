@@ -171,7 +171,19 @@ export interface CommandDef {
 // ------------------------------------------------------------
 // 敵の意図表示(仕様書11章): 行動順プレビュー・次行動表示に常時出すタグ。
 // ------------------------------------------------------------
-export type EnemyIntent = 'ATTACK' | 'STRONG' | 'POISON' | 'DEBUFF' | 'DELAY' | 'CHARGE' | 'COUNTER_STANCE' | 'ULTIMATE';
+export type EnemyIntent =
+  | 'ATTACK'
+  | 'STRONG'
+  | 'POISON'
+  | 'DEBUFF'
+  | 'DELAY'
+  | 'CHARGE'
+  | 'COUNTER_STANCE'
+  | 'ULTIMATE'
+  // --- 段階6(敵45接続)で追加 ---
+  | 'WAIT' // 待機系: ダメージを与えない、CTB調整用の行動
+  | 'GUARD' // 防御・再生殻系: 自分を守る/回復する行動
+  | 'BUFF'; // 狂化系: 自分自身を強化する行動
 
 export const ENEMY_INTENT_LABEL: Record<EnemyIntent, string> = {
   ATTACK: 'ATTACK',
@@ -182,6 +194,9 @@ export const ENEMY_INTENT_LABEL: Record<EnemyIntent, string> = {
   CHARGE: 'CHARGE',
   COUNTER_STANCE: 'COUNTER',
   ULTIMATE: 'ULTIMATE',
+  WAIT: 'WAIT',
+  GUARD: 'GUARD',
+  BUFF: 'BUFF',
 };
 
 export interface EnemyMoveDef {
@@ -194,6 +209,11 @@ export interface EnemyMoveDef {
   applyStatus?: StatusApply;
   delayTargetBy?: number; // CT遅延型: プレイヤーのnextAtへ加算する基礎量(耐性の概念はプレイヤー側には適用しない)
   telegraph?: string; // ボスの大技等、専用の警告文(通常のintentタグに加えて表示する)
+  // --- 段階6(敵45接続)で追加。プレイヤー側の同名フィールドと対になる、敵専用の追加効果。 ---
+  selfHeal?: { pct: number }; // 再生系: この技を使うたび自分の最大HPの一定割合を回復する
+  hits?: number; // 多段系: この技が複数回命中し、命中のたびapplyStatusを積み重ねる(プレイヤーのvulnerable等)
+  executeBonus?: { hpPctThreshold: number; bonusMult: number }; // 処刑系: プレイヤーのHP割合が閾値以下なら威力UP
+  selfApplyStatus?: StatusApply; // 暴走/雷/氷系: 自分自身に状態異常を付与する(狂化・不死・加速など)
 }
 
 // 仕様書12章: 通常/エリート/ボスで遅延耐性を変えられるデータ構造。

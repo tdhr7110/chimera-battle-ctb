@@ -680,23 +680,45 @@ export class CtbEngine {
       this.pushEvent({ type: 'telegraph', message: move.telegraph });
     }
 
+    // 再生系(selfHeal)・暴走/雷/氷系(selfApplyStatus): どちらも自分自身への効果なので、
+    // プレイヤーの回避判定とは無関係に発動する。
+    if (move.selfHeal && this.enemy.hp > 0) {
+      const heal = Math.round(this.enemy.maxHp * (move.selfHeal.pct / 100));
+      this.enemy.hp = Math.min(this.enemy.maxHp, this.enemy.hp + heal);
+      this.pushLog(`💚 ${this.enemy.name}は${move.name}で${heal}回復した`);
+      this.pushEvent({ type: 'status_heal', side: 'enemy', kind: 'regen', amount: heal });
+    }
+    if (move.selfApplyStatus) this.applyStatus(this.enemy, move.selfApplyStatus);
+
     const selfAccuracyDown = this.statusMagnitude(this.enemy, 'accuracy_down');
     if (Math.random() * 100 < this.player.evasionPct + selfAccuracyDown) {
       this.pushLog(`💨 キメラは${this.enemy.name}の${move.name}を回避した`);
       this.pushEvent({ type: 'evade', side: 'enemy', targetSide: 'player', commandName: move.name, icon: move.icon });
     } else {
-      const rawPower = this.enemy.power * move.powerMult * (1 - this.statusMagnitude(this.enemy, 'fear') / 100);
+      let power = this.enemy.power * move.powerMult * (1 - this.statusMagnitude(this.enemy, 'fear') / 100);
+      // 処刑系(executeBonus): プレイヤーのHP割合が閾値以下なら威力UP。
+      if (move.executeBonus) {
+        const playerHpPct = this.player.maxHp > 0 ? (this.player.hp / this.player.maxHp) * 100 : 100;
+        if (playerHpPct <= move.executeBonus.hpPctThreshold) power *= move.executeBonus.bonusMult;
+      }
       const vulnerablePct = this.statusMagnitude(this.player, 'vulnerable');
-      const rawDmg = this.computeDamage(rawPower, this.effectiveDefense(this.player), this.player.guardReductionPct, vulnerablePct);
-      this.player.guardReductionPct = 0;
-      const dmg = this.absorbWithShield(this.applyPlayerDefensiveHooks(rawDmg));
-      this.player.hp = Math.max(0, this.player.hp - dmg);
-      this.pushLog(`${this.enemy.icon}${this.enemy.name}の${move.name}が${dmg}ダメージ`);
-      this.pushEvent({ type: 'attack', side: 'enemy', targetSide: 'player', commandName: move.name, icon: move.icon, damage: dmg });
-      if (this.player.hp <= 0 && !this.preventLethalIfPossible(this.player)) this.player.isDead = true;
-      this.applyStatus(this.player, move.applyStatus);
+      // 多段系(hits): 命中回数分ダメージを分割し、命中のたびapplyStatusを積み重ねる。
+      const hitCount = move.hits ?? 1;
+      const perHitPower = power / hitCount;
+      let totalDmg = 0;
+      for (let h = 0; h < hitCount && !this.player.isDead; h++) {
+        const rawDmg = this.computeDamage(perHitPower, this.effectiveDefense(this.player), this.player.guardReductionPct, vulnerablePct);
+        this.player.guardReductionPct = 0;
+        const dmg = this.absorbWithShield(this.applyPlayerDefensiveHooks(rawDmg));
+        this.player.hp = Math.max(0, this.player.hp - dmg);
+        totalDmg += dmg;
+        this.pushLog(`${this.enemy.icon}${this.enemy.name}の${move.name}が${dmg}ダメージ${hitCount > 1 ? `(${h + 1}/${hitCount})` : ''}`);
+        this.pushEvent({ type: 'attack', side: 'enemy', targetSide: 'player', commandName: move.name, icon: move.icon, damage: dmg });
+        if (this.player.hp <= 0 && !this.preventLethalIfPossible(this.player)) this.player.isDead = true;
+        if (!this.player.isDead) this.applyStatus(this.player, move.applyStatus);
+      }
       if (move.delayTargetBy && !this.player.isDead) this.applyDelayToPlayer(move.delayTargetBy);
-      if (!this.player.isDead) this.triggerBleedOnHit(this.player);
+      if (!this.player.isDead && totalDmg > 0) this.triggerBleedOnHit(this.player);
     }
     const weightMult = this.effectiveWeightMult(this.enemy, move.ctWeight) * this.consumeParalyzeExtraMult(this.enemy);
     this.nextAt.enemy += actionInterval(this.enemy.speed, weightMult);
