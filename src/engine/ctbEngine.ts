@@ -53,7 +53,8 @@ const CTB_MP_MAX_BASE = 100;
 const CTB_MP_START_RATIO = 0.4;
 const CTB_MP_REGEN_PER_TURN_BASE = 14;
 
-const PLAYER_BASE = { name: 'キメラ', icon: '🧬', color: '#4ade80', maxHp: 130, defense: 3, power: 15, evasionPct: 5, speed: 100 };
+// 統合版(本編)がラン全体の最大HP等を参照できるようexportする(値そのものは変更しない)。
+export const PLAYER_BASE = { name: 'キメラ', icon: '🧬', color: '#4ade80', maxHp: 130, defense: 3, power: 15, evasionPct: 5, speed: 100 };
 
 function actionInterval(speed: number, weightMult: number): number {
   return CTB_BASE_INTERVAL * (100 / Math.max(20, speed)) * weightMult;
@@ -172,7 +173,9 @@ export class CtbEngine {
   private pendingEnemyAnnounce: { moveName: string; icon: string; telegraph: string | null } | null = null;
   private activeSynergyNames: string[];
 
-  constructor(enemyDef: EnemyDef, equippedParts: PartDef[] = []) {
+  // startingHp: 統合版(本編)がラン中のHPを戦闘間で持ち越すための追加パラメータ。
+  // 省略時はフルHPで開始する従来通りの単発デモ挙動のまま(既存の呼び出し元・挙動は変わらない)。
+  constructor(enemyDef: EnemyDef, equippedParts: PartDef[] = [], startingHp?: number) {
     const mods = computePlayerModifiers(equippedParts);
     this.activeSynergyNames = activeSynergies(equippedParts).map((s) => s.name);
     const maxMp = CTB_MP_MAX_BASE + mods.maxMpBonus;
@@ -182,7 +185,7 @@ export class CtbEngine {
       name: PLAYER_BASE.name,
       icon: PLAYER_BASE.icon,
       color: PLAYER_BASE.color,
-      hp: PLAYER_BASE.maxHp,
+      hp: startingHp !== undefined ? Math.max(1, Math.min(PLAYER_BASE.maxHp, Math.round(startingHp))) : PLAYER_BASE.maxHp,
       maxHp: PLAYER_BASE.maxHp,
       defense: PLAYER_BASE.defense,
       power: PLAYER_BASE.power,
@@ -608,6 +611,10 @@ export class CtbEngine {
   }
   getStatus(): CtbStatus {
     return this.status;
+  }
+  // 統合版(本編)が戦闘終了後にRunStateへHPを持ち越すための取得用API。
+  getFinalPlayerHp(): number {
+    return Math.round(this.player.hp);
   }
 
   private actorSnapshot(a: RuntimeActor): CtbActorSnapshot {

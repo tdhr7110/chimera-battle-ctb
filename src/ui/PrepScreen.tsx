@@ -1,83 +1,196 @@
 import { useMemo, useState } from 'react';
-import { PARTS } from '../data/parts';
-import { activeSynergies } from '../engine/modifiers';
-import type { PartDef } from '../data/types';
+import { PARTS, getPart } from '../data/parts';
+import { COMMANDS } from '../data/commands';
+import { SYNERGIES } from '../data/synergies';
+import { PLAYER_BASE } from '../engine/ctbEngine';
+import { computePlayerModifiers, synergyPartCount } from '../engine/modifiers';
+import { CT_WEIGHT_LABEL } from '../data/types';
+import { equippedPartDefs, MAX_EQUIPPED_PARTS, TOTAL_BATTLES, tierOfCurrentBattle, type RunState } from '../engine/run';
 
 // ============================================================
-// 仕様書13章「今回テストする代表ビルド」を実際に組めるようにするための、
-// 最小限の装備選択画面。全80部位の本格的な装備UIはまだ作らず、
-// 第1弾10部位から最大2個を選ぶだけの検証用インターフェースにしている。
+// 統合版(本編)の戦闘待機/キメラビルド画面(仕様書3章)。
+// ステータス・部位・シナジー・コマンドをタブで確認できる、ゲーム全体の中核画面。
 // ============================================================
 
-const PRESETS: { label: string; description: string; partIds: string[] }[] = [
-  { label: 'A: 高速型', description: '俊足脚 + 六節脚 — 敵より多く行動できるか確認する', partIds: ['swift_legs', 'six_legs'] },
-  { label: 'B: 重量型', description: '豪腕 + 重装脚 — 行動回数を犠牲に大ダメージを狙う', partIds: ['giant_arm', 'heavy_legs'] },
-  { label: 'C: CT妨害型', description: '時喰い眼 — 遅延打撃・加速で行動順を操作する', partIds: ['time_eye'] },
-  { label: 'D: MP循環型', description: '第二心臓 + 魔力嚢 — MPを回しながら高性能技を使う', partIds: ['second_heart', 'mana_sac'] },
-];
+type Tab = 'status' | 'parts' | 'synergy' | 'commands';
 
-const MAX_EQUIPPED = 2;
+const TIER_LABEL: Record<string, string> = { normal: '通常戦', elite: 'エリート戦', boss: 'ボス戦' };
 
-export function PrepScreen({ onReady }: { onReady: (parts: PartDef[]) => void }) {
-  const [equippedIds, setEquippedIds] = useState<string[]>([]);
+export function PrepScreen({
+  state,
+  onEquip,
+  onUnequip,
+  onGoToEnemySelect,
+}: {
+  state: RunState;
+  onEquip: (partId: string) => void;
+  onUnequip: (partId: string) => void;
+  onGoToEnemySelect: () => void;
+}) {
+  const [tab, setTab] = useState<Tab>('status');
+  const equippedDefs = useMemo(() => equippedPartDefs(state), [state.equippedPartIds]);
+  const mods = useMemo(() => computePlayerModifiers(equippedDefs), [equippedDefs]);
+  const activeSynergyIds = useMemo(() => {
+    return SYNERGIES.filter((syn) => synergyPartCount(syn, equippedDefs) >= syn.threshold).map((s) => s.id);
+  }, [equippedDefs]);
 
-  const equippedParts = useMemo(() => equippedIds.map((id) => PARTS.find((p) => p.id === id)!).filter(Boolean), [equippedIds]);
-  const synergies = useMemo(() => activeSynergies(equippedParts), [equippedParts]);
-
-  function toggle(id: string) {
-    setEquippedIds((prev) => {
-      if (prev.includes(id)) return prev.filter((p) => p !== id);
-      if (prev.length >= MAX_EQUIPPED) return [prev[1], id]; // 3個目は最も古いものと入れ替える
-      return [...prev, id];
-    });
-  }
+  const speed = Math.round(PLAYER_BASE.speed + mods.speedFlatBonus);
+  const maxMp = 100 + mods.maxMpBonus;
+  const nextTier = TIER_LABEL[tierOfCurrentBattle(state)] ?? '通常戦';
 
   return (
-    <div className="select-screen">
-      <h1>⏱️ キメラバトル CTB 再設計データ 第1弾</h1>
-      <p className="select-screen__lead">
-        まず部位を最大{MAX_EQUIPPED}個まで装着してください(0個でも戦闘可能です)。仕様書13章の代表ビルドはプリセットから一発で組めます。
-      </p>
+    <div className="prep-screen">
+      <header className="screen__header">
+        <div>
+          第{state.battleIndex}戦 / 全{TOTAL_BATTLES}戦（{nextTier}）
+        </div>
+      </header>
 
-      <div className="preset-row">
-        {PRESETS.map((p) => (
-          <button key={p.label} type="button" className="preset-btn" onClick={() => setEquippedIds(p.partIds)} title={p.description}>
-            {p.label}
-          </button>
-        ))}
-        <button type="button" className="preset-btn preset-btn--clear" onClick={() => setEquippedIds([])}>
-          装備なし
+      <div className="hp-bar hp-bar--large">
+        <div className="hp-bar__fill" style={{ width: `${(state.coreHp / PLAYER_BASE.maxHp) * 100}%`, background: 'var(--color-player)' }} />
+        <div className="hp-bar__label">
+          🧬 コアHP {state.coreHp} / {PLAYER_BASE.maxHp}
+        </div>
+      </div>
+
+      <div className="tab-row">
+        <button className={`tab-btn${tab === 'status' ? ' tab-btn--active' : ''}`} onClick={() => setTab('status')}>
+          ❤️ ステータス
+        </button>
+        <button className={`tab-btn${tab === 'parts' ? ' tab-btn--active' : ''}`} onClick={() => setTab('parts')}>
+          🦴 部位
+        </button>
+        <button className={`tab-btn${tab === 'synergy' ? ' tab-btn--active' : ''}`} onClick={() => setTab('synergy')}>
+          🔗 シナジー
+        </button>
+        <button className={`tab-btn${tab === 'commands' ? ' tab-btn--active' : ''}`} onClick={() => setTab('commands')}>
+          ⚡ コマンド
         </button>
       </div>
 
-      <div className="part-grid">
-        {PARTS.map((part) => {
-          const selected = equippedIds.includes(part.id);
-          return (
-            <button key={part.id} type="button" className={`part-card${selected ? ' part-card--selected' : ''}`} onClick={() => toggle(part.id)}>
-              <div className="part-card__head">
-                <span className="part-card__icon">{part.icon}</span>
-                {part.name}
+      <div className="tab-content">
+        {tab === 'status' && (
+          <div className="status-grid">
+            <div className="status-row">
+              <span>⚔️ 攻撃力</span>
+              <strong>{PLAYER_BASE.power}</strong>
+            </div>
+            <div className="status-row">
+              <span>🛡️ 防御力</span>
+              <strong>{PLAYER_BASE.defense}</strong>
+            </div>
+            <div className="status-row">
+              <span>💨 速度</span>
+              <strong>{speed}</strong>
+            </div>
+            <div className="status-row">
+              <span>🔷 最大MP</span>
+              <strong>{maxMp}</strong>
+            </div>
+            <div className="status-row">
+              <span>🎯 回避率</span>
+              <strong>{PLAYER_BASE.evasionPct}%</strong>
+            </div>
+            <div className="status-row">
+              <span>🦴 装着部位</span>
+              <strong>
+                {state.equippedPartIds.length} / {MAX_EQUIPPED_PARTS}
+              </strong>
+            </div>
+          </div>
+        )}
+
+        {tab === 'parts' && (
+          <div className="part-tab">
+            <div className="part-tab__section-title">装着中({state.equippedPartIds.length}/{MAX_EQUIPPED_PARTS})</div>
+            <div className="part-grid">
+              {state.equippedPartIds.map((id) => {
+                const part = getPart(id);
+                if (!part) return null;
+                return (
+                  <button key={id} type="button" className="part-card part-card--selected" onClick={() => onUnequip(id)}>
+                    <div className="part-card__head">
+                      <span className="part-card__icon">{part.icon}</span>
+                      {part.name}
+                    </div>
+                    <div className="part-card__desc">{part.description}</div>
+                  </button>
+                );
+              })}
+              {state.equippedPartIds.length === 0 && <p className="muted">装着中の部位はありません。</p>}
+            </div>
+
+            {state.inventoryPartIds.length > 0 && (
+              <>
+                <div className="part-tab__section-title">インベントリ(未装着)</div>
+                <div className="part-grid">
+                  {state.inventoryPartIds.map((id) => {
+                    const part = getPart(id);
+                    if (!part) return null;
+                    const full = state.equippedPartIds.length >= MAX_EQUIPPED_PARTS;
+                    return (
+                      <button key={id} type="button" className="part-card" disabled={full} onClick={() => onEquip(id)} title={full ? '装着枠が空いていません' : '装着する'}>
+                        <div className="part-card__head">
+                          <span className="part-card__icon">{part.icon}</span>
+                          {part.name}
+                        </div>
+                        <div className="part-card__desc">{part.description}</div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </>
+            )}
+
+            <p className="muted" style={{ fontSize: '0.65rem' }}>
+              まだ入手していない部位は敵を倒した報酬で手に入ります(全{PARTS.length}種)。
+            </p>
+          </div>
+        )}
+
+        {tab === 'synergy' && (
+          <div className="synergy-tab">
+            {SYNERGIES.map((syn) => {
+              const count = synergyPartCount(syn, equippedDefs);
+              const active = activeSynergyIds.includes(syn.id);
+              const remaining = Math.max(0, syn.threshold - count);
+              return (
+                <div key={syn.id} className={`synergy-row${active ? ' synergy-row--active' : ''}`}>
+                  <div className="synergy-row__head">
+                    <strong>{syn.name}</strong>
+                    <span>
+                      {count}/{syn.threshold}
+                    </span>
+                  </div>
+                  <div className="synergy-row__desc">{syn.description}</div>
+                  <div className="synergy-row__status">{active ? '✅ 発動中' : `あと${remaining}個で発動`}</div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {tab === 'commands' && (
+          <div className="command-tab">
+            {COMMANDS.map((cmd) => (
+              <div key={cmd.id} className="command-tab__row">
+                <span className="command-tab__icon">{cmd.icon}</span>
+                <div className="command-tab__body">
+                  <div className="command-tab__name">{cmd.name}</div>
+                  <div className="command-tab__desc">{cmd.description}</div>
+                </div>
+                <div className="command-tab__stats">
+                  <span>🔷{cmd.mpCost}</span>
+                  <span>{CT_WEIGHT_LABEL[cmd.ctWeight]}</span>
+                </div>
               </div>
-              <div className="part-card__desc">{part.description}</div>
-            </button>
-          );
-        })}
+            ))}
+          </div>
+        )}
       </div>
 
-      {synergies.length > 0 && (
-        <div className="synergy-panel">
-          <div className="synergy-panel__title">🔗 発動中のシナジー</div>
-          {synergies.map((s) => (
-            <div key={s.id} className="synergy-panel__item">
-              <strong>{s.name}</strong> — {s.description}
-            </div>
-          ))}
-        </div>
-      )}
-
-      <button type="button" className="btn btn--primary btn--block" onClick={() => onReady(equippedParts)}>
-        次へ(敵を選ぶ) ▶
+      <button type="button" className="btn btn--primary btn--block" onClick={onGoToEnemySelect}>
+        ⚔️ 次の戦闘へ進む
       </button>
     </div>
   );

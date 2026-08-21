@@ -69,7 +69,7 @@ export const PARTS: PartDef[] = [
   {
     id: 'many_arms',
     name: '多腕',
-    icon: '🫆',
+    icon: '🦾',
     type: 'arm',
     tags: [],
     effects: [{ kind: 'power_bonus_light_pct', pct: 20 }],

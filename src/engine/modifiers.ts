@@ -90,7 +90,8 @@ export function computePlayerModifiers(equippedParts: PartDef[]): PlayerModifier
 
 // TSの制御フロー解析はsyn.countBy.kindでの分岐narrowingをコールバック(filterの引数)の
 // 中まで保持できないため、countByをローカル変数へ切り出してから判定する。
-function synergyPartCount(syn: SynergyDef, equippedParts: PartDef[]): number {
+// UI側(PrepScreenのシナジータブ等)からも同じロジックを使えるようexportしている。
+export function synergyPartCount(syn: SynergyDef, equippedParts: PartDef[]): number {
   const countBy = syn.countBy;
   if (countBy.kind === 'type') return equippedParts.filter((p) => p.type === countBy.type).length;
   return equippedParts.filter((p) => p.tags.includes(countBy.tag)).length;

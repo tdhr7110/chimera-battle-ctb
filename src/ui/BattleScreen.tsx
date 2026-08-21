@@ -30,11 +30,13 @@ interface Toast {
 export function BattleScreen({
   enemy,
   equippedParts,
+  startingHp,
   onExit,
 }: {
   enemy: EnemyDef;
   equippedParts: PartDef[];
-  onExit: (result: 'won' | 'lost') => void;
+  startingHp?: number;
+  onExit: (result: 'won' | 'lost', finalHp: number) => void;
 }) {
   const engineRef = useRef<CtbEngine | null>(null);
   const [snapshot, setSnapshot] = useState<CtbSnapshot | null>(null);
@@ -100,7 +102,7 @@ export function BattleScreen({
   // という段階的な戦闘開始シーケンス。engine自体はタイマーを持たない状態機械なので、
   // ここでsetTimeoutを使って各フェーズの遷移を演出込みで進める。
   useEffect(() => {
-    const engine = new CtbEngine(enemy, equippedParts);
+    const engine = new CtbEngine(enemy, equippedParts, startingHp);
     engineRef.current = engine;
     floatersRef.current = [];
     toastsRef.current = [];
@@ -216,9 +218,6 @@ export function BattleScreen({
         <h1>
           ⏱️ CTB戦闘 <span className="badge">TURN {snapshot.turnCount}</span>
         </h1>
-        <button className="btn" onClick={() => onExit(snapshot.status === 'lost' ? 'lost' : 'won')} style={{ opacity: 0.7 }}>
-          ✕
-        </button>
       </header>
 
       <div className="ctb-order">
@@ -325,7 +324,7 @@ export function BattleScreen({
           <button
             type="button"
             className={`end-overlay end-overlay--${snapshot.status}`}
-            onClick={() => onExit(snapshot.status === 'won' ? 'won' : 'lost')}
+            onClick={() => onExit(snapshot.status === 'won' ? 'won' : 'lost', engineRef.current?.getFinalPlayerHp() ?? 0)}
           >
             <div className="end-overlay__text">{snapshot.status === 'won' ? '勝利！' : '敗北…'}</div>
             <div className="end-overlay__hint">タップして戻る</div>

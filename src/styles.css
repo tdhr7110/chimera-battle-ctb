@@ -771,3 +771,370 @@ button {
   font-size: 0.75rem;
   color: var(--color-text-muted);
 }
+
+/* ============================================================
+   統合版(本編)追加UI: タイトル/素体選択/待機(タブ)/報酬/結果
+   ============================================================ */
+
+.save-notice-banner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  background: rgba(251, 191, 36, 0.12);
+  border: 1px solid rgba(251, 191, 36, 0.5);
+  border-radius: var(--radius-md);
+  color: var(--color-yellow);
+  font-size: 0.68rem;
+  line-height: 1.4;
+}
+.save-notice-banner__close {
+  margin-left: auto;
+  background: none;
+  border: none;
+  color: var(--color-yellow);
+  font-size: 0.9rem;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.btn--primary {
+  background: linear-gradient(90deg, var(--color-cyan), var(--color-purple));
+  border-color: transparent;
+  color: #06121c;
+}
+
+/* --- タイトル画面 --- */
+.title-screen {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 28px;
+  min-height: 70vh;
+  text-align: center;
+}
+.title-screen__logo {
+  font-size: 4rem;
+}
+.title-screen__name {
+  font-size: 1.4rem;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  margin-top: 6px;
+}
+.title-screen__sub {
+  font-size: 0.75rem;
+  color: var(--color-cyan);
+  font-weight: 700;
+  letter-spacing: 0.12em;
+}
+.title-screen__buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+  max-width: 280px;
+}
+
+/* --- モーダル(遊び方等) --- */
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  background: rgba(6, 3, 12, 0.78);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+.modal-card {
+  width: 100%;
+  max-width: 380px;
+  max-height: 80vh;
+  overflow-y: auto;
+  background: var(--color-panel);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.modal-card h2 {
+  margin: 0;
+  font-size: 1rem;
+}
+.howto-list {
+  margin: 0;
+  padding-left: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 0.75rem;
+  line-height: 1.5;
+  color: var(--color-text-muted);
+}
+
+/* --- 素体選択 --- */
+.starter-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+.starter-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 16px 10px;
+  min-width: 0;
+  background: var(--color-panel);
+  border: 2px solid var(--color-border);
+  border-radius: var(--radius-md);
+  color: var(--color-text);
+  cursor: pointer;
+  text-align: center;
+}
+.starter-card:active {
+  transform: scale(0.97);
+}
+.starter-card__icon {
+  font-size: 2rem;
+}
+.starter-card__name {
+  font-weight: 800;
+  font-size: 0.85rem;
+}
+.starter-card__desc {
+  font-size: 0.65rem;
+  color: var(--color-text-muted);
+  line-height: 1.4;
+}
+
+/* --- 戦闘待機画面(タブ) --- */
+.prep-screen {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.screen__header {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--color-text-muted);
+}
+.hp-bar--large {
+  height: 22px;
+}
+.tab-row {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 4px;
+}
+.tab-btn {
+  padding: 8px 2px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+  background: var(--color-panel);
+  color: var(--color-text-muted);
+  font-size: 0.65rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+.tab-btn--active {
+  background: linear-gradient(165deg, var(--color-panel-2), var(--color-panel));
+  border-color: var(--color-cyan);
+  color: var(--color-text);
+}
+.tab-content {
+  min-height: 220px;
+  padding: 10px;
+  background: var(--color-panel);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+.status-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.status-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.8rem;
+  padding-bottom: 6px;
+  border-bottom: 1px dashed var(--color-border);
+}
+.part-tab__section-title {
+  font-size: 0.68rem;
+  color: var(--color-text-muted);
+  margin: 6px 0;
+  font-weight: 700;
+}
+.part-tab .part-grid {
+  margin-bottom: 4px;
+}
+.part-card:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.synergy-tab {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.synergy-row {
+  padding: 8px 10px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+  background: var(--color-panel-2);
+  opacity: 0.7;
+}
+.synergy-row--active {
+  opacity: 1;
+  border-color: var(--color-cyan);
+  box-shadow: 0 0 10px rgba(56, 189, 248, 0.3);
+}
+.synergy-row__head {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.78rem;
+  margin-bottom: 3px;
+}
+.synergy-row__desc {
+  font-size: 0.65rem;
+  color: var(--color-text-muted);
+}
+.synergy-row__status {
+  margin-top: 4px;
+  font-size: 0.65rem;
+  font-weight: 800;
+  color: var(--color-cyan);
+}
+.command-tab {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.command-tab__row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-bottom: 8px;
+  border-bottom: 1px dashed var(--color-border);
+}
+.command-tab__icon {
+  font-size: 1.2rem;
+}
+.command-tab__body {
+  flex: 1;
+  min-width: 0;
+}
+.command-tab__name {
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+.command-tab__desc {
+  font-size: 0.62rem;
+  color: var(--color-text-muted);
+}
+.command-tab__stats {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+  font-size: 0.62rem;
+  color: var(--color-text-muted);
+  white-space: nowrap;
+}
+
+/* --- 報酬画面(中央カード選択) --- */
+.reward-screen {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  background: rgba(6, 3, 12, 0.88);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 20px;
+}
+.reward-screen__title {
+  font-size: 1.4rem;
+  font-weight: 900;
+}
+.reward-screen__sub {
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+  margin-top: -12px;
+}
+.reward-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+  max-width: 320px;
+}
+.reward-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 16px;
+  background: var(--color-panel);
+  border: 2px solid var(--color-cyan);
+  border-radius: var(--radius-md);
+  color: var(--color-text);
+  cursor: pointer;
+  box-shadow: 0 0 16px rgba(56, 189, 248, 0.3);
+}
+.reward-card:active {
+  transform: scale(0.97);
+}
+.reward-card__icon {
+  font-size: 2rem;
+}
+.reward-card__name {
+  font-weight: 800;
+  font-size: 0.9rem;
+}
+.reward-card__type {
+  font-size: 0.6rem;
+  color: var(--color-cyan);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+.reward-card__desc {
+  font-size: 0.68rem;
+  color: var(--color-text-muted);
+  text-align: center;
+}
+
+/* --- 結果画面 --- */
+.result-screen {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  min-height: 70vh;
+  text-align: center;
+}
+.result-screen__title {
+  font-size: 2.2rem;
+  font-weight: 900;
+}
+.result-screen__title--victory {
+  color: var(--color-yellow);
+  text-shadow: 0 0 20px rgba(251, 191, 36, 0.7);
+}
+.result-screen__title--defeat {
+  color: var(--color-enemy);
+  text-shadow: 0 0 20px rgba(248, 113, 113, 0.7);
+}
+.result-screen__sub {
+  font-size: 0.85rem;
+  color: var(--color-text-muted);
+}
