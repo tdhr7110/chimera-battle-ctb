@@ -1,5 +1,6 @@
-import type { PartDef, PartEffect, StatusApply, StatusKind, SynergyDef, SynergyRuleChange } from '../data/types';
+import type { CommandDef, PartDef, PartEffect, StatusApply, StatusKind, SynergyDef, SynergyRuleChange } from '../data/types';
 import { SYNERGIES } from '../data/synergies';
+import { COMMANDS } from '../data/commands';
 
 // ============================================================
 // 装備中の部位(+シナジー)から、CTBエンジンが参照する数値をまとめて計算する。
@@ -227,4 +228,20 @@ export function activeSynergyRuleChanges(equippedParts: PartDef[]): SynergyRuleC
     }
   }
   return out;
+}
+
+// ------------------------------------------------------------
+// コマンド段階的解放: unlockAlwaysの基礎4コマンド以外は、対応するunlockTagを持つ部位を
+// 1つでも装着するまで使用不可(バトル画面にも出さない)。UI(PrepScreenのコマンドタブ等)
+// からも同じ判定を使えるようexportしている。
+// ------------------------------------------------------------
+export function isCommandUnlocked(cmd: CommandDef, equippedParts: PartDef[]): boolean {
+  if (cmd.unlockAlways) return true;
+  if (!cmd.unlockTag) return true;
+  return equippedParts.some((p) => p.tags.includes(cmd.unlockTag!));
+}
+
+// 現在の装備で解放されているコマンドID一覧。CtbEngineが戦闘中の選択肢を絞るのに使う。
+export function computeUnlockedCommandIds(equippedParts: PartDef[]): Set<string> {
+  return new Set(COMMANDS.filter((c) => isCommandUnlocked(c, equippedParts)).map((c) => c.id));
 }

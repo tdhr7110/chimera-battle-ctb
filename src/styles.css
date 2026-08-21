@@ -639,6 +639,10 @@ button {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 8px;
+  /* 解放コマンドが増えても戦闘画面全体はスクロールさせず、コマンド一覧だけ内部スクロールする */
+  max-height: 176px;
+  overflow-y: auto;
+  padding-right: 2px;
 }
 .command-grid__ultra {
   grid-column: 1 / -1;
@@ -727,7 +731,7 @@ button {
   gap: 8px;
 }
 .log-panel {
-  max-height: 100px;
+  max-height: 76px;
   overflow-y: auto;
   padding: 6px 10px;
   background: var(--color-panel);
@@ -1046,6 +1050,9 @@ button {
   font-size: 0.62rem;
   color: var(--color-text-muted);
   white-space: nowrap;
+}
+.command-tab__row--locked {
+  opacity: 0.45;
 }
 
 /* --- 報酬画面(中央カード選択) --- */

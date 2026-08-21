@@ -1,5 +1,5 @@
 import { COMMANDS, getCommand } from '../data/commands';
-import { activeSynergies, activeSynergyRuleChanges, computePlayerModifiers, type PlayerModifiers } from './modifiers';
+import { activeSynergies, activeSynergyRuleChanges, computePlayerModifiers, computeUnlockedCommandIds, type PlayerModifiers } from './modifiers';
 import type { CommandDef, EnemyDef, EnemyIntent, EnemyMoveDef, EnemyPhase, EnemyTier, PartDef, Side, StatusApply, StatusKind } from '../data/types';
 import {
   CT_DELAY_UNITS_CEILING,
@@ -189,6 +189,7 @@ export class CtbEngine {
   private autoMode = false;
   private pendingEnemyAnnounce: { moveName: string; icon: string; telegraph: string | null } | null = null;
   private activeSynergyNames: string[];
+  private unlockedCommandIds: Set<string>;
   private playerReviveAvailable: boolean; // シナジー「多心臓」3段階目: 戦闘中1回だけ致死を耐える
   private playerExtraActionRules: { afterCtWeight: CommandDef['ctWeight']; chancePct: number }[];
   private enemyPhases: EnemyPhase[];
@@ -219,6 +220,7 @@ export class CtbEngine {
   constructor(enemyDef: EnemyDef, equippedParts: PartDef[] = [], startingHp?: number, startingMp?: number) {
     const mods = computePlayerModifiers(equippedParts);
     this.activeSynergyNames = activeSynergies(equippedParts).map((s) => s.name);
+    this.unlockedCommandIds = computeUnlockedCommandIds(equippedParts);
     const ruleChanges = activeSynergyRuleChanges(equippedParts);
     this.playerReviveAvailable = ruleChanges.some((r) => r.kind === 'revive_once');
     this.playerExtraActionRules = ruleChanges.flatMap((r) =>
@@ -1029,6 +1031,7 @@ export class CtbEngine {
     if (this.phase !== 'player_turn') return { ok: false, reason: 'まだ行動順ではありません' };
     const cmd = getCommand(commandId);
     if (!cmd) return { ok: false, reason: '不明なコマンドです' };
+    if (!this.unlockedCommandIds.has(cmd.id)) return { ok: false, reason: 'このコマンドはまだ未解放です' };
     // シナジー「演算生命」2段階目以降(utility_mp_cost_reduction_pct): 補助系コマンドのMPコストを軽減。
     const effectiveMpCost =
       cmd.powerMult <= 0 && this.player.mods.utilityMpCostReductionPct > 0
@@ -1134,7 +1137,13 @@ export class CtbEngine {
     const nextMove = this.currentEnemyMove();
     if (nextMove.intent === 'ULTIMATE' || nextMove.intent === 'STRONG') {
       const delayStrike = getCommand('CMD011')!;
-      if (this.mp >= delayStrike.mpCost && this.statusMagnitude(this.player, 'silence') === 0 && Math.random() < 0.5) return delayStrike;
+      if (
+        this.unlockedCommandIds.has(delayStrike.id) &&
+        this.mp >= delayStrike.mpCost &&
+        this.statusMagnitude(this.player, 'silence') === 0 &&
+        Math.random() < 0.5
+      )
+        return delayStrike;
       return guard;
     }
 
@@ -1145,7 +1154,7 @@ export class CtbEngine {
       { cmd: getCommand('CMD003')!, weight: 2 }, // 強打
       { cmd: getCommand('CMD006')!, weight: 1.4 }, // 火炎牙
       { cmd: getCommand('CMD007')!, weight: 1 }, // 毒針
-    ].filter((p) => this.mp >= p.cmd.mpCost && !(silenced && p.cmd.mpCost > 0));
+    ].filter((p) => this.unlockedCommandIds.has(p.cmd.id) && this.mp >= p.cmd.mpCost && !(silenced && p.cmd.mpCost > 0));
 
     const totalWeight = pool.reduce((s, p) => s + p.weight, 0);
     let roll = Math.random() * totalWeight;
@@ -1253,7 +1262,7 @@ export class CtbEngine {
       mp: { current: Math.round(this.mp), max: this.player.maxMp },
       order: this.previewOrder(null),
       nextEnemyAction: nextMove ? { intent: nextMove.intent, moveName: nextMove.name, icon: nextMove.icon } : null,
-      commands: COMMANDS.map((c) => this.commandPreview(c)),
+      commands: COMMANDS.filter((c) => this.unlockedCommandIds.has(c.id)).map((c) => this.commandPreview(c)),
       activeSynergyNames: this.activeSynergyNames,
       log: this.log.slice(0, 30),
       autoMode: this.autoMode,
