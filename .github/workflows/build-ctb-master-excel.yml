@@ -1,10 +1,13 @@
-name: Build CTB master Excel
+name: Bootstrap CTB master Excel
 
 on:
-  push:
+  pull_request:
     branches: [main]
     paths:
       - scripts/build_ctb_master_excel.py
+      - scripts/ctb_master_bootstrap.b64
+      - scripts/import_ctb_master.py
+      - .github/workflows/build-ctb-master-excel.yml
   workflow_dispatch:
 
 permissions:
@@ -13,21 +16,36 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'pull_request' && github.head_ref || github.ref_name }}
+          fetch-depth: 0
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
       - run: pip install openpyxl
-      - run: python scripts/build_ctb_master_excel.py
-      - name: Commit generated workbook
+      - name: Build valid XLSX from one-time bootstrap data
+        run: python scripts/build_ctb_master_excel.py
+      - name: Validate XLSX container
+        run: python -c "import zipfile; p='docs/data/chimera_battle_ctb_redesign_v02_clean.xlsx'; assert zipfile.is_zipfile(p), 'invalid xlsx'; print('valid xlsx')"
+      - name: Import Excel master to generated game data
+        if: hashFiles('scripts/import_ctb_master.py') != ''
+        run: python scripts/import_ctb_master.py
+      - name: Commit generated workbook and data to the working branch
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add docs/data/chimera_battle_ctb_redesign_v02_clean.xlsx
+          if [ -d src/data/generated ]; then git add src/data/generated; fi
           if git diff --cached --quiet; then
-            echo "No workbook changes"
+            echo "No generated changes"
           else
-            git commit -m "data: add CTB master Excel"
-            git push
+            git commit -m "data: generate valid CTB master Excel and JSON"
+            if [ "${{ github.event_name }}" = "pull_request" ]; then
+              git push origin HEAD:${{ github.head_ref }}
+            else
+              git push
+            fi
           fi
