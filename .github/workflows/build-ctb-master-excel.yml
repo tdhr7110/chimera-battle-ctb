@@ -1,51 +1,33 @@
-name: Bootstrap CTB master Excel
+name: Validate CTB Excel master
 
 on:
   pull_request:
     branches: [main]
     paths:
-      - scripts/build_ctb_master_excel.py
-      - scripts/ctb_master_bootstrap.b64
+      - docs/data/chimera_battle_ctb_redesign_v02_clean.xlsx
       - scripts/import_ctb_master.py
+      - src/data/generated/**
+      - package.json
+      - .github/workflows/build-ctb-master-excel.yml
+  push:
+    branches: [main]
+    paths:
+      - docs/data/chimera_battle_ctb_redesign_v02_clean.xlsx
+      - scripts/import_ctb_master.py
+      - src/data/generated/**
+      - package.json
       - .github/workflows/build-ctb-master-excel.yml
   workflow_dispatch:
 
-permissions:
-  contents: write
-
 jobs:
-  build:
+  validate:
     runs-on: ubuntu-latest
-    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
     steps:
       - uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event_name == 'pull_request' && github.head_ref || github.ref_name }}
-          fetch-depth: 0
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - run: pip install openpyxl
-      - name: Build valid XLSX from one-time bootstrap data
-        run: python scripts/build_ctb_master_excel.py
-      - name: Validate XLSX container
-        run: python -c "import zipfile; p='docs/data/chimera_battle_ctb_redesign_v02_clean.xlsx'; assert zipfile.is_zipfile(p), 'invalid xlsx'; print('valid xlsx')"
-      - name: Import Excel master to generated game data
-        if: hashFiles('scripts/import_ctb_master.py') != ''
-        run: python scripts/import_ctb_master.py
-      - name: Commit generated workbook and data to the working branch
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add docs/data/chimera_battle_ctb_redesign_v02_clean.xlsx
-          if [ -d src/data/generated ]; then git add src/data/generated; fi
-          if git diff --cached --quiet; then
-            echo "No generated changes"
-          else
-            git commit -m "data: generate valid CTB master Excel and JSON"
-            if [ "${{ github.event_name }}" = "pull_request" ]; then
-              git push origin HEAD:${{ github.head_ref }}
-            else
-              git push
-            fi
-          fi
+      - name: Validate XLSX and generated runtime master data
+        run: python scripts/import_ctb_master.py --check
+      - name: Show generated-data manifest
+        run: cat src/data/generated/manifest.json
