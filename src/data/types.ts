@@ -55,6 +55,14 @@ export const CT_DELAY_UNITS_CEILING = 140; // 遅延打撃1回で加算できる
 // mp_leak = MP漏出。行動するたびmagnitude分MPを追加消費する(新しい資源減少フック)。
 // shock = 感電。加算スタックし、一定スタック数(SHOCK_TRIGGER_STACKS)に達すると
 //   自動でCT遅延が発動してスタックがリセットされる(閾値トリガー型の新フック)。
+// fear = 恐怖。攻撃力DOWN(magnitude%)とCT増加(同magnitude%)を同時に受ける複合型。
+//   Excelの主な付与元は「咆哮系」(CMD015)。
+// predation_mark = 捕食印。撃破時の回復量ボーナス(killBonus.healPct)をmagnitude%上乗せする。
+//   Excelの主な付与元は「捕食系」(CMD032)。
+// time_wound = 時間傷。CT遅延を受けるたび、そのダメージ量がmagnitude%ずつ増幅される複利型。
+//   Excelの主な付与元は「時間系」(CMD023)。
+// (「反撃」はExcel上の主な付与元が「カウンター姿勢」=CMD014そのものであり、
+//   既にcounterStance(単発反撃)として実装済みのため、別枠のStatusKindは設けていない。)
 // ------------------------------------------------------------
 export type StatusKind =
   | 'burn'
@@ -72,7 +80,10 @@ export type StatusKind =
   | 'shock'
   | 'frozen'
   | 'defense_down'
-  | 'frenzy';
+  | 'frenzy'
+  | 'fear'
+  | 'predation_mark'
+  | 'time_wound';
 
 export const STATUS_LABEL: Record<StatusKind, { icon: string; name: string }> = {
   burn: { icon: '🔥', name: '炎上' },
@@ -91,6 +102,9 @@ export const STATUS_LABEL: Record<StatusKind, { icon: string; name: string }> = 
   frozen: { icon: '🧊', name: '凍結' },
   defense_down: { icon: '🦴', name: '腐食' },
   frenzy: { icon: '💢', name: '狂化' },
+  fear: { icon: '😱', name: '恐怖' },
+  predation_mark: { icon: '🍖', name: '捕食印' },
+  time_wound: { icon: '⏱️', name: '時間傷' },
 };
 
 // 感電: このスタック数(magnitude合計)に達すると自動でCT遅延が発動し、スタックがリセットされる。

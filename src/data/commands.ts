@@ -174,7 +174,8 @@ export const COMMANDS: CommandDef[] = [
     mpCost: 10,
     ctWeight: 'heavy',
     delayEnemyBy: 55,
-    description: '攻撃せず、敵全体の次回行動を後ろへ送る咆哮。',
+    applyStatus: { kind: 'fear', magnitude: 15, turns: 3 },
+    description: '攻撃せず、敵全体の次回行動を後ろへ送りつつ怯ませる(攻撃力DOWN・CT増加)。',
   },
   {
     id: 'CMD016',
@@ -262,7 +263,8 @@ export const COMMANDS: CommandDef[] = [
     mpCost: 8,
     ctWeight: 'standard',
     delayEnemyBy: 90,
-    description: '大ダメージと共に、敵の行動を大きく後ろへ送る。',
+    applyStatus: { kind: 'time_wound', magnitude: 15, turns: 5 },
+    description: '大ダメージと共に、敵の行動を大きく後ろへ送る。時間傷を刻み、以後の遅延効果が積み重なるほど強まる。',
   },
   {
     id: 'CMD024',
@@ -360,7 +362,8 @@ export const COMMANDS: CommandDef[] = [
     mpCost: 8,
     ctWeight: 'standard',
     killBonus: { healPct: 15, mpGain: 10 },
-    description: '敵を撃破すると、HPとMPが回復する。',
+    applySelfStatus: { kind: 'predation_mark', magnitude: 25, turns: 5 },
+    description: '敵を撃破すると、HPとMPが回復する。使うたび捕食印が蓄積し、以後の撃破ボーナスが増していく。',
   },
   {
     id: 'CMD033',

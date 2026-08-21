@@ -449,7 +449,7 @@ export class CtbEngine {
     // frenzy(狂化)のCT短縮成分・frozen(凍結)のCT増加成分は、既存のhaste/slowと
     // 同じ計算式へ合算する(独立した状態異常だが、CTへの影響は同じ仕組みでよいため)。
     const hastePct = this.statusMagnitude(actor, 'haste') + this.statusMagnitude(actor, 'frenzy');
-    const slowPct = this.statusMagnitude(actor, 'slow') + this.statusMagnitude(actor, 'frozen');
+    const slowPct = this.statusMagnitude(actor, 'slow') + this.statusMagnitude(actor, 'frozen') + this.statusMagnitude(actor, 'fear');
     mult *= 1 - hastePct / 100;
     mult *= 1 + slowPct / 100;
     return Math.max(CT_WEIGHT_MULT_FLOOR, mult);
@@ -509,9 +509,11 @@ export class CtbEngine {
     return rawDmg;
   }
 
-  // 仕様書12章: 遅延打撃(プレイヤー→敵)の実際の加算量。効果量ボーナス→天井→耐性の順に適用する。
+  // 仕様書12章: 遅延打撃(プレイヤー→敵)の実際の加算量。時間傷(複利)→効果量ボーナス→
+  // 天井→耐性の順に適用する。
   private applyDelayToEnemy(baseAmount: number) {
-    const boosted = baseAmount * (1 + this.player.mods.delayEffectBonusPct / 100);
+    const wounded = baseAmount * (1 + this.statusMagnitude(this.enemy, 'time_wound') / 100);
+    const boosted = wounded * (1 + this.player.mods.delayEffectBonusPct / 100);
     const capped = Math.min(CT_DELAY_UNITS_CEILING, boosted);
     const resisted = capped * (1 - this.enemy.delayResistancePct / 100);
     this.nextAt.enemy += resisted;
@@ -519,9 +521,10 @@ export class CtbEngine {
     this.pushEvent({ type: 'delay_enemy', side: 'player', amount: Math.round(resisted) });
   }
 
-  // CT遅延型敵(→プレイヤー)。プレイヤー側には部位耐性の概念がないため天井のみ適用する。
+  // CT遅延型敵(→プレイヤー)。プレイヤー側には部位耐性の概念がないため時間傷の複利と天井のみ適用する。
   private applyDelayToPlayer(baseAmount: number) {
-    const capped = Math.min(CT_DELAY_UNITS_CEILING, baseAmount);
+    const wounded = baseAmount * (1 + this.statusMagnitude(this.player, 'time_wound') / 100);
+    const capped = Math.min(CT_DELAY_UNITS_CEILING, wounded);
     this.nextAt.player += capped;
     this.pushLog(`⏳ キメラの行動が遅れた`);
     this.pushEvent({ type: 'delay_enemy', side: 'enemy', amount: Math.round(capped) });
@@ -551,7 +554,7 @@ export class CtbEngine {
       this.pushLog(`💨 キメラは${this.enemy.name}の${move.name}を回避した`);
       this.pushEvent({ type: 'evade', side: 'enemy', targetSide: 'player', commandName: move.name, icon: move.icon });
     } else {
-      const rawPower = this.enemy.power * move.powerMult;
+      const rawPower = this.enemy.power * move.powerMult * (1 - this.statusMagnitude(this.enemy, 'fear') / 100);
       const vulnerablePct = this.statusMagnitude(this.player, 'vulnerable');
       const rawDmg = this.computeDamage(rawPower, this.effectiveDefense(this.player), this.player.guardReductionPct, vulnerablePct);
       this.player.guardReductionPct = 0;
@@ -642,6 +645,7 @@ export class CtbEngine {
     let power = this.player.power * cmd.powerMult;
     power *= 1 + this.attackPowerCategoryBonusPct(cmd.ctWeight, this.player.mods) / 100;
     power *= 1 + this.statusMagnitude(this.player, 'frenzy') / 100;
+    power *= 1 - this.statusMagnitude(this.player, 'fear') / 100;
     if (this.player.chargeBonusMult > 0) {
       power *= 1 + this.player.chargeBonusMult;
       this.player.chargeBonusMult = 0;
@@ -719,7 +723,9 @@ export class CtbEngine {
 
     if (this.enemy.isDead && cmd.killBonus) {
       if (cmd.killBonus.healPct) {
-        const heal = Math.round(this.player.maxHp * (cmd.killBonus.healPct / 100));
+        const predationBonusPct = this.statusMagnitude(this.player, 'predation_mark');
+        const healPct = cmd.killBonus.healPct * (1 + predationBonusPct / 100);
+        const heal = Math.round(this.player.maxHp * (healPct / 100));
         this.player.hp = Math.min(this.player.maxHp, this.player.hp + heal);
         this.pushLog(`💗 撃破のボーナスでHPが${heal}回復`);
       }
