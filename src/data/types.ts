@@ -166,6 +166,10 @@ export interface CommandDef {
   firstActionCtBonusMult?: number; // 先制爪: 戦闘最初の行動でのみCT倍率にさらに掛ける係数
   mimicPreviousCommand?: boolean; // 模倣: 直前に使った自分のコマンドを(このコマンドのMPで)再使用する
   refundLastMpSpentPct?: number; // 巻き戻し: 直前に消費したMPの一部を返す
+
+  // --- コマンド段階的解放で追加 ---
+  unlockAlways?: boolean; // 通常攻撃・速撃・防御・待機: 部位が無くても最初から使える基礎コマンド
+  unlockTag?: PartTag; // このタグを持つ部位を1つでも装着していれば解放される(Excelコマンドのtags列と対応)
 }
 
 // ------------------------------------------------------------

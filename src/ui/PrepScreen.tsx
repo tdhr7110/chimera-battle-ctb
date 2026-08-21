@@ -3,7 +3,7 @@ import { PARTS, getPart } from '../data/parts';
 import { COMMANDS } from '../data/commands';
 import { SYNERGIES } from '../data/synergies';
 import { PLAYER_BASE } from '../engine/ctbEngine';
-import { activeSynergies, computePlayerModifiers, synergyPartCount } from '../engine/modifiers';
+import { activeSynergies, computePlayerModifiers, isCommandUnlocked, synergyPartCount } from '../engine/modifiers';
 import { CT_WEIGHT_LABEL } from '../data/types';
 import { currentMaxMp, equippedPartDefs, MAX_EQUIPPED_PARTS, TOTAL_BATTLES, tierOfCurrentBattle, type RunState } from '../engine/run';
 
@@ -31,6 +31,7 @@ export function PrepScreen({
   const equippedDefs = useMemo(() => equippedPartDefs(state), [state.equippedPartIds]);
   const mods = useMemo(() => computePlayerModifiers(equippedDefs), [equippedDefs]);
   const activeSynergyIds = useMemo(() => activeSynergies(equippedDefs).map((s) => s.id), [equippedDefs]);
+  const unlockedCount = useMemo(() => COMMANDS.filter((c) => isCommandUnlocked(c, equippedDefs)).length, [equippedDefs]);
 
   const speed = Math.round(PLAYER_BASE.speed + mods.speedFlatBonus);
   const maxMp = currentMaxMp(state);
@@ -178,19 +179,27 @@ export function PrepScreen({
 
         {tab === 'commands' && (
           <div className="command-tab">
-            {COMMANDS.map((cmd) => (
-              <div key={cmd.id} className="command-tab__row">
-                <span className="command-tab__icon">{cmd.icon}</span>
-                <div className="command-tab__body">
-                  <div className="command-tab__name">{cmd.name}</div>
-                  <div className="command-tab__desc">{cmd.description}</div>
+            <p className="muted" style={{ fontSize: '0.65rem' }}>
+              対応するタグの部位を1つでも装着すると解放される({unlockedCount}/{COMMANDS.length}解放中)。
+            </p>
+            {COMMANDS.map((cmd) => {
+              const unlocked = isCommandUnlocked(cmd, equippedDefs);
+              return (
+                <div key={cmd.id} className={`command-tab__row${unlocked ? '' : ' command-tab__row--locked'}`}>
+                  <span className="command-tab__icon">{unlocked ? cmd.icon : '🔒'}</span>
+                  <div className="command-tab__body">
+                    <div className="command-tab__name">{cmd.name}</div>
+                    <div className="command-tab__desc">
+                      {unlocked ? cmd.description : `「${cmd.unlockTag}」タグの部位を装着すると解放`}
+                    </div>
+                  </div>
+                  <div className="command-tab__stats">
+                    <span>🔷{cmd.mpCost}</span>
+                    <span>{CT_WEIGHT_LABEL[cmd.ctWeight]}</span>
+                  </div>
                 </div>
-                <div className="command-tab__stats">
-                  <span>🔷{cmd.mpCost}</span>
-                  <span>{CT_WEIGHT_LABEL[cmd.ctWeight]}</span>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>
