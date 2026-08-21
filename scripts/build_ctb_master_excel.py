@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
+# One-time bootstrap only. Remove after the valid editable Excel master is committed.
 import base64
 import json
 import zlib
