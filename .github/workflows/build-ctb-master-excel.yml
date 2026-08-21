@@ -1,0 +1,33 @@
+name: Build CTB master Excel
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - scripts/build_ctb_master_excel.py
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install openpyxl
+      - run: python scripts/build_ctb_master_excel.py
+      - name: Commit generated workbook
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/data/chimera_battle_ctb_redesign_v02_clean.xlsx
+          if git diff --cached --quiet; then
+            echo "No workbook changes"
+          else
+            git commit -m "data: add CTB master Excel"
+            git push
+          fi
