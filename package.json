@@ -7,7 +7,9 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "oxlint",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "data:import": "python scripts/import_ctb_master.py",
+    "data:check": "python scripts/import_ctb_master.py --check"
   },
   "dependencies": {
     "react": "^19.2.8",

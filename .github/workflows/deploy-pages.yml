@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+      - integration/main-game
   workflow_dispatch: {}
 
 concurrency:
@@ -33,6 +34,26 @@ jobs:
 
       - name: Type check & build
         run: npm run build
+
+      # 統合作業版(Phase 1a〜)を /dev/ サブパスへ同梱する。main(検証済みCTB単発デモ)の
+      # ルート配信は変更せず、統合ブランチだけ別URLで確認できるようにする(仕様書0章の
+      # 「既存環境へ直接上書きしない」を満たすため、本番URLの内容は主ブランチのものを維持する)。
+      - name: Checkout integration branch (統合作業版)
+        uses: actions/checkout@v4
+        continue-on-error: true
+        with:
+          ref: integration/main-game
+          path: integration-branch
+
+      - name: Build integration branch into /dev/ subpath
+        if: hashFiles('integration-branch/package.json') != ''
+        continue-on-error: true
+        run: |
+          cd integration-branch
+          npm ci
+          npm run build -- --base=/chimera-battle-ctb/dev/
+          mkdir -p ../dist/dev
+          cp -r dist/. ../dist/dev/
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3

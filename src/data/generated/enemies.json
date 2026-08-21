@@ -1,0 +1,902 @@
+[
+  {
+    "id": "ENM001",
+    "name": "骨犬",
+    "tier": "通常",
+    "archetype": "高速",
+    "hp": 62,
+    "speed": 83,
+    "maxMp": 27,
+    "move1": "速撃",
+    "move2": "待機",
+    "dangerMove": "疾風連打",
+    "intentDisplay": "次行動アイコン",
+    "ctbGimmick": "軽量技で手数を稼ぐ",
+    "phaseChange": "",
+    "weaknessStrategy": "重量技後が隙",
+    "dropTags": [
+      "高速"
+    ],
+    "implementationPriority": "高"
+  },
+  {
+    "id": "ENM002",
+    "name": "肉塊",
+    "tier": "通常",
+    "archetype": "重量",
+    "hp": 69,
+    "speed": 96,
+    "maxMp": 34,
+    "move1": "強打",
+    "move2": "チャージ",
+    "dangerMove": "終焉の一撃",
+    "intentDisplay": "次行動アイコン",
+    "ctbGimmick": "大技前に長い予告",
+    "phaseChange": "",
+    "weaknessStrategy": "防御/遅延",
+    "dropTags": [
+      "重量"
+    ],
+    "implementationPriority": "高"
+  },
+  {
+    "id": "ENM003",
+    "name": "毒蠍",
+    "tier": "通常",
+    "archetype": "毒",
+    "hp": 76,
+    "speed": 109,
+    "maxMp": 41,
+    "move1": "毒針",
+    "move2": "待機",
+    "dangerMove": "毒爆",
+    "intentDisplay": "次行動アイコン",
+    "ctbGimmick": "毒を積んで爆破",
+    "phaseChange": "",
+    "weaknessStrategy": "短期決戦/浄化",
+    "dropTags": [
+      "毒"
+    ],
+    "implementationPriority": "高"
+  },
+  {
+    "id": "ENM004",
+    "name": "火炎頭獣",
+    "tier": "通常",
+    "archetype": "炎上",
+    "hp": 83,
+    "speed": 122,
+    "maxMp": 48,
+    "move1": "火炎牙",
+    "move2": "強打",
+    "dangerMove": "炎上爆破",
+    "intentDisplay": "次行動アイコン",
+    "ctbGimmick": "炎上を積んで爆破",
+    "phaseChange": "",
+    "weaknessStrategy": "防御/高速",
+    "dropTags": [
+      "炎上"
+    ],
+    "implementationPriority": "高"
+  },
+  {
+    "id": "ENM005",
+    "name": "時喰い蟲",
+    "tier": "通常",
+    "archetype": "遅延",
+    "hp": 90,
+    "speed": 135,
+    "maxMp": 55,
+    "move1": "遅延打撃",
+    "move2": "時間喰い",
+    "dangerMove": "咆哮",
+    "intentDisplay": "次行動アイコン",
+    "ctbGimmick": "こちらの手番を押し戻す",
+    "phaseChange": "",
+    "weaknessStrategy": "MP管理",
+    "dropTags": [
+      "遅延"
+    ],
+    "implementationPriority": "高"
+  },
+  {
+    "id": "ENM006",
+    "name": "反撃甲殻",
+    "tier": "通常",
+    "archetype": "反撃",
+    "hp": 97,
+    "speed": 73,
+    "maxMp": 62,
+    "move1": "防御",
+    "move2": "カウンター姿勢",
+    "dangerMove": "棘返し",
+    "intentDisplay": "次行動アイコン",
+    "ctbGimmick": "攻撃に反応",
+    "phaseChange": "",
+    "weaknessStrategy": "チャージ/状態異常",
+    "dropTags": [
+      "反撃"
+    ],
+    "implementationPriority": "高"
+  },
+  {
+    "id": "ENM007",
+    "name": "再生肉壁",
+    "tier": "通常",
+    "archetype": "再生",
+    "hp": 104,
+    "speed": 86,
+    "maxMp": 69,
+    "move1": "防御",
+    "move2": "再生殻",
+    "dangerMove": "不死の構え",
+    "intentDisplay": "次行動アイコン",
+    "ctbGimmick": "長期戦で回復",
+    "phaseChange": "",
+    "weaknessStrategy": "爆発火力",
+    "dropTags": [
+      "再生"
+    ],
+    "implementationPriority": "高"
+  },
+  {
+    "id": "ENM008",
+    "name": "魔喰い蛭",
+    "tier": "通常",
+    "archetype": "MP破壊",
+    "hp": 111,
+    "speed": 99,
+    "maxMp": 76,
+    "move1": "MP吸収",
+    "move2": "速撃",
+    "dangerMove": "魔力暴発",
+    "intentDisplay": "次行動アイコン",
+    "ctbGimmick": "MPを奪う",
+    "phaseChange": "",
+    "weaknessStrategy": "MP0技",
+    "dropTags": [
+      "MP破壊"
+    ],
+    "implementationPriority": "高"
+  },
+  {
+    "id": "ENM009",
+    "name": "狂走獣",
+    "tier": "通常",
+    "archetype": "暴走",
+    "hp": 118,
+    "speed": 112,
+    "maxMp": 83,
+    "move1": "強打",
+    "move2": "狂化",
+    "dangerMove": "自壊砲",
+    "intentDisplay": "次行動アイコン",
+    "ctbGimmick": "HP半分で高速化",
+    "phaseChange": "",
+    "weaknessStrategy": "フェーズ前に準備",
+    "dropTags": [
+      "暴走"
+    ],
+    "implementationPriority": "高"
+  },
+  {
+    "id": "ENM010",
+    "name": "予知眼球",
+    "tier": "通常",
+    "archetype": "知性",
+    "hp": 125,
+    "speed": 125,
+    "maxMp": 20,
+    "move1": "観察",
+    "move2": "解析",
+    "dangerMove": "模倣",
+    "intentDisplay": "次行動アイコン",
+    "ctbGimmick": "こちらの技を模倣",
+    "phaseChange": "",
+    "weaknessStrategy": "技順をずらす",
+    "dropTags": [
+      "知性"
+    ],
+    "implementationPriority": "高"
+  },
+  {
+    "id": "ENM011",
+    "name": "千腕虫",
+    "tier": "通常",
+    "archetype": "多段",
+    "hp": 132,
+    "speed": 138,
+    "maxMp": 27,
+    "move1": "連撃",
+    "move2": "粉砕連打",
+    "dangerMove": "腕乱舞",
+    "intentDisplay": "次行動アイコン",
+    "ctbGimmick": "Hit数でデバフ",
+    "phaseChange": "",
+    "weaknessStrategy": "反撃/防御",
+    "dropTags": [
+      "多段"
+    ],
+    "implementationPriority": "高"
+  },
+  {
+    "id": "ENM012",
+    "name": "処刑獣",
+    "tier": "通常",
+    "archetype": "処刑",
+    "hp": 139,
+    "speed": 76,
+    "maxMp": 34,
+    "move1": "破砕撃",
+    "move2": "処刑",
+    "dangerMove": "背水撃",
+    "intentDisplay": "次行動アイコン",
+    "ctbGimmick": "低HPを狙う",
+    "phaseChange": "",
+    "weaknessStrategy": "HP維持",
+    "dropTags": [
+      "処刑"
+    ],
+    "implementationPriority": "高"
+  },
+  {
+    "id": "ENM013",
+    "name": "氷牙狼",
+    "tier": "通常",
+    "archetype": "氷",
+    "hp": 146,
+    "speed": 89,
+    "maxMp": 41,
+    "move1": "氷結牙",
+    "move2": "凍砕",
+    "dangerMove": "完全防御",
+    "intentDisplay": "次行動アイコン",
+    "ctbGimmick": "凍結から大技",
+    "phaseChange": "",
+    "weaknessStrategy": "CT短縮",
+    "dropTags": [
+      "氷"
+    ],
+    "implementationPriority": "高"
+  },
+  {
+    "id": "ENM014",
+    "name": "雷翼鳥",
+    "tier": "通常",
+    "archetype": "雷",
+    "hp": 153,
+    "speed": 102,
+    "maxMp": 48,
+    "move1": "雷爪",
+    "move2": "雷鎖",
+    "dangerMove": "瞬歩",
+    "intentDisplay": "次行動アイコン",
+    "ctbGimmick": "感電で加速",
+    "phaseChange": "",
+    "weaknessStrategy": "状態異常対策",
+    "dropTags": [
+      "雷"
+    ],
+    "implementationPriority": "高"
+  },
+  {
+    "id": "ENM015",
+    "name": "変異胎",
+    "tier": "通常",
+    "archetype": "変異",
+    "hp": 160,
+    "speed": 115,
+    "maxMp": 55,
+    "move1": "変異",
+    "move2": "適応",
+    "dangerMove": "模倣",
+    "intentDisplay": "次行動アイコン",
+    "ctbGimmick": "戦闘中能力変化",
+    "phaseChange": "",
+    "weaknessStrategy": "柔軟な対応",
+    "dropTags": [
+      "変異"
+    ],
+    "implementationPriority": "高"
+  },
+  {
+    "id": "ENM016",
+    "name": "六脚猟犬",
+    "tier": "通常",
+    "archetype": "高速",
+    "hp": 167,
+    "speed": 128,
+    "maxMp": 62,
+    "move1": "速撃",
+    "move2": "待機",
+    "dangerMove": "疾風連打",
+    "intentDisplay": "次行動アイコン",
+    "ctbGimmick": "軽量技で手数を稼ぐ",
+    "phaseChange": "",
+    "weaknessStrategy": "重量技後が隙",
+    "dropTags": [
+      "高速"
+    ],
+    "implementationPriority": "高"
+  },
+  {
+    "id": "ENM017",
+    "name": "巨腕ゴーレム",
+    "tier": "通常",
+    "archetype": "重量",
+    "hp": 174,
+    "speed": 141,
+    "maxMp": 69,
+    "move1": "強打",
+    "move2": "チャージ",
+    "dangerMove": "終焉の一撃",
+    "intentDisplay": "次行動アイコン",
+    "ctbGimmick": "大技前に長い予告",
+    "phaseChange": "",
+    "weaknessStrategy": "防御/遅延",
+    "dropTags": [
+      "重量"
+    ],
+    "implementationPriority": "高"
+  },
+  {
+    "id": "ENM018",
+    "name": "毒嚢蜘蛛",
+    "tier": "通常",
+    "archetype": "毒",
+    "hp": 181,
+    "speed": 79,
+    "maxMp": 76,
+    "move1": "毒針",
+    "move2": "待機",
+    "dangerMove": "毒爆",
+    "intentDisplay": "次行動アイコン",
+    "ctbGimmick": "毒を積んで爆破",
+    "phaseChange": "",
+    "weaknessStrategy": "短期決戦/浄化",
+    "dropTags": [
+      "毒"
+    ],
+    "implementationPriority": "高"
+  },
+  {
+    "id": "ENM019",
+    "name": "灰炎竜",
+    "tier": "通常",
+    "archetype": "炎上",
+    "hp": 188,
+    "speed": 92,
+    "maxMp": 83,
+    "move1": "火炎牙",
+    "move2": "強打",
+    "dangerMove": "炎上爆破",
+    "intentDisplay": "次行動アイコン",
+    "ctbGimmick": "炎上を積んで爆破",
+    "phaseChange": "",
+    "weaknessStrategy": "防御/高速",
+    "dropTags": [
+      "炎上"
+    ],
+    "implementationPriority": "高"
+  },
+  {
+    "id": "ENM020",
+    "name": "時計蟲",
+    "tier": "通常",
+    "archetype": "遅延",
+    "hp": 195,
+    "speed": 105,
+    "maxMp": 20,
+    "move1": "遅延打撃",
+    "move2": "時間喰い",
+    "dangerMove": "咆哮",
+    "intentDisplay": "次行動アイコン",
+    "ctbGimmick": "こちらの手番を押し戻す",
+    "phaseChange": "",
+    "weaknessStrategy": "MP管理",
+    "dropTags": [
+      "遅延"
+    ],
+    "implementationPriority": "高"
+  },
+  {
+    "id": "ENM021",
+    "name": "棘鎧獣",
+    "tier": "通常",
+    "archetype": "反撃",
+    "hp": 202,
+    "speed": 118,
+    "maxMp": 27,
+    "move1": "防御",
+    "move2": "カウンター姿勢",
+    "dangerMove": "棘返し",
+    "intentDisplay": "次行動アイコン",
+    "ctbGimmick": "攻撃に反応",
+    "phaseChange": "",
+    "weaknessStrategy": "チャージ/状態異常",
+    "dropTags": [
+      "反撃"
+    ],
+    "implementationPriority": "中"
+  },
+  {
+    "id": "ENM022",
+    "name": "不死肉腫",
+    "tier": "通常",
+    "archetype": "再生",
+    "hp": 209,
+    "speed": 131,
+    "maxMp": 34,
+    "move1": "防御",
+    "move2": "再生殻",
+    "dangerMove": "不死の構え",
+    "intentDisplay": "次行動アイコン",
+    "ctbGimmick": "長期戦で回復",
+    "phaseChange": "",
+    "weaknessStrategy": "爆発火力",
+    "dropTags": [
+      "再生"
+    ],
+    "implementationPriority": "中"
+  },
+  {
+    "id": "ENM023",
+    "name": "精神喰い",
+    "tier": "通常",
+    "archetype": "MP破壊",
+    "hp": 216,
+    "speed": 144,
+    "maxMp": 41,
+    "move1": "MP吸収",
+    "move2": "速撃",
+    "dangerMove": "魔力暴発",
+    "intentDisplay": "次行動アイコン",
+    "ctbGimmick": "MPを奪う",
+    "phaseChange": "",
+    "weaknessStrategy": "MP0技",
+    "dropTags": [
+      "MP破壊"
+    ],
+    "implementationPriority": "中"
+  },
+  {
+    "id": "ENM024",
+    "name": "血狂獣",
+    "tier": "通常",
+    "archetype": "暴走",
+    "hp": 223,
+    "speed": 82,
+    "maxMp": 48,
+    "move1": "強打",
+    "move2": "狂化",
+    "dangerMove": "自壊砲",
+    "intentDisplay": "次行動アイコン",
+    "ctbGimmick": "HP半分で高速化",
+    "phaseChange": "",
+    "weaknessStrategy": "フェーズ前に準備",
+    "dropTags": [
+      "暴走"
+    ],
+    "implementationPriority": "中"
+  },
+  {
+    "id": "ENM025",
+    "name": "演算脳塊",
+    "tier": "エリート",
+    "archetype": "知性",
+    "hp": 310,
+    "speed": 95,
+    "maxMp": 55,
+    "move1": "観察",
+    "move2": "解析",
+    "dangerMove": "模倣",
+    "intentDisplay": "次行動アイコン",
+    "ctbGimmick": "こちらの技を模倣",
+    "phaseChange": "HP50%で行動パターン変化",
+    "weaknessStrategy": "技順をずらす",
+    "dropTags": [
+      "知性"
+    ],
+    "implementationPriority": "中"
+  },
+  {
+    "id": "ENM026",
+    "name": "百手鬼",
+    "tier": "エリート",
+    "archetype": "多段",
+    "hp": 319,
+    "speed": 108,
+    "maxMp": 62,
+    "move1": "連撃",
+    "move2": "粉砕連打",
+    "dangerMove": "腕乱舞",
+    "intentDisplay": "次行動アイコン",
+    "ctbGimmick": "Hit数でデバフ",
+    "phaseChange": "HP50%で行動パターン変化",
+    "weaknessStrategy": "反撃/防御",
+    "dropTags": [
+      "多段"
+    ],
+    "implementationPriority": "中"
+  },
+  {
+    "id": "ENM027",
+    "name": "断頭獣",
+    "tier": "エリート",
+    "archetype": "処刑",
+    "hp": 329,
+    "speed": 121,
+    "maxMp": 69,
+    "move1": "破砕撃",
+    "move2": "処刑",
+    "dangerMove": "背水撃",
+    "intentDisplay": "次行動アイコン",
+    "ctbGimmick": "低HPを狙う",
+    "phaseChange": "HP50%で行動パターン変化",
+    "weaknessStrategy": "HP維持",
+    "dropTags": [
+      "処刑"
+    ],
+    "implementationPriority": "中"
+  },
+  {
+    "id": "ENM028",
+    "name": "氷殻亀",
+    "tier": "エリート",
+    "archetype": "氷",
+    "hp": 338,
+    "speed": 134,
+    "maxMp": 76,
+    "move1": "氷結牙",
+    "move2": "凍砕",
+    "dangerMove": "完全防御",
+    "intentDisplay": "次行動アイコン",
+    "ctbGimmick": "凍結から大技",
+    "phaseChange": "HP50%で行動パターン変化",
+    "weaknessStrategy": "CT短縮",
+    "dropTags": [
+      "氷"
+    ],
+    "implementationPriority": "中"
+  },
+  {
+    "id": "ENM029",
+    "name": "雷角獣",
+    "tier": "エリート",
+    "archetype": "雷",
+    "hp": 348,
+    "speed": 72,
+    "maxMp": 83,
+    "move1": "雷爪",
+    "move2": "雷鎖",
+    "dangerMove": "瞬歩",
+    "intentDisplay": "次行動アイコン",
+    "ctbGimmick": "感電で加速",
+    "phaseChange": "HP50%で行動パターン変化",
+    "weaknessStrategy": "状態異常対策",
+    "dropTags": [
+      "雷"
+    ],
+    "implementationPriority": "中"
+  },
+  {
+    "id": "ENM030",
+    "name": "混成獣",
+    "tier": "エリート",
+    "archetype": "変異",
+    "hp": 357,
+    "speed": 85,
+    "maxMp": 20,
+    "move1": "変異",
+    "move2": "適応",
+    "dangerMove": "模倣",
+    "intentDisplay": "次行動アイコン",
+    "ctbGimmick": "戦闘中能力変化",
+    "phaseChange": "HP50%で行動パターン変化",
+    "weaknessStrategy": "柔軟な対応",
+    "dropTags": [
+      "変異"
+    ],
+    "implementationPriority": "中"
+  },
+  {
+    "id": "ENM031",
+    "name": "瞬足キメラ",
+    "tier": "エリート",
+    "archetype": "高速",
+    "hp": 367,
+    "speed": 98,
+    "maxMp": 27,
+    "move1": "速撃",
+    "move2": "待機",
+    "dangerMove": "疾風連打",
+    "intentDisplay": "次行動アイコン",
+    "ctbGimmick": "軽量技で手数を稼ぐ",
+    "phaseChange": "HP50%で行動パターン変化",
+    "weaknessStrategy": "重量技後が隙",
+    "dropTags": [
+      "高速"
+    ],
+    "implementationPriority": "中"
+  },
+  {
+    "id": "ENM032",
+    "name": "重神キメラ",
+    "tier": "エリート",
+    "archetype": "重量",
+    "hp": 376,
+    "speed": 111,
+    "maxMp": 34,
+    "move1": "強打",
+    "move2": "チャージ",
+    "dangerMove": "終焉の一撃",
+    "intentDisplay": "次行動アイコン",
+    "ctbGimmick": "大技前に長い予告",
+    "phaseChange": "HP50%で行動パターン変化",
+    "weaknessStrategy": "防御/遅延",
+    "dropTags": [
+      "重量"
+    ],
+    "implementationPriority": "中"
+  },
+  {
+    "id": "ENM033",
+    "name": "毒王蠍",
+    "tier": "エリート",
+    "archetype": "毒",
+    "hp": 386,
+    "speed": 124,
+    "maxMp": 41,
+    "move1": "毒針",
+    "move2": "待機",
+    "dangerMove": "毒爆",
+    "intentDisplay": "次行動アイコン",
+    "ctbGimmick": "毒を積んで爆破",
+    "phaseChange": "HP50%で行動パターン変化",
+    "weaknessStrategy": "短期決戦/浄化",
+    "dropTags": [
+      "毒"
+    ],
+    "implementationPriority": "中"
+  },
+  {
+    "id": "ENM034",
+    "name": "炎帝頭",
+    "tier": "エリート",
+    "archetype": "炎上",
+    "hp": 395,
+    "speed": 137,
+    "maxMp": 48,
+    "move1": "火炎牙",
+    "move2": "強打",
+    "dangerMove": "炎上爆破",
+    "intentDisplay": "次行動アイコン",
+    "ctbGimmick": "炎上を積んで爆破",
+    "phaseChange": "HP50%で行動パターン変化",
+    "weaknessStrategy": "防御/高速",
+    "dropTags": [
+      "炎上"
+    ],
+    "implementationPriority": "中"
+  },
+  {
+    "id": "ENM035",
+    "name": "時王",
+    "tier": "エリート",
+    "archetype": "遅延",
+    "hp": 405,
+    "speed": 75,
+    "maxMp": 55,
+    "move1": "遅延打撃",
+    "move2": "時間喰い",
+    "dangerMove": "咆哮",
+    "intentDisplay": "次行動アイコン",
+    "ctbGimmick": "こちらの手番を押し戻す",
+    "phaseChange": "HP50%で行動パターン変化",
+    "weaknessStrategy": "MP管理",
+    "dropTags": [
+      "遅延"
+    ],
+    "implementationPriority": "中"
+  },
+  {
+    "id": "ENM036",
+    "name": "鏡殻王",
+    "tier": "エリート",
+    "archetype": "反撃",
+    "hp": 414,
+    "speed": 88,
+    "maxMp": 62,
+    "move1": "防御",
+    "move2": "カウンター姿勢",
+    "dangerMove": "棘返し",
+    "intentDisplay": "次行動アイコン",
+    "ctbGimmick": "攻撃に反応",
+    "phaseChange": "HP50%で行動パターン変化",
+    "weaknessStrategy": "チャージ/状態異常",
+    "dropTags": [
+      "反撃"
+    ],
+    "implementationPriority": "中"
+  },
+  {
+    "id": "ENM037",
+    "name": "再生王",
+    "tier": "エリート",
+    "archetype": "再生",
+    "hp": 423,
+    "speed": 101,
+    "maxMp": 69,
+    "move1": "防御",
+    "move2": "再生殻",
+    "dangerMove": "不死の構え",
+    "intentDisplay": "次行動アイコン",
+    "ctbGimmick": "長期戦で回復",
+    "phaseChange": "HP50%で行動パターン変化",
+    "weaknessStrategy": "爆発火力",
+    "dropTags": [
+      "再生"
+    ],
+    "implementationPriority": "中"
+  },
+  {
+    "id": "ENM038",
+    "name": "虚無喰い",
+    "tier": "エリート",
+    "archetype": "MP破壊",
+    "hp": 433,
+    "speed": 114,
+    "maxMp": 76,
+    "move1": "MP吸収",
+    "move2": "速撃",
+    "dangerMove": "魔力暴発",
+    "intentDisplay": "次行動アイコン",
+    "ctbGimmick": "MPを奪う",
+    "phaseChange": "HP50%で行動パターン変化",
+    "weaknessStrategy": "MP0技",
+    "dropTags": [
+      "MP破壊"
+    ],
+    "implementationPriority": "中"
+  },
+  {
+    "id": "ENM039",
+    "name": "暴君獣",
+    "tier": "ボス",
+    "archetype": "暴走",
+    "hp": 721,
+    "speed": 127,
+    "maxMp": 83,
+    "move1": "強打",
+    "move2": "狂化",
+    "dangerMove": "自壊砲",
+    "intentDisplay": "危険技は2手前から予告",
+    "ctbGimmick": "HP半分で高速化",
+    "phaseChange": "HP70%/35%でフェーズ変化",
+    "weaknessStrategy": "フェーズ前に準備",
+    "dropTags": [
+      "暴走"
+    ],
+    "implementationPriority": "高"
+  },
+  {
+    "id": "ENM040",
+    "name": "全視眼",
+    "tier": "ボス",
+    "archetype": "知性",
+    "hp": 737,
+    "speed": 140,
+    "maxMp": 20,
+    "move1": "観察",
+    "move2": "解析",
+    "dangerMove": "模倣",
+    "intentDisplay": "危険技は2手前から予告",
+    "ctbGimmick": "こちらの技を模倣",
+    "phaseChange": "HP70%/35%でフェーズ変化",
+    "weaknessStrategy": "技順をずらす",
+    "dropTags": [
+      "知性"
+    ],
+    "implementationPriority": "高"
+  },
+  {
+    "id": "ENM041",
+    "name": "千腕王",
+    "tier": "ボス",
+    "archetype": "多段",
+    "hp": 752,
+    "speed": 78,
+    "maxMp": 27,
+    "move1": "連撃",
+    "move2": "粉砕連打",
+    "dangerMove": "腕乱舞",
+    "intentDisplay": "危険技は2手前から予告",
+    "ctbGimmick": "Hit数でデバフ",
+    "phaseChange": "HP70%/35%でフェーズ変化",
+    "weaknessStrategy": "反撃/防御",
+    "dropTags": [
+      "多段"
+    ],
+    "implementationPriority": "高"
+  },
+  {
+    "id": "ENM042",
+    "name": "処刑王",
+    "tier": "ボス",
+    "archetype": "処刑",
+    "hp": 767,
+    "speed": 91,
+    "maxMp": 34,
+    "move1": "破砕撃",
+    "move2": "処刑",
+    "dangerMove": "背水撃",
+    "intentDisplay": "危険技は2手前から予告",
+    "ctbGimmick": "低HPを狙う",
+    "phaseChange": "HP70%/35%でフェーズ変化",
+    "weaknessStrategy": "HP維持",
+    "dropTags": [
+      "処刑"
+    ],
+    "implementationPriority": "高"
+  },
+  {
+    "id": "ENM043",
+    "name": "氷獄獣",
+    "tier": "ボス",
+    "archetype": "氷",
+    "hp": 783,
+    "speed": 104,
+    "maxMp": 41,
+    "move1": "氷結牙",
+    "move2": "凍砕",
+    "dangerMove": "完全防御",
+    "intentDisplay": "危険技は2手前から予告",
+    "ctbGimmick": "凍結から大技",
+    "phaseChange": "HP70%/35%でフェーズ変化",
+    "weaknessStrategy": "CT短縮",
+    "dropTags": [
+      "氷"
+    ],
+    "implementationPriority": "高"
+  },
+  {
+    "id": "ENM044",
+    "name": "雷帝鳥",
+    "tier": "ボス",
+    "archetype": "雷",
+    "hp": 798,
+    "speed": 117,
+    "maxMp": 48,
+    "move1": "雷爪",
+    "move2": "雷鎖",
+    "dangerMove": "瞬歩",
+    "intentDisplay": "危険技は2手前から予告",
+    "ctbGimmick": "感電で加速",
+    "phaseChange": "HP70%/35%でフェーズ変化",
+    "weaknessStrategy": "状態異常対策",
+    "dropTags": [
+      "雷"
+    ],
+    "implementationPriority": "高"
+  },
+  {
+    "id": "ENM045",
+    "name": "原初キメラ",
+    "tier": "ボス",
+    "archetype": "変異",
+    "hp": 814,
+    "speed": 130,
+    "maxMp": 55,
+    "move1": "変異",
+    "move2": "適応",
+    "dangerMove": "模倣",
+    "intentDisplay": "危険技は2手前から予告",
+    "ctbGimmick": "戦闘中能力変化",
+    "phaseChange": "HP70%/35%でフェーズ変化",
+    "weaknessStrategy": "柔軟な対応",
+    "dropTags": [
+      "変異"
+    ],
+    "implementationPriority": "高"
+  }
+]

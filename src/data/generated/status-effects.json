@@ -1,0 +1,317 @@
+[
+  {
+    "id": "STS001",
+    "name": "炎上",
+    "type": "DOT",
+    "stacking": "加算",
+    "baseEffect": "行動開始時ダメージ",
+    "ctbEffect": "",
+    "removeCondition": "一定行動数",
+    "mainSources": [
+      "火炎牙",
+      "火炎頭"
+    ],
+    "bossResistancePolicy": "通常"
+  },
+  {
+    "id": "STS002",
+    "name": "毒",
+    "type": "DOT",
+    "stacking": "加算",
+    "baseEffect": "行動開始時ダメージ。長期向け",
+    "ctbEffect": "",
+    "removeCondition": "戦闘終了",
+    "mainSources": [
+      "毒針",
+      "毒尾"
+    ],
+    "bossResistancePolicy": "通常"
+  },
+  {
+    "id": "STS003",
+    "name": "出血",
+    "type": "DOT",
+    "stacking": "加算",
+    "baseEffect": "攻撃を受けるたび追加ダメージ",
+    "ctbEffect": "",
+    "removeCondition": "一定回数",
+    "mainSources": [
+      "出血裂き"
+    ],
+    "bossResistancePolicy": "通常"
+  },
+  {
+    "id": "STS004",
+    "name": "凍結",
+    "type": "妨害",
+    "stacking": "段階",
+    "baseEffect": "被ダメ増加",
+    "ctbEffect": "CT+15%",
+    "removeCondition": "被弾/一定行動",
+    "mainSources": [
+      "氷結牙"
+    ],
+    "bossResistancePolicy": "高耐性"
+  },
+  {
+    "id": "STS005",
+    "name": "感電",
+    "type": "妨害",
+    "stacking": "加算",
+    "baseEffect": "雷ダメ増加",
+    "ctbEffect": "一定スタックでCT遅延",
+    "removeCondition": "一定行動",
+    "mainSources": [
+      "雷爪"
+    ],
+    "bossResistancePolicy": "中耐性"
+  },
+  {
+    "id": "STS006",
+    "name": "麻痺",
+    "type": "妨害",
+    "stacking": "単発",
+    "baseEffect": "次行動弱体",
+    "ctbEffect": "次回CT+30%",
+    "removeCondition": "次行動",
+    "mainSources": [
+      "麻痺針"
+    ],
+    "bossResistancePolicy": "高耐性"
+  },
+  {
+    "id": "STS007",
+    "name": "脆弱",
+    "type": "デバフ",
+    "stacking": "加算",
+    "baseEffect": "被ダメ増加",
+    "ctbEffect": "",
+    "removeCondition": "一定行動",
+    "mainSources": [
+      "破砕撃"
+    ],
+    "bossResistancePolicy": "通常"
+  },
+  {
+    "id": "STS008",
+    "name": "腐食",
+    "type": "デバフ",
+    "stacking": "加算",
+    "baseEffect": "防御/回復効率低下",
+    "ctbEffect": "",
+    "removeCondition": "一定行動",
+    "mainSources": [
+      "腐食液"
+    ],
+    "bossResistancePolicy": "通常"
+  },
+  {
+    "id": "STS009",
+    "name": "盲目",
+    "type": "デバフ",
+    "stacking": "加算",
+    "baseEffect": "命中率低下",
+    "ctbEffect": "",
+    "removeCondition": "一定行動",
+    "mainSources": [
+      "盲目粉"
+    ],
+    "bossResistancePolicy": "通常"
+  },
+  {
+    "id": "STS010",
+    "name": "加速",
+    "type": "バフ",
+    "stacking": "加算",
+    "baseEffect": "",
+    "ctbEffect": "CT短縮",
+    "removeCondition": "一定行動",
+    "mainSources": [
+      "加速",
+      "瞬歩"
+    ],
+    "bossResistancePolicy": ""
+  },
+  {
+    "id": "STS011",
+    "name": "減速",
+    "type": "デバフ",
+    "stacking": "加算",
+    "baseEffect": "",
+    "ctbEffect": "CT増加",
+    "removeCondition": "一定行動",
+    "mainSources": [
+      "時間系"
+    ],
+    "bossResistancePolicy": "中耐性"
+  },
+  {
+    "id": "STS012",
+    "name": "チャージ",
+    "type": "バフ",
+    "stacking": "単発",
+    "baseEffect": "次攻撃威力UP",
+    "ctbEffect": "",
+    "removeCondition": "攻撃実行",
+    "mainSources": [
+      "チャージ"
+    ],
+    "bossResistancePolicy": ""
+  },
+  {
+    "id": "STS013",
+    "name": "反撃",
+    "type": "バフ",
+    "stacking": "単発",
+    "baseEffect": "被弾時反撃",
+    "ctbEffect": "割り込み",
+    "removeCondition": "発動",
+    "mainSources": [
+      "カウンター姿勢"
+    ],
+    "bossResistancePolicy": ""
+  },
+  {
+    "id": "STS014",
+    "name": "再生",
+    "type": "バフ",
+    "stacking": "加算",
+    "baseEffect": "行動開始時HP回復",
+    "ctbEffect": "",
+    "removeCondition": "一定行動",
+    "mainSources": [
+      "再生殻"
+    ],
+    "bossResistancePolicy": ""
+  },
+  {
+    "id": "STS015",
+    "name": "狂化",
+    "type": "バフ",
+    "stacking": "単発",
+    "baseEffect": "攻撃UP/防御DOWN",
+    "ctbEffect": "CT短縮",
+    "removeCondition": "一定行動",
+    "mainSources": [
+      "狂化"
+    ],
+    "bossResistancePolicy": ""
+  },
+  {
+    "id": "STS016",
+    "name": "解析",
+    "type": "デバフ",
+    "stacking": "単発",
+    "baseEffect": "弱点ダメUP",
+    "ctbEffect": "",
+    "removeCondition": "戦闘終了",
+    "mainSources": [
+      "解析"
+    ],
+    "bossResistancePolicy": "通常"
+  },
+  {
+    "id": "STS017",
+    "name": "適応",
+    "type": "バフ",
+    "stacking": "単発",
+    "baseEffect": "直前属性耐性UP",
+    "ctbEffect": "",
+    "removeCondition": "別属性被弾",
+    "mainSources": [
+      "適応"
+    ],
+    "bossResistancePolicy": ""
+  },
+  {
+    "id": "STS018",
+    "name": "不死",
+    "type": "バフ",
+    "stacking": "単発",
+    "baseEffect": "致死を1回耐える",
+    "ctbEffect": "発動後CT遅延",
+    "removeCondition": "発動",
+    "mainSources": [
+      "不死の構え"
+    ],
+    "bossResistancePolicy": ""
+  },
+  {
+    "id": "STS019",
+    "name": "MP漏出",
+    "type": "デバフ",
+    "stacking": "加算",
+    "baseEffect": "行動時MP減少",
+    "ctbEffect": "",
+    "removeCondition": "一定行動",
+    "mainSources": [
+      "敵専用"
+    ],
+    "bossResistancePolicy": "中耐性"
+  },
+  {
+    "id": "STS020",
+    "name": "沈黙",
+    "type": "デバフ",
+    "stacking": "単発",
+    "baseEffect": "MP技使用不可",
+    "ctbEffect": "",
+    "removeCondition": "一定行動",
+    "mainSources": [
+      "敵専用"
+    ],
+    "bossResistancePolicy": "高耐性"
+  },
+  {
+    "id": "STS021",
+    "name": "封印",
+    "type": "デバフ",
+    "stacking": "単発",
+    "baseEffect": "特定コマンド使用不可",
+    "ctbEffect": "",
+    "removeCondition": "一定行動",
+    "mainSources": [
+      "ボス専用"
+    ],
+    "bossResistancePolicy": "高耐性"
+  },
+  {
+    "id": "STS022",
+    "name": "恐怖",
+    "type": "デバフ",
+    "stacking": "単発",
+    "baseEffect": "攻撃威力低下",
+    "ctbEffect": "攻撃CT増加",
+    "removeCondition": "一定行動",
+    "mainSources": [
+      "咆哮系"
+    ],
+    "bossResistancePolicy": "中耐性"
+  },
+  {
+    "id": "STS023",
+    "name": "捕食印",
+    "type": "特殊",
+    "stacking": "加算",
+    "baseEffect": "撃破時回復量増加",
+    "ctbEffect": "",
+    "removeCondition": "敵撃破",
+    "mainSources": [
+      "捕食系"
+    ],
+    "bossResistancePolicy": "通常"
+  },
+  {
+    "id": "STS024",
+    "name": "時間傷",
+    "type": "特殊",
+    "stacking": "加算",
+    "baseEffect": "",
+    "ctbEffect": "遅延を受けるたび追加遅延",
+    "removeCondition": "一定行動",
+    "mainSources": [
+      "時間系"
+    ],
+    "bossResistancePolicy": "高耐性"
+  }
+]
