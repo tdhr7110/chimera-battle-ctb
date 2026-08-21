@@ -1,0 +1,392 @@
+[
+  {
+    "name": "超高速多脚",
+    "coreTags": [
+      "高速"
+    ],
+    "keyParts": [
+      "俊足脚",
+      "六節脚",
+      "加速翼"
+    ],
+    "keyCommands": [
+      "速撃",
+      "待機",
+      "瞬歩",
+      "疾風連打"
+    ],
+    "winCondition": "敵より多く動く",
+    "ctbPlaystyle": "順番を細かく刻む",
+    "weakness": "単発火力",
+    "completionPayoff": "軽量技から軽量技へ連鎖"
+  },
+  {
+    "name": "超重量一撃",
+    "coreTags": [
+      "重量"
+    ],
+    "keyParts": [
+      "豪腕",
+      "重装脚",
+      "狂戦士角"
+    ],
+    "keyCommands": [
+      "チャージ",
+      "強打",
+      "地獄突進",
+      "終焉"
+    ],
+    "winCondition": "予告大技を先に潰す",
+    "ctbPlaystyle": "大技後の隙を読む",
+    "weakness": "遅い",
+    "completionPayoff": "一撃でフェーズを飛ばす"
+  },
+  {
+    "name": "時間泥棒",
+    "coreTags": [
+      "時間"
+    ],
+    "keyParts": [
+      "時喰い眼",
+      "時間尾",
+      "時間嚢"
+    ],
+    "keyCommands": [
+      "遅延打撃",
+      "時間喰い",
+      "咆哮"
+    ],
+    "winCondition": "敵の手番を奪う",
+    "ctbPlaystyle": "未来順を組み替える",
+    "weakness": "ボス耐性",
+    "completionPayoff": "敵の危険技を後ろへ"
+  },
+  {
+    "name": "MP循環",
+    "coreTags": [
+      "MP"
+    ],
+    "keyParts": [
+      "第二心臓",
+      "魔導心臓",
+      "魔力嚢"
+    ],
+    "keyCommands": [
+      "精神集中",
+      "加速",
+      "魔力暴発"
+    ],
+    "winCondition": "MPを循環",
+    "ctbPlaystyle": "0MP技で溜めMP技で爆発",
+    "weakness": "MP破壊",
+    "completionPayoff": "高コスト技を連打"
+  },
+  {
+    "name": "反撃要塞",
+    "coreTags": [
+      "反撃"
+    ],
+    "keyParts": [
+      "反撃尾",
+      "反射腕",
+      "棘甲"
+    ],
+    "keyCommands": [
+      "防御",
+      "受け流し",
+      "カウンター"
+    ],
+    "winCondition": "敵行動を火力に変える",
+    "ctbPlaystyle": "敵順が来るほど得",
+    "weakness": "状態異常",
+    "completionPayoff": "敵ターンが自分の攻撃機会"
+  },
+  {
+    "name": "毒時計",
+    "coreTags": [
+      "毒"
+    ],
+    "keyParts": [
+      "毒尾",
+      "毒腺口",
+      "毒嚢"
+    ],
+    "keyCommands": [
+      "毒針",
+      "毒爆",
+      "待機"
+    ],
+    "winCondition": "毒を積み爆破",
+    "ctbPlaystyle": "短CTで毒を回す",
+    "weakness": "短期戦",
+    "completionPayoff": "毒爆で処刑"
+  },
+  {
+    "name": "炎上連鎖",
+    "coreTags": [
+      "炎"
+    ],
+    "keyParts": [
+      "火炎頭"
+    ],
+    "keyCommands": [
+      "火炎牙",
+      "炎上爆破",
+      "速撃"
+    ],
+    "winCondition": "炎上→爆破",
+    "ctbPlaystyle": "敵手番前に爆破判断",
+    "weakness": "炎耐性",
+    "completionPayoff": "爆破後も再点火"
+  },
+  {
+    "name": "暴走瀕死",
+    "coreTags": [
+      "暴走"
+    ],
+    "keyParts": [
+      "暴走心臓",
+      "狂戦頭",
+      "狂戦士角"
+    ],
+    "keyCommands": [
+      "狂化",
+      "背水撃",
+      "自壊砲"
+    ],
+    "winCondition": "HPを資源化",
+    "ctbPlaystyle": "低HPほど速い",
+    "weakness": "事故死",
+    "completionPayoff": "瀕死から連続超火力"
+  },
+  {
+    "name": "多腕ラッシュ",
+    "coreTags": [
+      "多段"
+    ],
+    "keyParts": [
+      "多腕",
+      "連鎖核"
+    ],
+    "keyCommands": [
+      "連撃",
+      "腕乱舞",
+      "追撃命令"
+    ],
+    "winCondition": "Hit数で押す",
+    "ctbPlaystyle": "追撃とCT短縮",
+    "weakness": "反射敵",
+    "completionPayoff": "Hitで画面を埋める"
+  },
+  {
+    "name": "吸血不死",
+    "coreTags": [
+      "吸血"
+    ],
+    "keyParts": [
+      "血吸口",
+      "再生胴"
+    ],
+    "keyCommands": [
+      "吸血",
+      "血の契約",
+      "不死"
+    ],
+    "winCondition": "HPとMP交換",
+    "ctbPlaystyle": "被弾後復帰順を読む",
+    "weakness": "瞬間死",
+    "completionPayoff": "HP減るほど資源が回る"
+  },
+  {
+    "name": "処刑者",
+    "coreTags": [
+      "処刑"
+    ],
+    "keyParts": [
+      "処刑眼",
+      "穿孔角"
+    ],
+    "keyCommands": [
+      "破砕撃",
+      "処刑",
+      "穿孔"
+    ],
+    "winCondition": "閾値で即死級",
+    "ctbPlaystyle": "敵HPと順番管理",
+    "weakness": "高HPボス",
+    "completionPayoff": "フェーズ前に処刑"
+  },
+  {
+    "name": "雷加速",
+    "coreTags": [
+      "雷"
+    ],
+    "keyParts": [
+      "雷翼",
+      "雷角"
+    ],
+    "keyCommands": [
+      "雷爪",
+      "雷鎖",
+      "瞬歩"
+    ],
+    "winCondition": "感電で高速化",
+    "ctbPlaystyle": "感電数がCTに変換",
+    "weakness": "耐性",
+    "completionPayoff": "攻撃するほど速い"
+  },
+  {
+    "name": "氷砕き",
+    "coreTags": [
+      "氷"
+    ],
+    "keyParts": [
+      "複眼系",
+      "防御系"
+    ],
+    "keyCommands": [
+      "氷結牙",
+      "凍砕"
+    ],
+    "winCondition": "凍結から大打撃",
+    "ctbPlaystyle": "敵行動を遅く",
+    "weakness": "凍結耐性",
+    "completionPayoff": "凍結窓に全火力"
+  },
+  {
+    "name": "再生要塞",
+    "coreTags": [
+      "再生"
+    ],
+    "keyParts": [
+      "再生胴",
+      "再生嚢"
+    ],
+    "keyCommands": [
+      "防御",
+      "再生殻",
+      "完全防御"
+    ],
+    "winCondition": "長期戦",
+    "ctbPlaystyle": "防御でMP生成",
+    "weakness": "処刑",
+    "completionPayoff": "回復超過シールド"
+  },
+  {
+    "name": "捕食連鎖",
+    "coreTags": [
+      "捕食"
+    ],
+    "keyParts": [
+      "血吸口",
+      "黒翼"
+    ],
+    "keyCommands": [
+      "捕食",
+      "捕食連鎖",
+      "処刑"
+    ],
+    "winCondition": "雑魚撃破で連続",
+    "ctbPlaystyle": "倒す順番をパズル化",
+    "weakness": "単体ボス",
+    "completionPayoff": "1体倒すと連鎖"
+  },
+  {
+    "name": "演算CT",
+    "coreTags": [
+      "知性"
+    ],
+    "keyParts": [
+      "予知脳",
+      "演算脳"
+    ],
+    "keyCommands": [
+      "観察",
+      "解析",
+      "模倣",
+      "加速"
+    ],
+    "winCondition": "情報と再使用",
+    "ctbPlaystyle": "未来を見て最適化",
+    "weakness": "火力不足",
+    "completionPayoff": "強技を効率再利用"
+  },
+  {
+    "name": "変異適応",
+    "coreTags": [
+      "進化"
+    ],
+    "keyParts": [
+      "変異核"
+    ],
+    "keyCommands": [
+      "変異",
+      "適応",
+      "模倣"
+    ],
+    "winCondition": "敵に合わせ変化",
+    "ctbPlaystyle": "毎戦違うCT構成",
+    "weakness": "不安定",
+    "completionPayoff": "戦闘中完成形が変化"
+  },
+  {
+    "name": "MP0縛り",
+    "coreTags": [
+      "基礎"
+    ],
+    "keyParts": [
+      "俊足脚",
+      "多腕"
+    ],
+    "keyCommands": [
+      "通常攻撃",
+      "速撃",
+      "防御",
+      "待機"
+    ],
+    "winCondition": "MPなしで戦う",
+    "ctbPlaystyle": "CTだけで勝つ",
+    "weakness": "爆発力",
+    "completionPayoff": "MPを別効果へ変換"
+  },
+  {
+    "name": "奥義砲台",
+    "coreTags": [
+      "重量"
+    ],
+    "keyParts": [
+      "ゼロコスト核",
+      "豪腕"
+    ],
+    "keyCommands": [
+      "精神集中",
+      "チャージ",
+      "終焉"
+    ],
+    "winCondition": "奥義を通す",
+    "ctbPlaystyle": "大技順番を作る",
+    "weakness": "準備長い",
+    "completionPayoff": "初回奥義0MP"
+  },
+  {
+    "name": "ハイブリッド怪物",
+    "coreTags": [
+      "複合"
+    ],
+    "keyParts": [
+      "多脚",
+      "多腕",
+      "心臓"
+    ],
+    "keyCommands": [
+      "速撃",
+      "連撃",
+      "強打",
+      "加速"
+    ],
+    "winCondition": "状況対応",
+    "ctbPlaystyle": "CTB全要素",
+    "weakness": "尖り不足",
+    "completionPayoff": "拾った部位で変化"
+  }
+]

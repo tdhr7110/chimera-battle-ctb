@@ -1,0 +1,121 @@
+[
+  {
+    "key": "基準CT",
+    "value": 100,
+    "category": "内部値",
+    "description": "標準コマンドの行動後待ち時間",
+    "validationPoint": "速度との式を単純に保つ"
+  },
+  {
+    "key": "超軽量倍率",
+    "value": 0.55,
+    "category": "CT倍率",
+    "description": "待機・一部高速技",
+    "validationPoint": "永久ループ防止"
+  },
+  {
+    "key": "軽量倍率",
+    "value": 0.75,
+    "category": "CT倍率",
+    "description": "速撃・防御など",
+    "validationPoint": "高速ビルド基準"
+  },
+  {
+    "key": "標準倍率",
+    "value": 1,
+    "category": "CT倍率",
+    "description": "通常攻撃",
+    "validationPoint": "基準"
+  },
+  {
+    "key": "重量倍率",
+    "value": 1.35,
+    "category": "CT倍率",
+    "description": "強打・範囲技",
+    "validationPoint": "威力との交換"
+  },
+  {
+    "key": "超重量倍率",
+    "value": 1.75,
+    "category": "CT倍率",
+    "description": "奥義級",
+    "validationPoint": "敵に手番を渡すリスク"
+  },
+  {
+    "key": "初期MP",
+    "value": 30,
+    "category": "MP",
+    "description": "戦闘開始時",
+    "validationPoint": "序盤からMP技を少し使える"
+  },
+  {
+    "key": "最大MP",
+    "value": 100,
+    "category": "MP",
+    "description": "基準上限",
+    "validationPoint": "部位で拡張可能"
+  },
+  {
+    "key": "行動開始MP回復",
+    "value": 4,
+    "category": "MP",
+    "description": "自分の手番開始時",
+    "validationPoint": "MP0技との役割分担"
+  },
+  {
+    "key": "防御追加MP回復",
+    "value": 6,
+    "category": "MP",
+    "description": "防御成功時",
+    "validationPoint": "守りが攻めにつながる"
+  },
+  {
+    "key": "CT短縮下限",
+    "value": 0.45,
+    "category": "倍率",
+    "description": "全補正後の最低CT倍率",
+    "validationPoint": "無限行動防止"
+  },
+  {
+    "key": "CT遅延上限",
+    "value": 0.6,
+    "category": "割合",
+    "description": "1回で押し戻せる最大量",
+    "validationPoint": "永久拘束防止"
+  },
+  {
+    "key": "敵遅延耐性_通常",
+    "value": 0,
+    "category": "割合",
+    "description": "通常敵",
+    "validationPoint": "CT操作を気持ちよく"
+  },
+  {
+    "key": "敵遅延耐性_エリート",
+    "value": 0.25,
+    "category": "割合",
+    "description": "エリート",
+    "validationPoint": "完全拘束防止"
+  },
+  {
+    "key": "敵遅延耐性_ボス",
+    "value": 0.5,
+    "category": "割合",
+    "description": "ボス",
+    "validationPoint": "遅延ビルドは有効だが弱まる"
+  },
+  {
+    "key": "行動順表示",
+    "value": 8,
+    "category": "件",
+    "description": "未来の予告",
+    "validationPoint": "CTB判断材料"
+  },
+  {
+    "key": "敵意図表示",
+    "value": "ON",
+    "category": "UI",
+    "description": "次行動の種類を予告",
+    "validationPoint": "CTB対策判断"
+  }
+]
