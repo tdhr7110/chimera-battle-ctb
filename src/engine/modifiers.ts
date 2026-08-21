@@ -245,3 +245,14 @@ export function isCommandUnlocked(cmd: CommandDef, equippedParts: PartDef[]): bo
 export function computeUnlockedCommandIds(equippedParts: PartDef[]): Set<string> {
   return new Set(COMMANDS.filter((c) => isCommandUnlocked(c, equippedParts)).map((c) => c.id));
 }
+
+// ------------------------------------------------------------
+// Phase 2: 部位取得の前後で解放状態を比較し、「今回新しく解放されたコマンド」だけを返す。
+// 解放ルールそのもの(computeUnlockedCommandIds)には一切手を加えず、その差分を取るだけの
+// 純粋関数。報酬演出(CommandUnlockScreen)とNEWバッジの両方がこの1か所を共有する。
+// ------------------------------------------------------------
+export function newlyUnlockedCommands(beforeParts: PartDef[], afterParts: PartDef[]): CommandDef[] {
+  const before = computeUnlockedCommandIds(beforeParts);
+  const after = computeUnlockedCommandIds(afterParts);
+  return COMMANDS.filter((c) => after.has(c.id) && !before.has(c.id));
+}

@@ -1276,3 +1276,91 @@ button {
 .rarity-badge--legendary { background: #b45309; color: #fef3c7; }
 .reward-card--epic { border-color: #a855f7; }
 .reward-card--legendary { border-color: #f59e0b; }
+
+/* ============================================================
+   Phase 2: 部位取得 → コマンド解放の連続演出
+   ============================================================ */
+.unlock-screen {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 20px 16px;
+  text-align: center;
+  background: rgba(2, 6, 23, 0.94);
+  border: none;
+  cursor: pointer;
+}
+.unlock-screen__title {
+  font-size: 1.15rem;
+  font-weight: 900;
+  color: #fbbf24;
+  letter-spacing: 0.06em;
+}
+.unlock-screen__sub {
+  font-size: 0.7rem;
+  color: #cbd5e1;
+}
+.unlock-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+  max-width: 340px;
+  max-height: 52vh;
+  overflow-y: auto;
+}
+.unlock-card {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  padding: 8px 10px;
+  text-align: left;
+  background: rgba(30, 41, 59, 0.95);
+  border: 1px solid #fbbf24;
+  border-radius: 10px;
+  animation: unlock-pop 0.32s ease-out;
+}
+@keyframes unlock-pop {
+  from { opacity: 0; transform: translateY(10px) scale(0.94); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+.unlock-card__icon { font-size: 1.5rem; }
+.unlock-card__body { flex: 1; min-width: 0; }
+.unlock-card__name { font-size: 0.78rem; font-weight: 800; }
+.unlock-card__desc { font-size: 0.6rem; color: #94a3b8; line-height: 1.4; }
+.unlock-card__stats {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 0.58rem;
+  color: #cbd5e1;
+  text-align: right;
+  white-space: nowrap;
+}
+.unlock-screen__hint { font-size: 0.62rem; color: #64748b; }
+
+/* NEWバッジ(コマンドタブ) */
+.tab-btn__new,
+.command-tab__new {
+  margin-left: 4px;
+  padding: 0 4px;
+  font-size: 0.5rem;
+  font-weight: 900;
+  color: #0f172a;
+  background: #fbbf24;
+  border-radius: 3px;
+  vertical-align: middle;
+}
+.command-tab__row--new {
+  background: rgba(251, 191, 36, 0.12);
+  border-left: 2px solid #fbbf24;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .unlock-card { animation: none; }
+}

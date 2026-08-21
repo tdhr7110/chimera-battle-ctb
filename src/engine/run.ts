@@ -3,7 +3,7 @@ import { getEnemyDrop, RARE_DROP_CHANCE_PCT } from '../data/enemyDrops';
 import { PARTS, getPart } from '../data/parts';
 import { getStarter } from '../data/starters';
 import { CTB_MP_MAX_BASE, PLAYER_BASE } from './ctbEngine';
-import { computePlayerModifiers } from './modifiers';
+import { computePlayerModifiers, newlyUnlockedCommands } from './modifiers';
 import type { EnemyTier, PartDef } from '../data/types';
 
 // ============================================================
@@ -19,7 +19,7 @@ import type { EnemyTier, PartDef } from '../data/types';
 //     (同じ敵に複数回遭遇することがあるのは既知の暫定仕様)。部位は80種すべて接続済み。
 // ============================================================
 
-export type GamePhase = 'title' | 'starterSelect' | 'prep' | 'enemySelect' | 'battle' | 'reward' | 'result';
+export type GamePhase = 'title' | 'starterSelect' | 'prep' | 'enemySelect' | 'battle' | 'reward' | 'commandUnlock' | 'result';
 
 // 仕様書のTEST18パターン(通常/通常/エリート/通常/中ボス/通常/エリート/ボス)を踏襲しつつ、
 // 現行6敵ではミニボスまで区別できないためboss 1種類にまとめた7戦構成にしている。
@@ -49,6 +49,9 @@ export interface RunState {
   enemyCandidateIds: string[];
   dropCandidateIds: string[];
   lastDefeatedEnemyId: string | null; // Phase 1: 報酬画面で「どの敵が落としたか」を示すため
+  lastAcquiredPartId: string | null; // Phase 2: 解放演出で「どの部位のおかげか」を示すため
+  pendingUnlockCommandIds: string[]; // Phase 2: 今まさに解放演出で見せるコマンド
+  newCommandIds: string[]; // Phase 2: コマンドタブのNEWバッジ(タブを開くと既読になる)
   resultOutcome: 'victory' | 'defeat' | null;
   seenIntro: boolean; // 遊び方を一度でも見たか(GAME STARTのたび強制表示しないため)
 }
@@ -66,6 +69,9 @@ export function createTitleState(seenIntro: boolean): RunState {
     enemyCandidateIds: [],
     dropCandidateIds: [],
     lastDefeatedEnemyId: null,
+    lastAcquiredPartId: null,
+    pendingUnlockCommandIds: [],
+    newCommandIds: [],
     resultOutcome: null,
     seenIntro,
   };
@@ -109,11 +115,17 @@ function clampMpToMax(state: RunState): RunState {
 export function equipPart(state: RunState, partId: string): RunState {
   if (state.equippedPartIds.includes(partId)) return state;
   if (state.equippedPartIds.length >= MAX_EQUIPPED_PARTS) return state;
-  return clampMpToMax({
+  const next = {
     ...state,
     equippedPartIds: [...state.equippedPartIds, partId],
     inventoryPartIds: state.inventoryPartIds.filter((id) => id !== partId),
-  });
+  };
+  // Phase 2: 準備画面での付け替えでもコマンドは解放されうる。ここでは演出は挟まず
+  // (装備をいじるたびにオーバーレイが出るのは煩わしいため)、NEWバッジだけ更新する。
+  const unlockedIds = newlyUnlockedCommands(equippedPartDefs(state), equippedPartDefs(next)).map((c) => c.id);
+  return clampMpToMax(
+    unlockedIds.length === 0 ? next : { ...next, newCommandIds: [...next.newCommandIds, ...unlockedIds] }
+  );
 }
 
 export function unequipPart(state: RunState, partId: string): RunState {
@@ -232,16 +244,44 @@ export function finishBattle(state: RunState, result: 'won' | 'lost', finalHp: n
 }
 
 // wantEquip=trueかつ装着枠に空きがあればそのまま装着、空きが無ければインベントリへ保管する。
+//
+// Phase 2: 装着された場合はコマンドが新しく解放されることがあるため、その差分を取って
+// 演出フェーズ(commandUnlock)へ寄り道する。解放が無ければ従来どおり直接prepへ戻る
+// (中間画面をむやみに増やさない)。
 export function acceptDrop(state: RunState, partId: string, wantEquip: boolean): RunState {
-  const next =
-    wantEquip && state.equippedPartIds.length < MAX_EQUIPPED_PARTS
-      ? { ...state, equippedPartIds: [...state.equippedPartIds, partId] }
-      : { ...state, inventoryPartIds: [...state.inventoryPartIds, partId] };
-  return advanceToNextBattle({ ...next, dropCandidateIds: [] });
+  const equipped = wantEquip && state.equippedPartIds.length < MAX_EQUIPPED_PARTS;
+  const next = equipped
+    ? { ...state, equippedPartIds: [...state.equippedPartIds, partId] }
+    : { ...state, inventoryPartIds: [...state.inventoryPartIds, partId] };
+
+  const unlocked = equipped ? newlyUnlockedCommands(equippedPartDefs(state), equippedPartDefs(next)) : [];
+  const withDrop = { ...next, dropCandidateIds: [], lastAcquiredPartId: partId };
+  if (unlocked.length === 0) return advanceToNextBattle(withDrop);
+
+  const unlockedIds = unlocked.map((c) => c.id);
+  return {
+    ...withDrop,
+    phase: 'commandUnlock',
+    pendingUnlockCommandIds: unlockedIds,
+    newCommandIds: [...state.newCommandIds, ...unlockedIds],
+  };
+}
+
+// 解放演出を閉じたら、そこで初めて次の戦闘の準備画面へ進む。
+// タップと自動送りの両方から呼ばれうるので、commandUnlockフェーズでない場合は何もしない
+// (二重に呼ばれてbattleIndexが2つ進んでしまうのを防ぐ)。
+export function dismissCommandUnlock(state: RunState): RunState {
+  if (state.phase !== 'commandUnlock') return state;
+  return advanceToNextBattle({ ...state, pendingUnlockCommandIds: [] });
 }
 
 export function skipDrop(state: RunState): RunState {
   return advanceToNextBattle({ ...state, dropCandidateIds: [] });
+}
+
+// コマンドタブを開いたらNEWを既読にする。
+export function markCommandsSeen(state: RunState): RunState {
+  return state.newCommandIds.length === 0 ? state : { ...state, newCommandIds: [] };
 }
 
 function advanceToNextBattle(state: RunState): RunState {

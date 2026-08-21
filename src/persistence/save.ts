@@ -9,8 +9,11 @@ import type { RunState } from '../engine/run';
 
 // v1: CTB統合版の初版。
 // v2: Phase 1(敵所持部位ドロップ)でRunStateへ lastDefeatedEnemyId を追加。
-//     追加フィールドは表示用のnull許容値のみなので、v1のセーブは破棄せず移行できる。
-const SAVE_VERSION = 2;
+// v3: Phase 2(コマンド解放演出)で lastAcquiredPartId / pendingUnlockCommandIds /
+//     newCommandIds を追加。
+// いずれも安全な既定値(null / 空配列)を与えられる追加フィールドのみなので、
+// 古いセーブは破棄せず移行する。
+const SAVE_VERSION = 3;
 const SAVE_KEY = 'chimera-battle-ctb:run:v1';
 const INTRO_SEEN_KEY = 'chimera-battle-ctb:intro-seen:v1';
 
@@ -34,6 +37,17 @@ export function migrate(version: number | undefined, state: RunState): RunState 
     // 記録が無いため null 始まりにする(報酬画面の見出しが敵名なしになるだけで進行に影響しない)。
     current = { ...current, lastDefeatedEnemyId: current.lastDefeatedEnemyId ?? null };
     v = 2;
+  }
+  if (v === 2) {
+    // v2 -> v3: Phase 2 のコマンド解放演出用フィールド。過去に解放済みのコマンドを
+    // 遡ってNEW扱いにはしない(空配列始まり)。演出待ちも当然無い。
+    current = {
+      ...current,
+      lastAcquiredPartId: current.lastAcquiredPartId ?? null,
+      pendingUnlockCommandIds: current.pendingUnlockCommandIds ?? [],
+      newCommandIds: current.newCommandIds ?? [],
+    };
+    v = 3;
   }
   return v === SAVE_VERSION ? current : null;
 }

@@ -5,14 +5,17 @@ import { PrepScreen } from './ui/PrepScreen';
 import { EnemySelectScreen } from './ui/EnemySelectScreen';
 import { BattleScreen } from './ui/BattleScreen';
 import { RewardScreen } from './ui/RewardScreen';
+import { CommandUnlockScreen } from './ui/CommandUnlockScreen';
 import { ResultScreen } from './ui/ResultScreen';
 import { CodexModal } from './ui/CodexModal';
 import {
   acceptDrop,
   chooseEnemy,
   createTitleState,
+  dismissCommandUnlock,
   enterEnemySelect,
   equipPart,
+  markCommandsSeen,
   equippedPartDefs,
   finishBattle,
   markIntroSeen,
@@ -159,6 +162,7 @@ export default function App() {
             onEquip={(partId) => setState((s) => equipPart(s, partId))}
             onUnequip={(partId) => setState((s) => unequipPart(s, partId))}
             onGoToEnemySelect={() => setState((s) => enterEnemySelect(s))}
+            onCommandsTabOpened={() => setState((s) => markCommandsSeen(s))}
           />
         </>
       )}
@@ -198,6 +202,14 @@ export default function App() {
           fromEnemyId={state.lastDefeatedEnemyId}
           onAccept={(partId) => setState((s) => acceptDrop(s, partId, true))}
           onSkip={() => setState((s) => skipDrop(s))}
+        />
+      )}
+
+      {state.phase === 'commandUnlock' && (
+        <CommandUnlockScreen
+          commandIds={state.pendingUnlockCommandIds}
+          fromPartId={state.lastAcquiredPartId}
+          onDone={() => setState((s) => dismissCommandUnlock(s))}
         />
       )}
 
