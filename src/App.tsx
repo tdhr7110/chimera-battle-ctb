@@ -5,14 +5,20 @@ import { PrepScreen } from './ui/PrepScreen';
 import { EnemySelectScreen } from './ui/EnemySelectScreen';
 import { BattleScreen } from './ui/BattleScreen';
 import { RewardScreen } from './ui/RewardScreen';
+import { CommandUnlockScreen } from './ui/CommandUnlockScreen';
+import { FusionScreen } from './ui/FusionScreen';
 import { ResultScreen } from './ui/ResultScreen';
 import { CodexModal } from './ui/CodexModal';
 import {
   acceptDrop,
   chooseEnemy,
   createTitleState,
+  dismissCommandUnlock,
   enterEnemySelect,
   equipPart,
+  markCommandsSeen,
+  performFusion,
+  skipFusion,
   equippedPartDefs,
   finishBattle,
   markIntroSeen,
@@ -28,6 +34,14 @@ import { getEnemy } from './data/enemies';
 import { clearRunState, loadIntroSeen, loadRunState, saveIntroSeen, saveRunState } from './persistence/save';
 import { markEnemyDefeated, markEnemyEncountered, markPartsDiscovered } from './engine/codex';
 import { loadCodexState, saveCodexState } from './persistence/codex';
+import { initAudioUnlock, playSE } from './engine/soundManager';
+import { AudioSettingsButton } from './ui/AudioSettingsButton';
+import { MetricsPanel } from './ui/MetricsPanel';
+import {
+  metricsViewerEnabled, recordBattleEnd, recordDrop, recordEnemyChosen,
+  recordFusionOffered, recordFusionPerformed, recordRunEnd, recordRunStart,
+} from './engine/metrics';
+import { activeSynergies, computeUnlockedCommandIds } from './engine/modifiers';
 
 // ============================================================
 // CHIMERA BATTLE 統合版(本編)のフェーズ制御。
@@ -43,6 +57,17 @@ export default function App() {
   const [state, setState] = useState<RunState>(() => createTitleState(loadIntroSeen()));
   const [codex, setCodex] = useState(() => loadCodexState());
   const [showCodex, setShowCodex] = useState(false);
+  const [showMetrics, setShowMetrics] = useState(false);
+
+  // Phase 6: 融合の「提示」を実行率の分母として記録する(画面に入った時点で1回だけ)。
+  useEffect(() => {
+    if (state.phase === 'fusion') recordFusionOffered();
+  }, [state.phase, state.battleIndex]);
+
+  // Phase 4: ブラウザの自動再生制限に合わせ、最初のユーザー操作でAudioContextを起動する。
+  useEffect(() => {
+    initAudioUnlock();
+  }, []);
 
   // 起動時: 保存されたランがあれば「続きから」の選択待ちにする(TEST18/19のラン途中保存を踏襲)。
   useEffect(() => {
@@ -126,15 +151,40 @@ export default function App() {
   return (
     <div className="app-root">
       {incompatibleBanner}
+      <AudioSettingsButton />
+      {/* Phase 6: 計測ビューアは開発ビルドか ?metrics=1 のときだけ。通常のプレイ画面には出さない。 */}
+      {metricsViewerEnabled() && state.phase !== 'battle' && (
+        <button type="button" className="metrics-fab" onClick={() => setShowMetrics(true)} title="バランス計測">
+          📊
+        </button>
+      )}
+      {showMetrics && <MetricsPanel onClose={() => setShowMetrics(false)} />}
       {codexButtonVisible && (
         <button type="button" className="codex-fab" onClick={() => setShowCodex(true)} title="図鑑">
           📖
         </button>
       )}
       {showCodex && <CodexModal codex={codex} onClose={() => setShowCodex(false)} />}
-      {state.phase === 'title' && <TitleScreen onNewRun={() => setState((s) => startNewRun(s))} />}
+      {state.phase === 'title' && (
+        <TitleScreen
+          onNewRun={() =>
+            setState((s) => {
+              const next = startNewRun(s);
+              recordRunStart(next.starterId);
+              return next;
+            })
+          }
+        />
+      )}
 
-      {state.phase === 'starterSelect' && <StarterSelectScreen onPick={(id) => setState((s) => selectStarter(s, id))} />}
+      {state.phase === 'starterSelect' && (
+        <StarterSelectScreen
+          onPick={(id) => {
+            recordRunStart(id); // 素体が決まった時点をラン開始として記録する
+            setState((s) => selectStarter(s, id));
+          }}
+        />
+      )}
 
       {state.phase === 'prep' && (
         <>
@@ -159,6 +209,7 @@ export default function App() {
             onEquip={(partId) => setState((s) => equipPart(s, partId))}
             onUnequip={(partId) => setState((s) => unequipPart(s, partId))}
             onGoToEnemySelect={() => setState((s) => enterEnemySelect(s))}
+            onCommandsTabOpened={() => setState((s) => markCommandsSeen(s))}
           />
         </>
       )}
@@ -168,6 +219,7 @@ export default function App() {
           candidateIds={state.enemyCandidateIds}
           onPick={(enemyId) => {
             setCodex((prev) => markEnemyEncountered(prev, enemyId));
+            recordEnemyChosen(enemyId);
             setState((s) => chooseEnemy(s, enemyId));
           }}
         />
@@ -186,7 +238,25 @@ export default function App() {
               startingMp={state.mp}
               onExit={(result, finalHp, finalMp) => {
                 if (result === 'won') setCodex((prev) => markEnemyDefeated(prev, enemy.id));
-                setState((s) => finishBattle(s, result, finalHp, finalMp));
+                const parts = equippedPartDefs(state);
+                recordBattleEnd({
+                  battleIndex: state.battleIndex,
+                  enemyId: enemy.id,
+                  enemyTier: enemy.tier,
+                  outcome: result,
+                  hpLeft: finalHp,
+                  mpLeft: finalMp,
+                  unlockedCommandIds: [...computeUnlockedCommandIds(parts)],
+                  equippedPartIds: [...state.equippedPartIds],
+                  activeSynergyNames: activeSynergies(parts).map((x) => x.name),
+                });
+                setState((s) => {
+                  const next = finishBattle(s, result, finalHp, finalMp);
+                  if (next.phase === 'result' && next.resultOutcome) {
+                    recordRunEnd(next.resultOutcome, next.equippedPartIds);
+                  }
+                  return next;
+                });
               }}
             />
           );
@@ -195,8 +265,36 @@ export default function App() {
       {state.phase === 'reward' && (
         <RewardScreen
           candidateIds={state.dropCandidateIds}
-          onAccept={(partId) => setState((s) => acceptDrop(s, partId, true))}
-          onSkip={() => setState((s) => skipDrop(s))}
+          fromEnemyId={state.lastDefeatedEnemyId}
+          onAccept={(partId) => {
+            playSE('part');
+            recordDrop(partId, state.dropCandidateIds);
+            setState((s) => acceptDrop(s, partId, true));
+          }}
+          onSkip={() => {
+            recordDrop(null, state.dropCandidateIds);
+            setState((s) => skipDrop(s));
+          }}
+        />
+      )}
+
+      {state.phase === 'commandUnlock' && (
+        <CommandUnlockScreen
+          commandIds={state.pendingUnlockCommandIds}
+          fromPartId={state.lastAcquiredPartId}
+          onDone={() => setState((s) => dismissCommandUnlock(s))}
+        />
+      )}
+
+      {state.phase === 'fusion' && (
+        <FusionScreen
+          state={state}
+          onFuse={(a, b) => {
+            playSE('part');
+            recordFusionPerformed();
+            setState((s) => performFusion(s, a, b));
+          }}
+          onSkip={() => setState((s) => skipFusion(s))}
         />
       )}
 

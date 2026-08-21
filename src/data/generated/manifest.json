@@ -1,6 +1,6 @@
 {
   "source": "docs/data/chimera_battle_ctb_redesign_v02_clean.xlsx",
-  "sourceSha256": "5e9a5466b5cab7a3e35888a5113e3fba06489221187a76853468e0c7fffa0eeb",
+  "sourceSha256": "4909aa1ceb3e1ce1bd0e7812301c44eeb19138cc067dc2ca0d3a6108ac7c3fc8",
   "counts": {
     "CTB設定": 16,
     "コマンド": 60,
@@ -8,6 +8,7 @@
     "敵": 45,
     "シナジー": 36,
     "状態異常": 24,
+    "融合": 11,
     "代表ビルド": 20
   },
   "files": {
@@ -17,6 +18,7 @@
     "敵": "enemies.json",
     "シナジー": "synergies.json",
     "状態異常": "status-effects.json",
+    "融合": "fusions.json",
     "代表ビルド": "representative-builds.json"
   }
 }

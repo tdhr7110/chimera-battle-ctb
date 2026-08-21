@@ -74,6 +74,15 @@ SPECS = {
         },
         "arrays": {"mainSources"},
     },
+    # Phase 5(任意の部位融合)で追加。素材タグA/Bが空の行はワイルドカード(既定の融合結果)。
+    "融合": {
+        "file": "fusions.json",
+        "columns": {
+            "ID": "id", "融合名": "name", "アイコン": "icon", "素材タグA": "tagA", "素材タグB": "tagB",
+            "カテゴリ": "category", "継承タグ": "tags", "効果": "effect", "説明": "description",
+        },
+        "arrays": {"tags"},
+    },
     "代表ビルド": {
         "file": "representative-builds.json",
         "columns": {
@@ -196,7 +205,7 @@ def read_workbook(path: Path) -> dict[str, list[dict[str, object]]]:
 
 
 def validate(data: dict[str, list[dict[str, object]]]) -> None:
-    for sheet_name in ["コマンド", "部位", "敵", "シナジー", "状態異常"]:
+    for sheet_name in ["コマンド", "部位", "敵", "シナジー", "状態異常", "融合"]:
         records = data[sheet_name]
         ids = [str(r.get("id", "")).strip() for r in records]
         if any(not x for x in ids):

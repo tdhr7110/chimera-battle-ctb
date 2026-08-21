@@ -21,13 +21,28 @@ export function PrepScreen({
   onEquip,
   onUnequip,
   onGoToEnemySelect,
+  onCommandsTabOpened,
 }: {
   state: RunState;
   onEquip: (partId: string) => void;
   onUnequip: (partId: string) => void;
   onGoToEnemySelect: () => void;
+  onCommandsTabOpened: () => void;
 }) {
   const [tab, setTab] = useState<Tab>('status');
+  // Phase 2: コマンドタブを開いた時点でNEWを既読にする。既読化はRunState側で行うが、
+  // 「今回のNEWがどれだったか」はタブを開いた瞬間の値を保持して表示に使う
+  // (開いた途端にハイライトが全部消えてしまうと、どれが新しいのか分からなくなるため)。
+  const [highlightIds, setHighlightIds] = useState<string[]>([]);
+
+  function openTab(next: Tab) {
+    if (next === 'commands' && tab !== 'commands') {
+      setHighlightIds(state.newCommandIds);
+      onCommandsTabOpened();
+    }
+    setTab(next);
+  }
+
   const equippedDefs = useMemo(() => equippedPartDefs(state), [state.equippedPartIds]);
   const mods = useMemo(() => computePlayerModifiers(equippedDefs), [equippedDefs]);
   const activeSynergyIds = useMemo(() => activeSynergies(equippedDefs).map((s) => s.id), [equippedDefs]);
@@ -53,17 +68,18 @@ export function PrepScreen({
       </div>
 
       <div className="tab-row">
-        <button className={`tab-btn${tab === 'status' ? ' tab-btn--active' : ''}`} onClick={() => setTab('status')}>
+        <button className={`tab-btn${tab === 'status' ? ' tab-btn--active' : ''}`} onClick={() => openTab('status')}>
           ❤️ ステータス
         </button>
-        <button className={`tab-btn${tab === 'parts' ? ' tab-btn--active' : ''}`} onClick={() => setTab('parts')}>
+        <button className={`tab-btn${tab === 'parts' ? ' tab-btn--active' : ''}`} onClick={() => openTab('parts')}>
           🦴 部位
         </button>
-        <button className={`tab-btn${tab === 'synergy' ? ' tab-btn--active' : ''}`} onClick={() => setTab('synergy')}>
+        <button className={`tab-btn${tab === 'synergy' ? ' tab-btn--active' : ''}`} onClick={() => openTab('synergy')}>
           🔗 シナジー
         </button>
-        <button className={`tab-btn${tab === 'commands' ? ' tab-btn--active' : ''}`} onClick={() => setTab('commands')}>
+        <button className={`tab-btn${tab === 'commands' ? ' tab-btn--active' : ''}`} onClick={() => openTab('commands')}>
           ⚡ コマンド
+          {state.newCommandIds.length > 0 && <span className="tab-btn__new">NEW</span>}
         </button>
       </div>
 
@@ -184,11 +200,18 @@ export function PrepScreen({
             </p>
             {COMMANDS.map((cmd) => {
               const unlocked = isCommandUnlocked(cmd, equippedDefs);
+              const isNew = highlightIds.includes(cmd.id);
               return (
-                <div key={cmd.id} className={`command-tab__row${unlocked ? '' : ' command-tab__row--locked'}`}>
+                <div
+                  key={cmd.id}
+                  className={`command-tab__row${unlocked ? '' : ' command-tab__row--locked'}${isNew ? ' command-tab__row--new' : ''}`}
+                >
                   <span className="command-tab__icon">{unlocked ? cmd.icon : '🔒'}</span>
                   <div className="command-tab__body">
-                    <div className="command-tab__name">{cmd.name}</div>
+                    <div className="command-tab__name">
+                      {cmd.name}
+                      {isNew && <span className="command-tab__new">NEW</span>}
+                    </div>
                     <div className="command-tab__desc">
                       {unlocked ? cmd.description : `「${cmd.unlockTag}」タグの部位を装着すると解放`}
                     </div>

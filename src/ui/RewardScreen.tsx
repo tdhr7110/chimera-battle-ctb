@@ -1,25 +1,45 @@
+import { getEnemy } from '../data/enemies';
 import { getPart } from '../data/parts';
 
 // ============================================================
 // 仕様書35章: Vampire Survivors系の「中央報酬選択」を参考にした部位獲得画面。
 // 背景を暗くし、中央に候補部位を並べる。取得後は確認画面を挟まず即座に
 // 待機画面へ戻す(仕様書37章: 不要な中間画面を作らない)。
+//
+// Phase 1: 候補は「倒した敵が落とす部位」から抽選済み(engine/run.ts の rollDropCandidates)。
+// この画面は抽選を一切行わず、確定済みのIDを描画するだけ(再描画で候補が変わらない)。
 // ============================================================
 
-export function RewardScreen({ candidateIds, onAccept, onSkip }: { candidateIds: string[]; onAccept: (partId: string) => void; onSkip: () => void }) {
+export function RewardScreen({
+  candidateIds,
+  fromEnemyId,
+  onAccept,
+  onSkip,
+}: {
+  candidateIds: string[];
+  fromEnemyId: string | null;
+  onAccept: (partId: string) => void;
+  onSkip: () => void;
+}) {
+  const enemy = fromEnemyId ? getEnemy(fromEnemyId) : undefined;
   return (
     <div className="reward-screen">
       <div className="reward-screen__title">🎁 部位を獲得</div>
-      <div className="reward-screen__sub">1個選んでください</div>
+      <div className="reward-screen__sub">
+        {enemy ? `${enemy.icon} ${enemy.name} の部位から1個選んでください` : '1個選んでください'}
+      </div>
       <div className="reward-grid">
         {candidateIds.map((id) => {
           const part = getPart(id);
           if (!part) return null;
           return (
-            <button key={id} type="button" className="reward-card" onClick={() => onAccept(id)}>
+            <button key={id} type="button" className={`reward-card reward-card--${part.rarity.toLowerCase()}`} onClick={() => onAccept(id)}>
               <div className="reward-card__icon">{part.icon}</div>
               <div className="reward-card__name">{part.name}</div>
-              <div className="reward-card__type">{part.type}</div>
+              <div className="reward-card__type">
+                {part.type}
+                <span className={`rarity-badge rarity-badge--${part.rarity.toLowerCase()}`}>{part.rarity}</span>
+              </div>
               <div className="reward-card__desc">{part.description}</div>
             </button>
           );

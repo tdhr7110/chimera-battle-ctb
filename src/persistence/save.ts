@@ -7,7 +7,14 @@ import type { RunState } from '../engine/run';
 // 新規ランとして扱う(旧データはlocalStorageに残したまま上書きしない)。
 // ============================================================
 
-const SAVE_VERSION = 1; // CTB統合版の初版。データモデルが変わるたびに必ず上げる。
+// v1: CTB統合版の初版。
+// v2: Phase 1(敵所持部位ドロップ)でRunStateへ lastDefeatedEnemyId を追加。
+// v3: Phase 2(コマンド解放演出)で lastAcquiredPartId / pendingUnlockCommandIds /
+//     newCommandIds を追加。
+// v4: Phase 5(任意の部位融合)で fusionUsedForBattleIndex / lastFusionPartId を追加。
+// いずれも安全な既定値(null / 空配列)を与えられる追加フィールドのみなので、
+// 古いセーブは破棄せず移行する。
+export const SAVE_VERSION = 4;
 const SAVE_KEY = 'chimera-battle-ctb:run:v1';
 const INTRO_SEEN_KEY = 'chimera-battle-ctb:intro-seen:v1';
 
@@ -21,16 +28,57 @@ export interface LoadResult {
   incompatibleFound: boolean; // 旧バージョンのセーブが存在した(=移行できず破棄した)ことをUIへ伝える
 }
 
+// 旧バージョンのセーブを現行RunStateへ持ち上げる。移行不能なら null を返す
+// (= 破棄してユーザーへ通知する)。追加フィールドに安全な既定値を与えられる範囲は移行する。
+export function migrate(version: number | undefined, state: RunState): RunState | null {
+  let current = state;
+  let v = version;
+  if (v === 1) {
+    // v1 -> v2: Phase 1 で lastDefeatedEnemyId を追加。既存ランには「直前に倒した敵」の
+    // 記録が無いため null 始まりにする(報酬画面の見出しが敵名なしになるだけで進行に影響しない)。
+    current = { ...current, lastDefeatedEnemyId: current.lastDefeatedEnemyId ?? null };
+    v = 2;
+  }
+  if (v === 2) {
+    // v2 -> v3: Phase 2 のコマンド解放演出用フィールド。過去に解放済みのコマンドを
+    // 遡ってNEW扱いにはしない(空配列始まり)。演出待ちも当然無い。
+    current = {
+      ...current,
+      lastAcquiredPartId: current.lastAcquiredPartId ?? null,
+      pendingUnlockCommandIds: current.pendingUnlockCommandIds ?? [],
+      newCommandIds: current.newCommandIds ?? [],
+    };
+    v = 3;
+  }
+  if (v === 3) {
+    // v3 -> v4: Phase 5 の融合用フィールド。過去のエリート撃破を遡って
+    // 「融合済み」にはしない(null始まり = 次のエリートから提示される)。
+    current = {
+      ...current,
+      fusionUsedForBattleIndex: current.fusionUsedForBattleIndex ?? null,
+      lastFusionPartId: current.lastFusionPartId ?? null,
+    };
+    v = 4;
+  }
+  return v === SAVE_VERSION ? current : null;
+}
+
 export function loadRunState(): LoadResult {
   try {
     const raw = localStorage.getItem(SAVE_KEY);
     if (!raw) return { state: null, incompatibleFound: false };
     const parsed = JSON.parse(raw) as Partial<SaveEnvelope>;
-    if (parsed.version !== SAVE_VERSION || !parsed.state) {
-      // 互換性のないバージョン: 破壊はするが、呼び出し側がユーザーへ通知できるようフラグを立てる。
+    if (!parsed.state) {
       localStorage.removeItem(SAVE_KEY);
       return { state: null, incompatibleFound: true };
     }
+    const migrated = migrate(parsed.version, parsed.state);
+    if (!migrated) {
+      // 移行できないバージョン: 破壊はするが、呼び出し側がユーザーへ通知できるようフラグを立てる。
+      localStorage.removeItem(SAVE_KEY);
+      return { state: null, incompatibleFound: true };
+    }
+    parsed.state = migrated;
     if (parsed.state.phase === 'battle') {
       // 戦闘中の状態は保存対象外(チェックポイント方式)。安全なprepへ差し戻す。
       return { state: { ...parsed.state, phase: 'prep' }, incompatibleFound: false };

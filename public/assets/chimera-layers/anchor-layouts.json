@@ -1,0 +1,66 @@
+{
+  "version": 1,
+  "coordinateSystem": "256x256 base canvas",
+  "layouts": {
+    "arm": [
+      { "x": 174, "y": 96, "rotation": -20, "mirror": false, "z": 32 },
+      { "x": 82, "y": 96, "rotation": 20, "mirror": true, "z": 32 },
+      { "x": 180, "y": 121, "rotation": 3, "mirror": false, "z": 28 },
+      { "x": 76, "y": 121, "rotation": -3, "mirror": true, "z": 28 },
+      { "x": 174, "y": 146, "rotation": 28, "mirror": false, "z": 24 },
+      { "x": 82, "y": 146, "rotation": -28, "mirror": true, "z": 24 }
+    ],
+    "wing": [
+      { "x": 166, "y": 112, "rotation": 24, "mirror": false, "z": 3 },
+      { "x": 90, "y": 112, "rotation": -24, "mirror": true, "z": 3 },
+      { "x": 174, "y": 138, "rotation": 42, "mirror": false, "z": 2 },
+      { "x": 82, "y": 138, "rotation": -42, "mirror": true, "z": 2 }
+    ],
+    "horn": [
+      { "x": 128, "y": 55, "rotation": 0, "mirror": false, "z": 36 },
+      { "x": 108, "y": 62, "rotation": -24, "mirror": true, "z": 35 },
+      { "x": 148, "y": 62, "rotation": 24, "mirror": false, "z": 35 },
+      { "x": 94, "y": 76, "rotation": -48, "mirror": true, "z": 34 },
+      { "x": 162, "y": 76, "rotation": 48, "mirror": false, "z": 34 }
+    ],
+    "tail": [
+      { "x": 146, "y": 162, "rotation": 12, "mirror": false, "z": 1 },
+      { "x": 112, "y": 166, "rotation": -22, "mirror": true, "z": 1 },
+      { "x": 150, "y": 180, "rotation": 36, "mirror": false, "z": 0 }
+    ],
+    "leg": [
+      { "x": 151, "y": 160, "rotation": 4, "mirror": false, "z": 8 },
+      { "x": 105, "y": 160, "rotation": -4, "mirror": true, "z": 8 },
+      { "x": 169, "y": 170, "rotation": 18, "mirror": false, "z": 7 },
+      { "x": 87, "y": 170, "rotation": -18, "mirror": true, "z": 7 }
+    ],
+    "back": [
+      { "x": 112, "y": 108, "rotation": -20, "mirror": false, "z": 4 },
+      { "x": 144, "y": 108, "rotation": 20, "mirror": true, "z": 4 }
+    ],
+    "face": [
+      { "x": 128, "y": 88, "rotation": 0, "mirror": false, "z": 40 }
+    ],
+    "armor": [
+      { "x": 128, "y": 127, "rotation": 0, "mirror": false, "z": 6 }
+    ],
+    "eye": [
+      { "x": 128, "y": 78, "rotation": 0, "mirror": false, "z": 45 },
+      { "x": 108, "y": 82, "rotation": -10, "mirror": false, "z": 44 },
+      { "x": 148, "y": 82, "rotation": 10, "mirror": false, "z": 44 }
+    ],
+    "organ": [
+      { "x": 128, "y": 126, "rotation": 0, "mirror": false, "z": 25 },
+      { "x": 112, "y": 136, "rotation": -12, "mirror": false, "z": 24 },
+      { "x": 144, "y": 136, "rotation": 12, "mirror": false, "z": 24 }
+    ]
+  },
+  "overflow": {
+    "arm": { "visibleLimit": 6, "mode": "badge" },
+    "wing": { "visibleLimit": 4, "mode": "badge" },
+    "horn": { "visibleLimit": 5, "mode": "badge" },
+    "tail": { "visibleLimit": 3, "mode": "badge" },
+    "leg": { "visibleLimit": 4, "mode": "badge" },
+    "organ": { "visibleLimit": 3, "mode": "representative" }
+  }
+}

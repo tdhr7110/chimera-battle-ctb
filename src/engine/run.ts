@@ -1,8 +1,10 @@
 import { ENEMIES, getEnemy } from '../data/enemies';
+import { getEnemyDrop, RARE_DROP_CHANCE_PCT } from '../data/enemyDrops';
+import { resolveFusion } from '../data/fusions';
 import { PARTS, getPart } from '../data/parts';
 import { getStarter } from '../data/starters';
 import { CTB_MP_MAX_BASE, PLAYER_BASE } from './ctbEngine';
-import { computePlayerModifiers } from './modifiers';
+import { computePlayerModifiers, newlyUnlockedCommands } from './modifiers';
 import type { EnemyTier, PartDef } from '../data/types';
 
 // ============================================================
@@ -18,7 +20,7 @@ import type { EnemyTier, PartDef } from '../data/types';
 //     (同じ敵に複数回遭遇することがあるのは既知の暫定仕様)。部位は80種すべて接続済み。
 // ============================================================
 
-export type GamePhase = 'title' | 'starterSelect' | 'prep' | 'enemySelect' | 'battle' | 'reward' | 'result';
+export type GamePhase = 'title' | 'starterSelect' | 'prep' | 'enemySelect' | 'battle' | 'reward' | 'commandUnlock' | 'fusion' | 'result';
 
 // 仕様書のTEST18パターン(通常/通常/エリート/通常/中ボス/通常/エリート/ボス)を踏襲しつつ、
 // 現行6敵ではミニボスまで区別できないためboss 1種類にまとめた7戦構成にしている。
@@ -47,6 +49,12 @@ export interface RunState {
   currentEnemyId: string | null;
   enemyCandidateIds: string[];
   dropCandidateIds: string[];
+  lastDefeatedEnemyId: string | null; // Phase 1: 報酬画面で「どの敵が落としたか」を示すため
+  lastAcquiredPartId: string | null; // Phase 2: 解放演出で「どの部位のおかげか」を示すため
+  pendingUnlockCommandIds: string[]; // Phase 2: 今まさに解放演出で見せるコマンド
+  newCommandIds: string[]; // Phase 2: コマンドタブのNEWバッジ(タブを開くと既読になる)
+  fusionUsedForBattleIndex: number | null; // Phase 5: 融合を提示/実行済みの戦闘番号(1エリート1回)
+  lastFusionPartId: string | null; // Phase 5: 直前の融合で得た部位(結果表示用)
   resultOutcome: 'victory' | 'defeat' | null;
   seenIntro: boolean; // 遊び方を一度でも見たか(GAME STARTのたび強制表示しないため)
 }
@@ -63,6 +71,12 @@ export function createTitleState(seenIntro: boolean): RunState {
     currentEnemyId: null,
     enemyCandidateIds: [],
     dropCandidateIds: [],
+    lastDefeatedEnemyId: null,
+    lastAcquiredPartId: null,
+    pendingUnlockCommandIds: [],
+    newCommandIds: [],
+    fusionUsedForBattleIndex: null,
+    lastFusionPartId: null,
     resultOutcome: null,
     seenIntro,
   };
@@ -106,11 +120,17 @@ function clampMpToMax(state: RunState): RunState {
 export function equipPart(state: RunState, partId: string): RunState {
   if (state.equippedPartIds.includes(partId)) return state;
   if (state.equippedPartIds.length >= MAX_EQUIPPED_PARTS) return state;
-  return clampMpToMax({
+  const next = {
     ...state,
     equippedPartIds: [...state.equippedPartIds, partId],
     inventoryPartIds: state.inventoryPartIds.filter((id) => id !== partId),
-  });
+  };
+  // Phase 2: 準備画面での付け替えでもコマンドは解放されうる。ここでは演出は挟まず
+  // (装備をいじるたびにオーバーレイが出るのは煩わしいため)、NEWバッジだけ更新する。
+  const unlockedIds = newlyUnlockedCommands(equippedPartDefs(state), equippedPartDefs(next)).map((c) => c.id);
+  return clampMpToMax(
+    unlockedIds.length === 0 ? next : { ...next, newCommandIds: [...next.newCommandIds, ...unlockedIds] }
+  );
 }
 
 export function unequipPart(state: RunState, partId: string): RunState {
@@ -130,6 +150,66 @@ function pickRandom<T>(arr: T[], count: number): T[] {
     out.push(pool.splice(idx, 1)[0]);
   }
   return out;
+}
+
+export const DROP_CANDIDATE_COUNT = 3;
+
+// ------------------------------------------------------------
+// 報酬候補の抽選(Phase 1: 敵所持部位ドロップ)。
+//
+// 「全PARTSから未所持をランダム」ではなく、倒した敵のドロップ定義(Excelのドロップタグ由来)を
+// 中心に抽選する。これにより敵選択が単なる危険度選択ではなく、ビルドの方向を選ぶ行為になる。
+//
+// 所持済み部位の扱いは既存仕様(finishBattleが未所持のみを候補にしていた)をそのまま踏襲し、
+// どの枠でも所持済みは候補から除外する。
+//
+// 敵のプールを引き切った場合の縮退順序(Excelのタグ分布の偏りでプールが小さい敵があるため、
+// 報酬画面が空になるのを必ず防ぐ): 敵の通常枠 → 敵のレア枠 → 全未所持部位。
+//
+// rollFn は 0<=x<1 を返す乱数。テストから決定的な値を渡せるよう引数にしている。
+// ------------------------------------------------------------
+export function rollDropCandidates(
+  enemyId: string,
+  ownedIds: string[],
+  rollFn: () => number = Math.random
+): string[] {
+  const owned = new Set(ownedIds);
+  const drop = getEnemyDrop(enemyId);
+  const enemy = getEnemy(enemyId);
+  const unowned = (ids: string[]) => ids.filter((id) => !owned.has(id));
+
+  if (!drop || !enemy) {
+    return pickRandom(unowned(PARTS.map((p) => p.id)), DROP_CANDIDATE_COUNT);
+  }
+
+  const normalPool = unowned(drop.bodyPartIds);
+  const rarePool = unowned(drop.rareDropPartIds);
+  const rareChance = RARE_DROP_CHANCE_PCT[enemy.tier];
+
+  const picked: string[] = [];
+  const taken = new Set<string>();
+  const takeFrom = (pool: string[]): boolean => {
+    const available = pool.filter((id) => !taken.has(id));
+    if (available.length === 0) return false;
+    const id = available[Math.min(available.length - 1, Math.floor(rollFn() * available.length))];
+    picked.push(id);
+    taken.add(id);
+    return true;
+  };
+
+  while (picked.length < DROP_CANDIDATE_COUNT) {
+    // 1枠ごとに独立してレア枠かどうかを判定し、外れた/引き切った場合は通常枠へ落とす。
+    const wantRare = rollFn() * 100 < rareChance;
+    const got = wantRare ? takeFrom(rarePool) || takeFrom(normalPool) : takeFrom(normalPool) || takeFrom(rarePool);
+    if (!got) break;
+  }
+
+  // 敵のプールを引き切ってもまだ枠が余る場合だけ、全未所持部位から補充する。
+  if (picked.length < DROP_CANDIDATE_COUNT) {
+    const fallback = unowned(PARTS.map((p) => p.id)).filter((id) => !taken.has(id));
+    for (const id of pickRandom(fallback, DROP_CANDIDATE_COUNT - picked.length)) picked.push(id);
+  }
+  return picked;
 }
 
 export function enterEnemySelect(state: RunState): RunState {
@@ -154,34 +234,134 @@ export function finishBattle(state: RunState, result: 'won' | 'lost', finalHp: n
   if (state.battleIndex >= TOTAL_BATTLES) {
     return { ...state, phase: 'result', resultOutcome: 'victory', coreHp: recovered, mp: recoveredMp, currentEnemyId: null };
   }
-  const owned = new Set(ownedPartIds(state));
-  const candidatePool = PARTS.filter((p) => !owned.has(p.id));
-  const candidates = pickRandom(candidatePool, Math.min(3, candidatePool.length));
+  // Phase 1: 報酬候補は「倒した敵が落とす部位」から抽選する。ここで一度だけ確定させ、
+  // RunStateへ保存する(RewardScreenは再描画されても再抽選しない)。
+  const defeatedEnemyId = state.currentEnemyId;
   return {
     ...state,
     phase: 'reward',
     coreHp: recovered,
     mp: recoveredMp,
     currentEnemyId: null,
-    dropCandidateIds: candidates.map((p) => p.id),
+    lastDefeatedEnemyId: defeatedEnemyId,
+    dropCandidateIds: defeatedEnemyId ? rollDropCandidates(defeatedEnemyId, ownedPartIds(state)) : [],
   };
 }
 
 // wantEquip=trueかつ装着枠に空きがあればそのまま装着、空きが無ければインベントリへ保管する。
+//
+// Phase 2: 装着された場合はコマンドが新しく解放されることがあるため、その差分を取って
+// 演出フェーズ(commandUnlock)へ寄り道する。解放が無ければ従来どおり直接prepへ戻る
+// (中間画面をむやみに増やさない)。
 export function acceptDrop(state: RunState, partId: string, wantEquip: boolean): RunState {
-  const next =
-    wantEquip && state.equippedPartIds.length < MAX_EQUIPPED_PARTS
-      ? { ...state, equippedPartIds: [...state.equippedPartIds, partId] }
-      : { ...state, inventoryPartIds: [...state.inventoryPartIds, partId] };
-  return advanceToNextBattle({ ...next, dropCandidateIds: [] });
+  const equipped = wantEquip && state.equippedPartIds.length < MAX_EQUIPPED_PARTS;
+  const next = equipped
+    ? { ...state, equippedPartIds: [...state.equippedPartIds, partId] }
+    : { ...state, inventoryPartIds: [...state.inventoryPartIds, partId] };
+
+  const unlocked = equipped ? newlyUnlockedCommands(equippedPartDefs(state), equippedPartDefs(next)) : [];
+  const withDrop = { ...next, dropCandidateIds: [], lastAcquiredPartId: partId };
+  if (unlocked.length === 0) return afterRewardFlow(withDrop);
+
+  const unlockedIds = unlocked.map((c) => c.id);
+  return {
+    ...withDrop,
+    phase: 'commandUnlock',
+    pendingUnlockCommandIds: unlockedIds,
+    newCommandIds: [...state.newCommandIds, ...unlockedIds],
+  };
+}
+
+// ------------------------------------------------------------
+// Phase 5: 任意の部位融合。
+//
+// 提示条件(強制はしない):
+//   - 直前に倒したのがエリートであること
+//   - 最終戦(ボス)の後ではないこと
+//   - そのエリート撃破につき、まだ融合していないこと(1回まで)
+//   - 素材が2つ以上あること
+// 提示された画面で「そのまま進む」を選べば何も起きない。
+// ------------------------------------------------------------
+export function canOfferFusion(state: RunState): boolean {
+  if (state.fusionUsedForBattleIndex === state.battleIndex) return false; // このエリートでは融合済み
+  if (state.battleIndex >= TOTAL_BATTLES) return false; // 最終ボス撃破後には出さない
+  const enemy = state.lastDefeatedEnemyId ? getEnemy(state.lastDefeatedEnemyId) : undefined;
+  if (enemy?.tier !== 'elite') return false;
+  return ownedPartIds(state).length >= 2;
+}
+
+// 融合を実行する。素材2つは所持から取り除かれ(装備中でも外れる)、結果の部位が手に入る。
+// 既に同じ融合部位を持っている場合は素材だけ消えることになるため、呼び出し側(UI)が
+// fusionResultFor()で事前に判定して選べないようにしている。
+export function performFusion(state: RunState, partIdA: string, partIdB: string): RunState {
+  const a = getPart(partIdA);
+  const b = getPart(partIdB);
+  if (!a || !b || partIdA === partIdB) return state;
+  const owned = new Set(ownedPartIds(state));
+  if (!owned.has(partIdA) || !owned.has(partIdB)) return state;
+
+  const rule = resolveFusion(a, b);
+  const consumed = [partIdA, partIdB];
+  const equipped = state.equippedPartIds.filter((id) => !consumed.includes(id));
+  const inventory = state.inventoryPartIds.filter((id) => !consumed.includes(id));
+  const alreadyHas = [...equipped, ...inventory].includes(rule.id);
+
+  // 空きがあればそのまま装着、無ければインベントリへ(通常の部位取得と同じ扱い)。
+  const next: RunState = alreadyHas
+    ? { ...state, equippedPartIds: equipped, inventoryPartIds: inventory }
+    : equipped.length < MAX_EQUIPPED_PARTS
+      ? { ...state, equippedPartIds: [...equipped, rule.id], inventoryPartIds: inventory }
+      : { ...state, equippedPartIds: equipped, inventoryPartIds: [...inventory, rule.id] };
+
+  // 融合でも装備が変われば新しいコマンドが解放されうるので、NEWバッジには反映する。
+  const unlockedIds = newlyUnlockedCommands(equippedPartDefs(state), equippedPartDefs(next)).map((c) => c.id);
+  return advanceToNextBattle(
+    clampMpToMax({
+      ...next,
+      fusionUsedForBattleIndex: state.battleIndex,
+      lastFusionPartId: rule.id,
+      newCommandIds: [...next.newCommandIds, ...unlockedIds],
+    })
+  );
+}
+
+// 融合せずに進む。
+export function skipFusion(state: RunState): RunState {
+  return advanceToNextBattle({ ...state, fusionUsedForBattleIndex: state.battleIndex });
+}
+
+// UIが「この組み合わせなら何ができるか」を先に見せるための参照用(抽選ではないので副作用なし)。
+export function fusionResultFor(partIdA: string, partIdB: string) {
+  const a = getPart(partIdA);
+  const b = getPart(partIdB);
+  return a && b ? resolveFusion(a, b) : undefined;
+}
+
+// 解放演出を閉じたら、そこで初めて次の戦闘の準備画面へ進む。
+// タップと自動送りの両方から呼ばれうるので、commandUnlockフェーズでない場合は何もしない
+// (二重に呼ばれてbattleIndexが2つ進んでしまうのを防ぐ)。
+export function dismissCommandUnlock(state: RunState): RunState {
+  if (state.phase !== 'commandUnlock') return state;
+  return afterRewardFlow({ ...state, pendingUnlockCommandIds: [] });
 }
 
 export function skipDrop(state: RunState): RunState {
-  return advanceToNextBattle({ ...state, dropCandidateIds: [] });
+  return afterRewardFlow({ ...state, dropCandidateIds: [] });
+}
+
+// コマンドタブを開いたらNEWを既読にする。
+export function markCommandsSeen(state: RunState): RunState {
+  return state.newCommandIds.length === 0 ? state : { ...state, newCommandIds: [] };
 }
 
 function advanceToNextBattle(state: RunState): RunState {
   return { ...state, phase: 'prep', battleIndex: state.battleIndex + 1 };
+}
+
+// Phase 5: 報酬(と解放演出)が済んだあと、エリート撃破後だけ融合の提示を1回挟む。
+// 条件を満たさなければ従来どおり直接prepへ進む(中間画面を無闇に増やさない)。
+function afterRewardFlow(state: RunState): RunState {
+  return canOfferFusion(state) ? { ...state, phase: 'fusion' } : advanceToNextBattle(state);
 }
 
 export function tierOfCurrentBattle(state: RunState): EnemyTier {
