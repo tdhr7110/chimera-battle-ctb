@@ -1632,3 +1632,48 @@ button {
   border-radius: 6px;
   resize: vertical;
 }
+
+/* ============================================================
+   Phase 7: 難易度プリセット選択(タイトル画面)
+   ============================================================ */
+.difficulty-picker {
+  width: 100%;
+  max-width: 320px;
+  margin: 0 auto 14px;
+  text-align: center;
+}
+.difficulty-picker__title {
+  margin-bottom: 6px;
+  font-size: 0.62rem;
+  letter-spacing: 0.1em;
+  color: #94a3b8;
+}
+.difficulty-picker__row {
+  display: flex;
+  gap: 6px;
+  justify-content: center;
+}
+.difficulty-chip {
+  flex: 1;
+  padding: 7px 4px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: #cbd5e1;
+  background: var(--color-panel-2);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  cursor: pointer;
+}
+.difficulty-chip--on {
+  color: #0f172a;
+  background: linear-gradient(180deg, #a78bfa, #7c3aed);
+  border-color: #c4b5fd;
+  box-shadow: 0 0 12px rgba(167, 139, 250, 0.5);
+}
+.difficulty-picker__desc {
+  margin-top: 6px;
+  min-height: 2.2em;
+  font-size: 0.58rem;
+  line-height: 1.5;
+  color: #94a3b8;
+}

@@ -1129,40 +1129,64 @@ export class CtbEngine {
   // 仕様書22章のAUTO簡易AIは、60コマンド全体を評価する高度なAIではなく、既存の
   // 基礎5コマンド+防御+遅延打撃のみを使う実装のまま(仕様書の範囲外・Enemy AIと同様、
   // 段階的接続の対象外として据え置いている)。CMD IDはExcelのコマンドID(CMD001等)。
+  // ------------------------------------------------------------
+  // AUTO。以前は通常攻撃〜毒針の5コマンド固定プールから重み付き抽選するだけで、
+  // 解放済みの残り55コマンドを一切使っていなかった(通常敵ですら勝率49%だった原因)。
+  // いまは「解放済み・使用可能な全コマンドを、実際の見積ダメージとCTの重さで評価して選ぶ」
+  // 方式にしている。評価にはUIと同じcommandPreview()のdamageEstimateを使うので、
+  // 部位・シナジー・状態異常の補正が全部乗った値で判断できる。
+  //
+  // 防御的な判断(低HPで防御、敵の大技の前に遅延/防御)は従来どおり優先する。
+  // ------------------------------------------------------------
   decideAutoCommand(): CommandDef {
     const hpPct = this.player.maxHp > 0 ? this.player.hp / this.player.maxHp : 1;
     const guard = getCommand('CMD004')!;
-    if (hpPct < 0.3) return guard;
-
     const nextMove = this.currentEnemyMove();
-    if (nextMove.intent === 'ULTIMATE' || nextMove.intent === 'STRONG') {
+    const bigIncoming = nextMove.intent === 'ULTIMATE' || nextMove.intent === 'STRONG';
+
+    // 瀕死なら守る。大技が来るなら遅延で押し返すか防御する。
+    if (hpPct < 0.25) return guard;
+    if (bigIncoming) {
       const delayStrike = getCommand('CMD011')!;
-      if (
-        this.unlockedCommandIds.has(delayStrike.id) &&
-        this.mp >= delayStrike.mpCost &&
-        this.statusMagnitude(this.player, 'silence') === 0 &&
-        Math.random() < 0.5
-      )
-        return delayStrike;
-      return guard;
+      const preview = this.commandPreview(delayStrike);
+      if (this.unlockedCommandIds.has(delayStrike.id) && preview.usable && Math.random() < 0.6) return delayStrike;
+      if (hpPct < 0.6) return guard;
     }
 
-    const silenced = this.statusMagnitude(this.player, 'silence') > 0;
-    const pool: { cmd: CommandDef; weight: number }[] = [
-      { cmd: getCommand('CMD001')!, weight: 3 }, // 通常攻撃
-      { cmd: getCommand('CMD002')!, weight: 2 }, // 速撃
-      { cmd: getCommand('CMD003')!, weight: 2 }, // 強打
-      { cmd: getCommand('CMD006')!, weight: 1.4 }, // 火炎牙
-      { cmd: getCommand('CMD007')!, weight: 1 }, // 毒針
-    ].filter((p) => this.unlockedCommandIds.has(p.cmd.id) && this.mp >= p.cmd.mpCost && !(silenced && p.cmd.mpCost > 0));
+    // 解放済み・いま撃てるコマンドを全部評価する。
+    const candidates = COMMANDS.filter((c) => this.unlockedCommandIds.has(c.id)).map((cmd) => ({
+      cmd,
+      preview: this.commandPreview(cmd),
+    }));
+    const usable = candidates.filter((c) => c.preview.usable);
+    if (usable.length === 0) return guard;
 
-    const totalWeight = pool.reduce((s, p) => s + p.weight, 0);
-    let roll = Math.random() * totalWeight;
-    for (const p of pool) {
-      roll -= p.weight;
-      if (roll <= 0) return p.cmd;
+    // 期待値 = 見積ダメージ / CTの重さ。CTBは「1回の強さ」ではなく「時間あたりの強さ」で
+    // competeするので、重い技はその分割り引いて評価する。
+    const scored = usable
+      .map(({ cmd, preview }) => {
+        const dmg = preview.damageEstimate ?? 0;
+        const ctCost = CT_WEIGHT_INTERVAL_MULT[cmd.ctWeight] ?? 1;
+        let score = dmg / ctCost;
+        // 状態異常を撒けるなら少し加点(継続ダメージ・弱体の分)。
+        if (cmd.applyStatus) score += 3 / ctCost;
+        // とどめを刺せるなら最優先。
+        if (dmg >= this.enemy.hp) score += 1000;
+        return { cmd, score };
+      })
+      .sort((a, b) => b.score - a.score);
+
+    // 完全な最適解だと機械的すぎるので、上位3つから軽く散らす。
+    const top = scored.slice(0, 3).filter((s) => s.score > 0);
+    if (top.length === 0) return scored[0]?.cmd ?? guard;
+    const weights = [3, 2, 1];
+    const total = top.reduce((sum, _, i) => sum + weights[i], 0);
+    let roll = Math.random() * total;
+    for (let i = 0; i < top.length; i++) {
+      roll -= weights[i];
+      if (roll <= 0) return top[i].cmd;
     }
-    return getCommand('CMD001')!;
+    return top[0].cmd;
   }
 
   setAutoMode(v: boolean) {

@@ -1,4 +1,5 @@
 import type { RunState } from '../engine/run';
+import { DEFAULT_DIFFICULTY_ID } from '../data/difficulty';
 
 // ============================================================
 // セーブデータ(仕様書38章)。CTB×MP×新データモデルへの移行により、
@@ -12,9 +13,10 @@ import type { RunState } from '../engine/run';
 // v3: Phase 2(コマンド解放演出)で lastAcquiredPartId / pendingUnlockCommandIds /
 //     newCommandIds を追加。
 // v4: Phase 5(任意の部位融合)で fusionUsedForBattleIndex / lastFusionPartId を追加。
+// v5: Phase 7(難易度調整)で difficultyId を追加。
 // いずれも安全な既定値(null / 空配列)を与えられる追加フィールドのみなので、
 // 古いセーブは破棄せず移行する。
-export const SAVE_VERSION = 4;
+export const SAVE_VERSION = 5;
 const SAVE_KEY = 'chimera-battle-ctb:run:v1';
 const INTRO_SEEN_KEY = 'chimera-battle-ctb:intro-seen:v1';
 
@@ -59,6 +61,11 @@ export function migrate(version: number | undefined, state: RunState): RunState 
       lastFusionPartId: current.lastFusionPartId ?? null,
     };
     v = 4;
+  }
+  if (v === 4) {
+    // v4 -> v5: 難易度プリセット。既存ランは既定(ふつう)として続行する。
+    current = { ...current, difficultyId: current.difficultyId ?? DEFAULT_DIFFICULTY_ID };
+    v = 5;
   }
   return v === SAVE_VERSION ? current : null;
 }

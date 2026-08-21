@@ -18,6 +18,7 @@ import {
   equipPart,
   markCommandsSeen,
   performFusion,
+  setDifficulty,
   skipFusion,
   equippedPartDefs,
   finishBattle,
@@ -30,7 +31,8 @@ import {
   unequipPart,
   type RunState,
 } from './engine/run';
-import { getEnemy } from './data/enemies';
+
+import { getTunedEnemy } from './data/difficulty';
 import { clearRunState, loadIntroSeen, loadRunState, saveIntroSeen, saveRunState } from './persistence/save';
 import { markEnemyDefeated, markEnemyEncountered, markPartsDiscovered } from './engine/codex';
 import { loadCodexState, saveCodexState } from './persistence/codex';
@@ -167,6 +169,8 @@ export default function App() {
       {showCodex && <CodexModal codex={codex} onClose={() => setShowCodex(false)} />}
       {state.phase === 'title' && (
         <TitleScreen
+          difficultyId={state.difficultyId}
+          onSelectDifficulty={(id) => setState((s) => setDifficulty(s, id))}
           onNewRun={() =>
             setState((s) => {
               const next = startNewRun(s);
@@ -228,7 +232,8 @@ export default function App() {
       {state.phase === 'battle' &&
         state.currentEnemyId &&
         (() => {
-          const enemy = getEnemy(state.currentEnemyId);
+          // Phase 7: 戦闘へ渡す敵だけ難易度倍率を適用する(図鑑・ドロップは素の値を見る)。
+          const enemy = getTunedEnemy(state.currentEnemyId, state.difficultyId);
           if (!enemy) return null;
           return (
             <BattleScreen

@@ -1,6 +1,7 @@
 import { ENEMIES, getEnemy } from '../data/enemies';
 import { getEnemyDrop, RARE_DROP_CHANCE_PCT } from '../data/enemyDrops';
 import { resolveFusion } from '../data/fusions';
+import { DEFAULT_DIFFICULTY_ID, getDifficulty } from '../data/difficulty';
 import { PARTS, getPart } from '../data/parts';
 import { getStarter } from '../data/starters';
 import { CTB_MP_MAX_BASE, PLAYER_BASE } from './ctbEngine';
@@ -55,6 +56,7 @@ export interface RunState {
   newCommandIds: string[]; // Phase 2: コマンドタブのNEWバッジ(タブを開くと既読になる)
   fusionUsedForBattleIndex: number | null; // Phase 5: 融合を提示/実行済みの戦闘番号(1エリート1回)
   lastFusionPartId: string | null; // Phase 5: 直前の融合で得た部位(結果表示用)
+  difficultyId: string; // Phase 7: 難易度プリセット(Excel「難易度」シート)
   resultOutcome: 'victory' | 'defeat' | null;
   seenIntro: boolean; // 遊び方を一度でも見たか(GAME STARTのたび強制表示しないため)
 }
@@ -77,6 +79,7 @@ export function createTitleState(seenIntro: boolean): RunState {
     newCommandIds: [],
     fusionUsedForBattleIndex: null,
     lastFusionPartId: null,
+    difficultyId: DEFAULT_DIFFICULTY_ID,
     resultOutcome: null,
     seenIntro,
   };
@@ -84,22 +87,34 @@ export function createTitleState(seenIntro: boolean): RunState {
 
 // 装備中の部位に応じた現在の最大MP(部位のmax_mp_bonusを含む)。装備変更でmpが上限を
 // 超えていた場合はequipPart/unequipPart側でクランプする。
+// Phase 7: プレイヤーの最大HPも難易度プリセットの倍率を受ける。
+export function currentMaxHp(state: RunState): number {
+  return Math.round(CORE_HP_BASE * getDifficulty(state.difficultyId).playerHpMult);
+}
+
 export function currentMaxMp(state: RunState): number {
   return CTB_MP_MAX_BASE + computePlayerModifiers(equippedPartDefs(state)).maxMpBonus;
 }
 
 export function startNewRun(state: RunState): RunState {
-  return { ...createTitleState(state.seenIntro), phase: 'starterSelect' };
+  // 難易度はタイトルで選ぶ設定なので、ランをまたいで保持する。
+  return { ...createTitleState(state.seenIntro), phase: 'starterSelect', difficultyId: state.difficultyId };
+}
+
+export function setDifficulty(state: RunState, difficultyId: string): RunState {
+  return { ...state, difficultyId };
 }
 
 export function selectStarter(state: RunState, starterId: string): RunState {
   const starter = getStarter(starterId);
-  return {
+  const next: RunState = {
     ...state,
     phase: 'prep',
     starterId,
     equippedPartIds: starter ? [...starter.partIds] : [],
   };
+  // 難易度のプレイヤーHP倍率をここで反映する(ラン開始時点の満タン値)。
+  return { ...next, coreHp: currentMaxHp(next) };
 }
 
 export function equippedPartDefs(state: RunState): PartDef[] {
@@ -171,7 +186,11 @@ export const DROP_CANDIDATE_COUNT = 3;
 export function rollDropCandidates(
   enemyId: string,
   ownedIds: string[],
-  rollFn: () => number = Math.random
+  rollFn: () => number = Math.random,
+  // Phase 7: 進行に応じたレア率の底上げ。序盤はCommon/Rare中心、終盤ほど上位が出やすくなる
+  // (ローグライト系の「後半のフロアほど報酬の質が上がる」配分)。
+  battleIndex = 1,
+  difficultyId: string | null = null
 ): string[] {
   const owned = new Set(ownedIds);
   const drop = getEnemyDrop(enemyId);
@@ -184,7 +203,9 @@ export function rollDropCandidates(
 
   const normalPool = unowned(drop.bodyPartIds);
   const rarePool = unowned(drop.rareDropPartIds);
-  const rareChance = RARE_DROP_CHANCE_PCT[enemy.tier];
+  const rareChance =
+    RARE_DROP_CHANCE_PCT[enemy.tier] +
+    Math.max(0, battleIndex - 1) * getDifficulty(difficultyId ?? DEFAULT_DIFFICULTY_ID).rareBonusPerBattle;
 
   const picked: string[] = [];
   const taken = new Set<string>();
@@ -227,10 +248,15 @@ export function finishBattle(state: RunState, result: 'won' | 'lost', finalHp: n
   if (result === 'lost') {
     return { ...state, phase: 'result', resultOutcome: 'defeat', coreHp: 0, mp: finalMp };
   }
-  const recovered = Math.min(CORE_HP_BASE, Math.round(finalHp + CORE_HP_BASE * POST_VICTORY_RECOVERY_PCT));
+  const preset = getDifficulty(state.difficultyId);
+  const maxHp = currentMaxHp(state);
+  const recovered = Math.min(maxHp, Math.round(finalHp + maxHp * preset.postBattleHealPct));
   const mods = computePlayerModifiers(equippedPartDefs(state));
   const maxMp = CTB_MP_MAX_BASE + mods.maxMpBonus;
-  const recoveredMp = Math.min(maxMp, Math.round(finalMp + POST_BATTLE_MP_REGEN_BASE + mods.postBattleMpRegenBonus));
+  const recoveredMp = Math.min(
+    maxMp,
+    Math.round(finalMp + (POST_BATTLE_MP_REGEN_BASE + mods.postBattleMpRegenBonus) * preset.postBattleMpMult)
+  );
   if (state.battleIndex >= TOTAL_BATTLES) {
     return { ...state, phase: 'result', resultOutcome: 'victory', coreHp: recovered, mp: recoveredMp, currentEnemyId: null };
   }
@@ -244,7 +270,9 @@ export function finishBattle(state: RunState, result: 'won' | 'lost', finalHp: n
     mp: recoveredMp,
     currentEnemyId: null,
     lastDefeatedEnemyId: defeatedEnemyId,
-    dropCandidateIds: defeatedEnemyId ? rollDropCandidates(defeatedEnemyId, ownedPartIds(state)) : [],
+    dropCandidateIds: defeatedEnemyId
+      ? rollDropCandidates(defeatedEnemyId, ownedPartIds(state), Math.random, state.battleIndex, state.difficultyId)
+      : [],
   };
 }
 
