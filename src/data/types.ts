@@ -302,7 +302,13 @@ export type PartEffect =
   | { kind: 'mp_move_power_bonus_pct'; pct: number } // 魔導心臓系: MPを消費するコマンドの威力UP
   | { kind: 'first_mp_move_free' } // ゼロコスト核: 戦闘最初のMP技のMPコストを0にする(1戦1回)
   | { kind: 'ignore_defense_pct'; pct: number } // 穿孔角系: 自分の攻撃が敵の防御力を一部無視する
-  | { kind: 'on_kill_ct_bonus_pct'; pct: number }; // 黒翼: 敵撃破時、自分の次回行動をさらに早める
+  | { kind: 'on_kill_ct_bonus_pct'; pct: number } // 黒翼: 敵撃破時、自分の次回行動をさらに早める
+  // --- 段階5(シナジー36接続)で追加。個別部位ではなくシナジー効果専用 ---
+  | { kind: 'bonus_hits_flat'; amount: number } // 多段シナジー: hits指定コマンドの命中回数を底上げ
+  | { kind: 'low_hp_mp_regen_per_turn'; hpPctThreshold: number; amount: number } // 暴走シナジー: 低HP時、自分の手番開始時にMPも回復
+  | { kind: 'on_kill_mp_gain'; amount: number } // 捕食シナジー: 敵撃破時、MPも回復
+  | { kind: 'utility_ct_bonus_pct'; pct: number } // 知性シナジー: 補助系コマンド(powerMult<=0)のCTをさらに短縮
+  | { kind: 'utility_mp_cost_reduction_pct'; pct: number }; // 知性シナジー: 補助系コマンドのMPコストを軽減
 
 export interface PartDef {
   id: string;
@@ -315,9 +321,8 @@ export interface PartDef {
 }
 
 // ------------------------------------------------------------
-// シナジー(仕様書8章): 第1弾4種類。全36種の実装はまだ行わない。
-// 装着中の部位をtype/tagで数え、各段階の閾値を満たすたびeffectを積み上げで適用する
-// (Excelの36シナジーが「段階」「必要数」で多段構造を持つことに合わせた拡張)。
+// シナジー(仕様書8章): Excel正式マスターの36種(12系統×3段階)をすべて接続済み。
+// 装着中の部位をtype/tagで数え、各段階の閾値を満たすたびeffectsを積み上げで適用する。
 // 最終段階にはruleChangeを持たせられ、単純な数値補正では表現できない
 // 「戦闘ルールそのものの変化」(即時再行動・致死回避など)をエンジン側フックで実現する。
 // ------------------------------------------------------------
@@ -325,11 +330,25 @@ export type SynergyCountBy = { kind: 'type'; type: PartType } | { kind: 'tag'; t
 
 export type SynergyRuleChange =
   | { kind: 'extra_action_chance'; afterCtWeight: CtWeight; chancePct: number } // 指定CT区分の行動後、確率でCTを消費せず即再行動
-  | { kind: 'revive_once' }; // 戦闘中1回だけ、致死ダメージをHP1で耐えて即行動する
+  | { kind: 'revive_once' } // 戦闘中1回だけ、致死ダメージをHP1で耐えて即行動する
+  // --- 段階5(シナジー36接続)で追加 ---
+  | { kind: 'follow_up_after_attack'; powerMult: number } // 多段: 攻撃系コマンドの後に自動で追撃する
+  | { kind: 'full_mp_ct_bonus'; ctMultPct: number } // MP: MPが満タンの時、MP技のCTをさらに短縮する
+  | { kind: 'delay_mp_refund'; mpGain: number } // 時間: 敵への遅延が成功するたびMPを回復する
+  | { kind: 'compounding_delay'; pctPerStack: number } // 時間: 遅延を成功させるたび、次の遅延効果量が積み上がって強化される
+  | { kind: 'very_heavy_delays_enemy'; amount: number } // 重量: 超重量技を使うと、威力に加えて敵のCTも遅延させる
+  | { kind: 'revive_once_instant_action' } // 暴走: 戦闘中1回、致死ダメージをHP1で耐えたうえ即座にもう一度行動する
+  | { kind: 'poison_explode'; stackThreshold: number; bonusDamage: number } // 毒: 敵の毒スタックが一定値に達すると自動で追加ダメージが発生する
+  | { kind: 'attack_burning_ct_bonus'; ctMultPct: number } // 炎: 炎上中の敵を攻撃すると、自分の次回行動がさらに早まる
+  | { kind: 'reflect_next_free' } // 反撃: 常時反射(reflect_on_hit_pct)が発動した直後、次のコマンドのMPコストが0になる
+  | { kind: 'guard_mp_gain'; amount: number } // 再生: 防御コマンドを使うとMPも回復する
+  | { kind: 'overheal_shield' } // 再生: 自分の手番開始時の自動回復がHP上限を超えた分、被ダメージを肩代わりするシールドになる
+  | { kind: 'kill_instant_action' } // 捕食: 敵を撃破すると即座にもう一度行動できる
+  | { kind: 'repeat_utility_bonus'; extraHaste: number }; // 知性: 直前と同じ補助系コマンドを連続で使うと、自分のCTがさらに早まる
 
 export interface SynergyStage {
   threshold: number;
-  effect: PartEffect;
+  effects: PartEffect[];
   ruleChange?: SynergyRuleChange;
   ruleChangeLabel?: string; // UI表示用の短い説明(ruleChangeとセットで使う)
 }

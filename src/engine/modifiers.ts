@@ -37,6 +37,12 @@ export interface PlayerModifiers {
   firstMpMoveFree: boolean;
   ignoreDefensePct: number;
   onKillCtBonusPct: number;
+  // --- 段階5(シナジー36接続)で追加 ---
+  bonusHitsFlat: number;
+  lowHpMpRegenPerTurn: { hpPctThreshold: number; amount: number }[];
+  onKillMpGain: number;
+  utilityCtBonusPct: number;
+  utilityMpCostReductionPct: number;
 }
 
 function emptyModifiers(): PlayerModifiers {
@@ -68,6 +74,11 @@ function emptyModifiers(): PlayerModifiers {
     firstMpMoveFree: false,
     ignoreDefensePct: 0,
     onKillCtBonusPct: 0,
+    bonusHitsFlat: 0,
+    lowHpMpRegenPerTurn: [],
+    onKillMpGain: 0,
+    utilityCtBonusPct: 0,
+    utilityMpCostReductionPct: 0,
   };
 }
 
@@ -154,6 +165,21 @@ function applyEffect(mods: PlayerModifiers, e: PartEffect) {
     case 'on_kill_ct_bonus_pct':
       mods.onKillCtBonusPct += e.pct;
       break;
+    case 'bonus_hits_flat':
+      mods.bonusHitsFlat += e.amount;
+      break;
+    case 'low_hp_mp_regen_per_turn':
+      mods.lowHpMpRegenPerTurn.push({ hpPctThreshold: e.hpPctThreshold, amount: e.amount });
+      break;
+    case 'on_kill_mp_gain':
+      mods.onKillMpGain += e.amount;
+      break;
+    case 'utility_ct_bonus_pct':
+      mods.utilityCtBonusPct += e.pct;
+      break;
+    case 'utility_mp_cost_reduction_pct':
+      mods.utilityMpCostReductionPct += e.pct;
+      break;
   }
 }
 
@@ -165,7 +191,9 @@ export function computePlayerModifiers(equippedParts: PartDef[]): PlayerModifier
     for (const e of part.effects) applyEffect(mods, e);
   }
   for (const syn of SYNERGIES) {
-    for (const stage of reachedSynergyStages(syn, equippedParts)) applyEffect(mods, stage.effect);
+    for (const stage of reachedSynergyStages(syn, equippedParts)) {
+      for (const e of stage.effects) applyEffect(mods, e);
+    }
   }
   return mods;
 }

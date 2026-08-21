@@ -64,6 +64,7 @@ const CTB_MAX_RESOLVE_STEPS = 60;
 export const CTB_MP_MAX_BASE = 100;
 const CTB_MP_START_FLAT_DEFAULT = 30; // startingMp省略時(単発デモ利用時)のフォールバック。Excel初期MPに一致。
 const UNDYING_DELAY_BASE = 90; // 不死/致死回避が発動した後にかかるCT遅延の基礎量
+const OVERHEAL_SHIELD_CAP = 30; // シナジー「再生体」3段階目(overheal_shield): 盾の最大保持量
 
 // 統合版(本編)がラン全体の最大HP等を参照できるようexportする(値そのものは変更しない)。
 export const PLAYER_BASE = { name: 'キメラ', icon: '🧬', color: '#4ade80', maxHp: 130, defense: 3, power: 15, evasionPct: 5, speed: 100 };
@@ -102,6 +103,7 @@ interface PlayerRuntime extends RuntimeActor {
   counterStance: { powerMult: number } | null; // カウンター姿勢・受け流し: 次の被弾時に反撃(消費型)
   reflectPct: number; // 棘返し: 次の被弾時、受けたダメージの一部を反射(消費型)
   pendingFollowUp: { powerMult: number } | null; // 追撃命令: 次の攻撃系コマンドの後に追撃(消費型)
+  shieldHp: number; // シナジー「再生体」3段階目(overheal_shield): 回復超過分を貯める盾。被弾時にHPより先に減る
 }
 
 interface EnemyRuntime extends RuntimeActor {
@@ -195,6 +197,22 @@ export class CtbEngine {
   private lastMpSpent = 0; // 巻き戻し(refundLastMpSpentPct)が参照する直前のコマンドのMP消費量
   private killGrantedInstantAction = false; // 捕食連鎖等(killBonus.instantNextAction)がuseCommandへ伝える一時フラグ
   private firstMpMoveFreeUsed = false; // ゼロコスト核(first_mp_move_free): 1戦1回だけ消費する
+  // --- シナジー36接続で追加。すべてactiveSynergyRuleChangesから初期化する一戦分の設定値 ---
+  private playerReviveInstantAction = false; // シナジー「暴走生命」3段階目: revive_once_instant_actionが未消費か
+  private followUpAfterAttackMult = 0; // シナジー「多腕」3段階目: 攻撃後に自動追撃する倍率(0=無効)
+  private fullMpCtBonusPct = 0; // シナジー「多心臓」3段階目: MP満タン時のMP技CT短縮率
+  private delayMpRefundAmount = 0; // シナジー「時間捕食」2段階目以降: 遅延成功時のMP回復量
+  private compoundingDelayPctPerStack = 0; // シナジー「時間捕食」3段階目: 遅延を重ねるほど強化される割合
+  private delayComboCount = 0; // ↑の実行中カウンタ
+  private veryHeavyDelaysEnemyAmount = 0; // シナジー「重量怪物」3段階目: 超重量技の追加CT遅延量
+  private poisonExplodeRule: { stackThreshold: number; bonusDamage: number } | null = null; // シナジー「毒性融合」3段階目
+  private attackBurningCtBonusPct = 0; // シナジー「炎獄」3段階目
+  private reflectNextFreeActive = false; // シナジー「反射生物」3段階目: reflect_on_hit_pct発動後に次コマンドMP0にするか
+  private pendingFreeMpMove = false; // ↑が発動して次の1コマンドがMP0になる、消費型フラグ
+  private guardMpGainAmount = 0; // シナジー「再生体」2段階目以降: 防御コマンドでMP回復
+  private overhealShieldActive = false; // シナジー「再生体」3段階目
+  private killInstantActionRule = false; // シナジー「捕食者」3段階目: 撃破のたび即行動できるか
+  private repeatUtilityExtraHaste = 0; // シナジー「演算生命」3段階目
 
   // startingHp/startingMp: 統合版(本編)がラン中のHP・MPを戦闘間で持ち越すための追加パラメータ。
   // 省略時はフルHP・Excel初期MPで開始する単発デモ挙動のまま(既存の呼び出し元・挙動は変わらない)。
@@ -206,6 +224,21 @@ export class CtbEngine {
     this.playerExtraActionRules = ruleChanges.flatMap((r) =>
       r.kind === 'extra_action_chance' ? [{ afterCtWeight: r.afterCtWeight, chancePct: r.chancePct }] : []
     );
+    this.playerReviveInstantAction = ruleChanges.some((r) => r.kind === 'revive_once_instant_action');
+    for (const r of ruleChanges) {
+      if (r.kind === 'follow_up_after_attack') this.followUpAfterAttackMult = r.powerMult;
+      else if (r.kind === 'full_mp_ct_bonus') this.fullMpCtBonusPct = r.ctMultPct;
+      else if (r.kind === 'delay_mp_refund') this.delayMpRefundAmount += r.mpGain;
+      else if (r.kind === 'compounding_delay') this.compoundingDelayPctPerStack = r.pctPerStack;
+      else if (r.kind === 'very_heavy_delays_enemy') this.veryHeavyDelaysEnemyAmount = r.amount;
+      else if (r.kind === 'poison_explode') this.poisonExplodeRule = { stackThreshold: r.stackThreshold, bonusDamage: r.bonusDamage };
+      else if (r.kind === 'attack_burning_ct_bonus') this.attackBurningCtBonusPct = r.ctMultPct;
+      else if (r.kind === 'reflect_next_free') this.reflectNextFreeActive = true;
+      else if (r.kind === 'guard_mp_gain') this.guardMpGainAmount += r.amount;
+      else if (r.kind === 'overheal_shield') this.overhealShieldActive = true;
+      else if (r.kind === 'kill_instant_action') this.killInstantActionRule = true;
+      else if (r.kind === 'repeat_utility_bonus') this.repeatUtilityExtraHaste = r.extraHaste;
+    }
     const maxMp = CTB_MP_MAX_BASE + mods.maxMpBonus;
     const maxHp = PLAYER_BASE.maxHp + mods.maxHpBonus;
 
@@ -230,6 +263,7 @@ export class CtbEngine {
       counterStance: null,
       reflectPct: 0,
       pendingFollowUp: null,
+      shieldHp: 0,
     };
     this.mp =
       startingMp !== undefined ? Math.max(0, Math.min(maxMp, Math.round(startingMp))) : Math.min(maxMp, CTB_MP_START_FLAT_DEFAULT);
@@ -341,11 +375,27 @@ export class CtbEngine {
     const actor = side === 'player' ? this.player : this.enemy;
     if (actor.isDead) return;
     // 再生胴系(passive_regen_per_turn): 状態異常ではなく部位由来の常時パッシブ回復。
+    // シナジー「再生体」3段階目(overheal_shield)が有効な場合、HP上限を超える分はシールドになる。
     if (side === 'player' && this.player.mods.passiveRegenPerTurn > 0 && actor.hp > 0) {
       const heal = Math.round(this.player.mods.passiveRegenPerTurn);
+      const overflow = this.overhealShieldActive ? Math.max(0, actor.hp + heal - actor.maxHp) : 0;
       actor.hp = Math.min(actor.maxHp, actor.hp + heal);
       this.pushLog(`💚 ${actor.name}は再生胴で${heal}回復`);
       this.pushEvent({ type: 'status_heal', side, kind: 'regen', amount: heal });
+      if (overflow > 0) {
+        this.player.shieldHp = Math.min(OVERHEAL_SHIELD_CAP, this.player.shieldHp + overflow);
+        this.pushLog(`🛡️ 回復超過分がシールドになった(${this.player.shieldHp})`);
+      }
+    }
+    // シナジー「暴走生命」2段階目以降(low_hp_mp_regen_per_turn): 低HP時、手番開始時にMPも回復。
+    if (side === 'player' && actor.hp > 0) {
+      const hpPct = actor.maxHp > 0 ? (actor.hp / actor.maxHp) * 100 : 100;
+      for (const b of this.player.mods.lowHpMpRegenPerTurn) {
+        if (hpPct <= b.hpPctThreshold && b.amount > 0) {
+          this.mp = Math.min(this.player.maxMp, this.mp + b.amount);
+          this.pushLog(`🔷 低HPでMPが${b.amount}回復`);
+        }
+      }
     }
     for (const s of actor.statuses) {
       if ((s.kind === 'burn' || s.kind === 'poison') && actor.hp > 0) {
@@ -380,6 +430,21 @@ export class CtbEngine {
     this.pushLog(`${STATUS_LABEL[apply.kind].icon} ${target.name}に${STATUS_LABEL[apply.kind].name}状態が付与された`);
     this.pushEvent({ type: 'status_apply', side: target.side, kind: apply.kind });
     if (apply.kind === 'shock') this.checkShockTrigger(target);
+    if (apply.kind === 'poison' && target.side === 'enemy') this.checkPoisonExplode(target);
+  }
+
+  // シナジー「毒性融合」3段階目(poison_explode): 敵の毒スタックが一定値へ達するたび自動で爆発し、追加ダメージ。
+  private checkPoisonExplode(target: RuntimeActor) {
+    if (!this.poisonExplodeRule) return;
+    const mag = this.statusMagnitude(target, 'poison');
+    if (mag < this.poisonExplodeRule.stackThreshold || target.hp <= 0) return;
+    target.statuses = target.statuses.filter((s) => s.kind !== 'poison');
+    const dmg = this.poisonExplodeRule.bonusDamage;
+    target.hp = Math.max(0, target.hp - dmg);
+    this.pushLog(`☠️💥 ${target.name}の毒が爆発し${dmg}ダメージ！`);
+    this.pushEvent({ type: 'status_tick', side: target.side, kind: 'poison', damage: dmg });
+    if (target.hp <= 0 && !this.preventLethalIfPossible(target)) target.isDead = true;
+    else this.checkEnemyPhaseTransition();
   }
 
   // 毒腺口/毒嚢系(status_magnitude_bonus): プレイヤーが敵へ付与する状態異常のうち、
@@ -429,21 +494,31 @@ export class CtbEngine {
     return 1 + mag / 100;
   }
 
-  // 不死/致死回避(新フック): undying状態、またはシナジー「多心臓」3段階目の revive_once を
-  // 消費して、致死ダメージをHP1で耐える。どちらも無ければfalseを返し、通常の死亡処理へ進む。
+  // 不死/致死回避(新フック): undying状態、シナジー「多心臓」3段階目の revive_once、
+  // またはシナジー「暴走生命」3段階目の revive_once_instant_action を消費して、
+  // 致死ダメージをHP1で耐える。いずれも無ければfalseを返し、通常の死亡処理へ進む。
   private preventLethalIfPossible(actor: RuntimeActor): boolean {
     const undyingActive = this.statusMagnitude(actor, 'undying') > 0;
+    let grantsInstantAction = false;
     if (undyingActive) {
       actor.statuses = actor.statuses.filter((s) => s.kind !== 'undying');
     } else if (actor.side === 'player' && this.playerReviveAvailable) {
       this.playerReviveAvailable = false;
+    } else if (actor.side === 'player' && this.playerReviveInstantAction) {
+      this.playerReviveInstantAction = false;
+      grantsInstantAction = true;
     } else {
       return false;
     }
     actor.hp = 1;
     actor.isDead = false;
-    if (actor.side === 'player') this.nextAt.player += UNDYING_DELAY_BASE;
-    else this.nextAt.enemy += UNDYING_DELAY_BASE;
+    if (grantsInstantAction) {
+      this.killGrantedInstantAction = true;
+    } else if (actor.side === 'player') {
+      this.nextAt.player += UNDYING_DELAY_BASE;
+    } else {
+      this.nextAt.enemy += UNDYING_DELAY_BASE;
+    }
     this.pushLog(`🌟 ${actor.name}は致死ダメージを耐えた！`);
     this.pushEvent({ type: 'undying', side: actor.side });
     return true;
@@ -541,21 +616,40 @@ export class CtbEngine {
         this.pushLog(`🦔 棘甲で${passiveReflectDmg}ダメージを反射した`);
         this.pushEvent({ type: 'counter', side: 'player', targetSide: 'enemy', damage: passiveReflectDmg });
         if (this.enemy.hp <= 0 && !this.preventLethalIfPossible(this.enemy)) this.enemy.isDead = true;
+        // シナジー「反射生物」3段階目(reflect_next_free): この常時反射が発動した直後、
+        // プレイヤーの次のコマンドのMPコストを0にする。
+        if (this.reflectNextFreeActive) this.pendingFreeMpMove = true;
       }
     }
     return rawDmg;
   }
 
+  // シナジー「再生体」3段階目(overheal_shield): 回復超過分で貯めたシールドが、HPより先に被ダメージを肩代わりする。
+  private absorbWithShield(dmg: number): number {
+    if (this.player.shieldHp <= 0 || dmg <= 0) return dmg;
+    const absorbed = Math.min(this.player.shieldHp, dmg);
+    this.player.shieldHp -= absorbed;
+    if (absorbed > 0) this.pushLog(`🛡️ シールドが${absorbed}ダメージを肩代わりした`);
+    return dmg - absorbed;
+  }
+
   // 仕様書12章: 遅延打撃(プレイヤー→敵)の実際の加算量。時間傷(複利)→効果量ボーナス→
-  // 天井→耐性の順に適用する。
+  // シナジー「時間捕食」3段階目の連続遅延強化(compounding_delay)→天井→耐性の順に適用する。
   private applyDelayToEnemy(baseAmount: number) {
     const wounded = baseAmount * (1 + this.statusMagnitude(this.enemy, 'time_wound') / 100);
     const boosted = wounded * (1 + this.player.mods.delayEffectBonusPct / 100);
-    const capped = Math.min(CT_DELAY_UNITS_CEILING, boosted);
+    const combo = boosted * (1 + (this.delayComboCount * this.compoundingDelayPctPerStack) / 100);
+    const capped = Math.min(CT_DELAY_UNITS_CEILING, combo);
     const resisted = capped * (1 - this.enemy.delayResistancePct / 100);
     this.nextAt.enemy += resisted;
     this.pushLog(`⏳ ${this.enemy.name}の行動が遅れた`);
     this.pushEvent({ type: 'delay_enemy', side: 'player', amount: Math.round(resisted) });
+    if (this.compoundingDelayPctPerStack > 0) this.delayComboCount += 1;
+    // シナジー「時間捕食」2段階目以降(delay_mp_refund): 遅延が成功するたびMPを回復する。
+    if (this.delayMpRefundAmount > 0) {
+      this.mp = Math.min(this.player.maxMp, this.mp + this.delayMpRefundAmount);
+      this.pushLog(`🔷 遅延成功でMPが${this.delayMpRefundAmount}回復`);
+    }
   }
 
   // CT遅延型敵(→プレイヤー)。プレイヤー側には部位耐性の概念がないため時間傷の複利と天井のみ適用する。
@@ -595,7 +689,7 @@ export class CtbEngine {
       const vulnerablePct = this.statusMagnitude(this.player, 'vulnerable');
       const rawDmg = this.computeDamage(rawPower, this.effectiveDefense(this.player), this.player.guardReductionPct, vulnerablePct);
       this.player.guardReductionPct = 0;
-      const dmg = this.applyPlayerDefensiveHooks(rawDmg);
+      const dmg = this.absorbWithShield(this.applyPlayerDefensiveHooks(rawDmg));
       this.player.hp = Math.max(0, this.player.hp - dmg);
       this.pushLog(`${this.enemy.icon}${this.enemy.name}の${move.name}が${dmg}ダメージ`);
       this.pushEvent({ type: 'attack', side: 'enemy', targetSide: 'player', commandName: move.name, icon: move.icon, damage: dmg });
@@ -664,6 +758,16 @@ export class CtbEngine {
       // (回避ロール)を経ないコマンドのため、ここで確定して適用する。
       if (cmd.delayEnemyBy && !this.enemy.isDead) this.applyDelayToEnemy(cmd.delayEnemyBy);
       if (cmd.applyStatus && !this.enemy.isDead) this.applyStatus(this.enemy, this.boostOutgoingStatus(cmd.applyStatus));
+      // シナジー「再生体」2段階目以降(guard_mp_gain): 防御コマンドを使うとMPも回復する。
+      if (cmd.kind === 'guard' && this.guardMpGainAmount > 0) {
+        this.mp = Math.min(this.player.maxMp, this.mp + this.guardMpGainAmount);
+        this.pushLog(`🔷 防御でMPが${this.guardMpGainAmount}回復`);
+      }
+      // シナジー「演算生命」3段階目(repeat_utility_bonus): 直前と同じ補助コマンドを連続使用するとさらにCTが早まる。
+      if (this.repeatUtilityExtraHaste > 0 && cmd.id === this.lastPlayerCommandId) {
+        this.applyHasteToSelf(this.repeatUtilityExtraHaste);
+        this.pushLog('🧠 連続使用で行動がさらに早まった');
+      }
       this.pushLog(`${cmd.icon} ${cmd.name}！`);
       this.pushEvent(
         cmd.kind === 'guard' ? { type: 'guard', side: 'player' } : cmd.hasteSelfBy ? { type: 'haste_self', side: 'player' } : { type: 'wait', side: 'player' }
@@ -722,7 +826,10 @@ export class CtbEngine {
     if (this.player.isDead) return; // HP消費コストで力尽きた場合はここで終了
 
     const enemyDefense = cmd.ignoreDefense ? 0 : this.effectiveDefense(this.enemy) * (1 - this.player.mods.ignoreDefensePct / 100);
-    const hitCount = cmd.randomHitsRange ? this.randomInt(cmd.randomHitsRange[0], cmd.randomHitsRange[1]) : (cmd.hits ?? 1);
+    const enemyWasBurningBeforeHit = this.statusMagnitude(this.enemy, 'burn') > 0;
+    // シナジー「多腕」2段階目以降(bonus_hits_flat): hits指定の多段コマンドの命中回数を底上げする。
+    const baseHitCount = cmd.randomHitsRange ? this.randomInt(cmd.randomHitsRange[0], cmd.randomHitsRange[1]) : (cmd.hits ?? 1);
+    const hitCount = cmd.hits || cmd.randomHitsRange ? baseHitCount + this.player.mods.bonusHitsFlat : baseHitCount;
     const perHitPower = power / hitCount;
     let totalDmg = 0;
     for (let h = 0; h < hitCount && !this.enemy.isDead; h++) {
@@ -764,6 +871,15 @@ export class CtbEngine {
 
     this.applyStatus(this.enemy, this.boostOutgoingStatus(cmd.applyStatus));
     if (cmd.delayEnemyBy && !this.enemy.isDead) this.applyDelayToEnemy(cmd.delayEnemyBy);
+    // シナジー「重量怪物」3段階目(very_heavy_delays_enemy): 超重量技は威力に加え、敵のCTも遅延させる。
+    if (cmd.ctWeight === 'very_heavy' && this.veryHeavyDelaysEnemyAmount > 0 && !this.enemy.isDead) {
+      this.applyDelayToEnemy(this.veryHeavyDelaysEnemyAmount);
+    }
+    // シナジー「炎獄」3段階目(attack_burning_ct_bonus): 炎上中の敵を攻撃すると自分の次回行動が早まる。
+    if (enemyWasBurningBeforeHit && this.attackBurningCtBonusPct !== 0 && totalDmg > 0) {
+      this.applyHasteToSelf((Math.abs(this.attackBurningCtBonusPct) / 100) * CTB_BASE_INTERVAL);
+      this.pushLog('🔥 炎上中の敵への攻撃で行動がさらに早まった');
+    }
     if (!this.enemy.isDead) {
       this.triggerBleedOnHit(this.enemy);
       this.checkEnemyPhaseTransition();
@@ -771,6 +887,15 @@ export class CtbEngine {
 
     if (this.enemy.isDead && this.player.mods.onKillCtBonusPct > 0) {
       this.applyHasteToSelf((this.player.mods.onKillCtBonusPct / 100) * CTB_BASE_INTERVAL);
+    }
+    // シナジー「捕食者」2段階目以降(on_kill_mp_gain)・3段階目(kill_instant_action): 撃破のたびにMP回復・即行動。
+    if (this.enemy.isDead && this.player.mods.onKillMpGain > 0) {
+      this.mp = Math.min(this.player.maxMp, this.mp + this.player.mods.onKillMpGain);
+      this.pushLog(`🔷 撃破でMPが${this.player.mods.onKillMpGain}回復`);
+    }
+    if (this.enemy.isDead && this.killInstantActionRule) {
+      this.killGrantedInstantAction = true;
+      this.pushLog('🦴 撃破の勢いで即座にもう一度行動できる！');
     }
 
     if (this.enemy.isDead && cmd.killBonus) {
@@ -791,7 +916,12 @@ export class CtbEngine {
       }
     }
 
-    // 追撃(追撃命令で予約): この攻撃の直後に追加の1撃を放つ。
+    // シナジー「多腕」3段階目(follow_up_after_attack): 攻撃系コマンドの後、自動で追撃を1回追加する。
+    if (this.followUpAfterAttackMult > 0 && !this.player.pendingFollowUp && !this.enemy.isDead && totalDmg > 0) {
+      this.player.pendingFollowUp = { powerMult: this.followUpAfterAttackMult };
+    }
+
+    // 追撃(追撃命令で予約、またはシナジーで自動付与): この攻撃の直後に追加の1撃を放つ。
     if (this.player.pendingFollowUp && !this.enemy.isDead) {
       const followUp = this.player.pendingFollowUp;
       this.player.pendingFollowUp = null;
@@ -808,7 +938,7 @@ export class CtbEngine {
       const counterVulnerable = this.statusMagnitude(this.player, 'vulnerable');
       const rawCounterDmg = this.computeDamage(counterRaw, this.effectiveDefense(this.player), this.player.guardReductionPct, counterVulnerable);
       this.player.guardReductionPct = 0;
-      const counterDmg = this.applyPlayerDefensiveHooks(rawCounterDmg);
+      const counterDmg = this.absorbWithShield(this.applyPlayerDefensiveHooks(rawCounterDmg));
       this.player.hp = Math.max(0, this.player.hp - counterDmg);
       this.pushLog(`🔁 ${this.enemy.name}の反撃！${counterDmg}ダメージ`);
       this.pushEvent({ type: 'counter', side: 'enemy', targetSide: 'player', damage: counterDmg });
@@ -877,18 +1007,30 @@ export class CtbEngine {
     if (this.phase !== 'player_turn') return { ok: false, reason: 'まだ行動順ではありません' };
     const cmd = getCommand(commandId);
     if (!cmd) return { ok: false, reason: '不明なコマンドです' };
-    // ゼロコスト核(first_mp_move_free): 1戦1回だけ、MP技のコストを無料にする(所持MP不足でも使える)。
-    const usesFreeMpMove = cmd.mpCost > 0 && this.player.mods.firstMpMoveFree && !this.firstMpMoveFreeUsed;
-    if (!usesFreeMpMove && this.mp < cmd.mpCost) return { ok: false, reason: `MPが足りません（必要${cmd.mpCost}）` };
-    if (cmd.mpCost > 0 && this.statusMagnitude(this.player, 'silence') > 0) {
+    // シナジー「演算生命」2段階目以降(utility_mp_cost_reduction_pct): 補助系コマンドのMPコストを軽減。
+    const effectiveMpCost =
+      cmd.powerMult <= 0 && this.player.mods.utilityMpCostReductionPct > 0
+        ? Math.max(0, Math.round(cmd.mpCost * (1 - this.player.mods.utilityMpCostReductionPct / 100)))
+        : cmd.mpCost;
+    // ゼロコスト核(first_mp_move_free)、またはシナジー「反射生物」3段階目(reflect_next_free)発動直後:
+    // 1回だけMP技のコストを無料にする(所持MP不足でも使える)。
+    const usesFreeMpMove = effectiveMpCost > 0 && ((this.player.mods.firstMpMoveFree && !this.firstMpMoveFreeUsed) || this.pendingFreeMpMove);
+    if (!usesFreeMpMove && this.mp < effectiveMpCost) return { ok: false, reason: `MPが足りません（必要${effectiveMpCost}）` };
+    if (effectiveMpCost > 0 && this.statusMagnitude(this.player, 'silence') > 0) {
       return { ok: false, reason: '沈黙中はMP技を使用できません' };
     }
+    const wasMpFullBeforeSpend = this.mp >= this.player.maxMp;
 
     if (usesFreeMpMove) {
-      this.firstMpMoveFreeUsed = true;
-      this.pushLog(`🔷 ゼロコスト核で${cmd.name}のMP消費が無料に！`);
+      if (this.pendingFreeMpMove) {
+        this.pendingFreeMpMove = false;
+        this.pushLog(`🦔 反撃直後でMP消費なしで${cmd.name}を使用！`);
+      } else {
+        this.firstMpMoveFreeUsed = true;
+        this.pushLog(`🔷 ゼロコスト核で${cmd.name}のMP消費が無料に！`);
+      }
     } else {
-      this.mp -= cmd.mpCost;
+      this.mp -= effectiveMpCost;
     }
     const mpLeak = this.statusMagnitude(this.player, 'mp_leak');
     if (mpLeak > 0) {
@@ -903,10 +1045,17 @@ export class CtbEngine {
     const isMimicUse = !!cmd.mimicPreviousCommand;
     this.resolvePlayerCommand(cmd);
     if (!isMimicUse) this.lastPlayerCommandId = cmd.id;
-    this.lastMpSpent = cmd.mpCost;
+    this.lastMpSpent = effectiveMpCost;
 
     let weightMult = this.effectiveWeightMult(this.player, cmd.ctWeight, this.player.mods) * this.consumeParalyzeExtraMult(this.player);
     if (cmd.firstActionCtBonusMult && this.turnCount === 1) weightMult *= cmd.firstActionCtBonusMult;
+    // シナジー「演算生命」1段階目以降(utility_ct_bonus_pct): 補助系コマンドのCTをさらに短縮。
+    if (cmd.powerMult <= 0) weightMult *= 1 + this.player.mods.utilityCtBonusPct / 100;
+    // シナジー「多心臓」3段階目(full_mp_ct_bonus): MPが満タンの状態からMP技を使うとCTがさらに短縮される。
+    if (cmd.mpCost > 0 && wasMpFullBeforeSpend && this.fullMpCtBonusPct !== 0) {
+      weightMult *= 1 + this.fullMpCtBonusPct / 100;
+      this.pushLog('🔷 MP満タンからの技でさらに行動が早まった');
+    }
     const synergyGrantedExtraAction = this.playerExtraActionRules.some(
       (rule) => rule.afterCtWeight === cmd.ctWeight && Math.random() * 100 < rule.chancePct
     );
@@ -1016,8 +1165,15 @@ export class CtbEngine {
   }
 
   private commandPreview(cmd: CommandDef): CommandPreviewInfo {
-    const silenced = cmd.mpCost > 0 && this.statusMagnitude(this.player, 'silence') > 0;
-    const affordable = this.mp >= cmd.mpCost && !silenced;
+    // シナジー「演算生命」2段階目以降(utility_mp_cost_reduction_pct)、ゼロコスト核、
+    // シナジー「反射生物」3段階目(reflect_next_free)発動直後: 実際に消費されるMPはuseCommandと同じ式で見積もる。
+    const effectiveMpCost =
+      cmd.powerMult <= 0 && this.player.mods.utilityMpCostReductionPct > 0
+        ? Math.max(0, Math.round(cmd.mpCost * (1 - this.player.mods.utilityMpCostReductionPct / 100)))
+        : cmd.mpCost;
+    const usesFreeMpMove = effectiveMpCost > 0 && ((this.player.mods.firstMpMoveFree && !this.firstMpMoveFreeUsed) || this.pendingFreeMpMove);
+    const silenced = effectiveMpCost > 0 && this.statusMagnitude(this.player, 'silence') > 0;
+    const affordable = !silenced && (usesFreeMpMove || this.mp >= effectiveMpCost);
     const usable = this.status === 'ongoing' && this.phase === 'player_turn' && affordable;
     let damageEstimate: number | null = null;
     if (cmd.powerMult > 0) {
@@ -1055,7 +1211,7 @@ export class CtbEngine {
       icon: cmd.icon,
       kind: cmd.kind,
       damageEstimate,
-      mpCost: cmd.mpCost,
+      mpCost: effectiveMpCost,
       ctLabel: `${labelPrefix}${CT_WEIGHT_LABEL[cmd.ctWeight]}`,
       applyStatusLabel: statusLabels.length > 0 ? statusLabels.join(' / ') : null,
       affordable,

@@ -12,10 +12,10 @@ import type { EnemyTier, PartDef } from '../data/types';
 // 重要な設計判断:
 //   - 戦闘ロジックそのもの(CtbEngine)は一切変更しない。ここではRunStateと
 //     CtbEngineの間を橋渡しするだけ(装備部位を渡す・終了後のHPを受け取る)。
-//   - 部位に接続コスト/容量の概念がまだ第1弾データには無いため、暫定的に
-//     「装着数の上限」だけで管理する(Excelの容量データが揃ったら置き換える)。
-//   - 敵45体・部位80種はまだ無いため、現行の6敵・10部位から抽選する
-//     (同じ敵に複数回遭遇することがあるのは既知の暫定仕様)。
+//   - 部位に個別の接続コストの概念はまだ無いため、「装着数の上限」(MAX_EQUIPPED_PARTS、
+//     Excel36シナジーの最終段階の必要数に合わせた6)だけで管理する。
+//   - 敵45体はまだ無いため、現行6敵から抽選する
+//     (同じ敵に複数回遭遇することがあるのは既知の暫定仕様)。部位は80種すべて接続済み。
 // ============================================================
 
 export type GamePhase = 'title' | 'starterSelect' | 'prep' | 'enemySelect' | 'battle' | 'reward' | 'result';
@@ -25,7 +25,9 @@ export type GamePhase = 'title' | 'starterSelect' | 'prep' | 'enemySelect' | 'ba
 const BATTLE_SEQUENCE: EnemyTier[] = ['normal', 'normal', 'elite', 'normal', 'normal', 'elite', 'boss'];
 export const TOTAL_BATTLES = BATTLE_SEQUENCE.length;
 
-export const MAX_EQUIPPED_PARTS = 4; // 暫定の装着上限(Excelの接続容量データが揃うまでの仮仕様)
+// Excel36シナジーの最終段階が「同タグ6個」を要求するため、装着上限は6に設定する
+// (シナジー36接続で確定。それ未満だと最終段階シナジーが永久に到達不能になってしまうため)。
+export const MAX_EQUIPPED_PARTS = 6;
 export const CORE_HP_BASE = PLAYER_BASE.maxHp;
 export const POST_VICTORY_RECOVERY_PCT = 0.4; // 勝利後の小休止による自然回復割合(TEST18を踏襲した仮値)
 
