@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { getPart } from '../data/parts';
 import { getCommand } from '../data/commands';
 import { CT_WEIGHT_LABEL } from '../data/types';
+import { playSE } from '../engine/soundManager';
 
 // ============================================================
 // Phase 2: 部位取得 → 新コマンド解放 → 準備画面、という連続演出のうち「解放」の1画面。
@@ -45,6 +46,11 @@ export function CommandUnlockScreen({
     );
     const timers = staggerTimersRef.current;
     return () => timers.forEach(clearTimeout);
+  }, [commandIds]);
+
+  // Phase 4: 解放そのものを一度だけ音でも知らせる。
+  useEffect(() => {
+    if (commandIds.length > 0) playSE('unlock');
   }, [commandIds]);
 
   // 全部出そろったら短い間を置いて自動で次へ(タップ不要で進める)。

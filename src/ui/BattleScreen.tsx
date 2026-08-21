@@ -3,6 +3,8 @@ import { CtbEngine, type CtbEvent, type CtbSnapshot } from '../engine/ctbEngine'
 import type { EnemyDef, PartDef } from '../data/types';
 import { ENEMY_INTENT_LABEL, STATUS_LABEL } from '../data/types';
 import { ChimeraFigure } from './freeLayer/ChimeraFigure';
+import { getCommand } from '../data/commands';
+import { playSE } from '../engine/soundManager';
 
 const INTRO_START_MS = 900;
 const INTRO_ORDER_MS = 700;
@@ -64,8 +66,10 @@ export function BattleScreen({
         hitFxRef.current[e.targetSide] = now;
         setShakeOn(true);
         setTimeout(() => setShakeOn(false), SHAKE_MS);
+        playSE('attack');
       } else if (e.type === 'evade') {
         floatersRef.current.push({ id: ++floaterIdRef.current, side: e.targetSide, text: 'MISS', kind: 'evade', createdAt: now });
+        playSE('evade');
       } else if (e.type === 'counter') {
         floatersRef.current.push({ id: ++floaterIdRef.current, side: e.targetSide, text: `🔁${e.damage}`, kind: 'counter', createdAt: now });
         hitFxRef.current[e.targetSide] = now;
@@ -87,12 +91,14 @@ export function BattleScreen({
           kind: 'heal',
           createdAt: now,
         });
+        playSE('heal');
       } else if (e.type === 'undying') {
         toastsRef.current.push({ id: ++toastIdRef.current, side: e.side, label: '🌟 致死ダメージを耐えた！', createdAt: now });
       } else if (e.type === 'extra_action') {
         toastsRef.current.push({ id: ++toastIdRef.current, side: e.side, label: '🌀 即座にもう一度行動！', createdAt: now });
       } else if (e.type === 'status_apply') {
         toastsRef.current.push({ id: ++toastIdRef.current, side: e.side, label: `${STATUS_LABEL[e.kind].icon} ${STATUS_LABEL[e.kind].name}`, createdAt: now });
+        playSE('status');
       } else if (e.type === 'delay_enemy') {
         const targetSide = e.side === 'player' ? 'enemy' : 'player';
         floatersRef.current.push({ id: ++floaterIdRef.current, side: targetSide, text: `⏳+${e.amount}`, kind: 'delay', createdAt: now });
@@ -104,6 +110,7 @@ export function BattleScreen({
         toastsRef.current.push({ id: ++toastIdRef.current, side: e.side, label: '🔋 チャージ', createdAt: now });
       } else if (e.type === 'guard') {
         toastsRef.current.push({ id: ++toastIdRef.current, side: e.side, label: '🛡️ 防御', createdAt: now });
+        playSE('guard');
       } else if (e.type === 'telegraph') {
         setTelegraphBanner(e.message);
         setTimeout(() => setTelegraphBanner((cur) => (cur === e.message ? null : cur)), 1100);
@@ -119,6 +126,7 @@ export function BattleScreen({
   useEffect(() => {
     const engine = new CtbEngine(enemy, equippedParts, startingHp, startingMp);
     engineRef.current = engine;
+    endSePlayedRef.current = false;
     floatersRef.current = [];
     toastsRef.current = [];
     setSelectedId(null);
@@ -156,6 +164,15 @@ export function BattleScreen({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [enemy, equippedParts]);
 
+  // Phase 4: 決着がついた瞬間に一度だけ勝敗SEを鳴らす(statusが遷移した時のみ)。
+  const endSePlayedRef = useRef(false);
+  useEffect(() => {
+    if (!snapshot || snapshot.status === 'ongoing') return;
+    if (endSePlayedRef.current) return;
+    endSePlayedRef.current = true;
+    playSE(snapshot.status === 'won' ? 'victory' : 'defeat');
+  }, [snapshot?.status]);
+
   // 演出(フローティング数字・トースト)の寿命管理。CTB自体は離散イベントだが表示の消滅だけは実時間で見る。
   useEffect(() => {
     let raf: number;
@@ -180,8 +197,12 @@ export function BattleScreen({
   function executeCommand(commandId: string) {
     const engine = engineRef.current;
     if (!engine) return;
+    // Phase 4: 攻撃イベント側は一律'attack'を鳴らすので、重量級コマンドだけここで
+    // 一段重い音を先に重ねて、CT重量の差が耳でも分かるようにする。
+    const cmd = getCommand(commandId);
     const result = engine.useCommand(commandId);
     if (result.ok) {
+      if (cmd && (cmd.ctWeight === 'heavy' || cmd.ctWeight === 'very_heavy')) playSE('heavy');
       processEvents(engine.drainEvents());
       setSelectedId(null);
     }

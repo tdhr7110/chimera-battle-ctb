@@ -31,6 +31,8 @@ import { getEnemy } from './data/enemies';
 import { clearRunState, loadIntroSeen, loadRunState, saveIntroSeen, saveRunState } from './persistence/save';
 import { markEnemyDefeated, markEnemyEncountered, markPartsDiscovered } from './engine/codex';
 import { loadCodexState, saveCodexState } from './persistence/codex';
+import { initAudioUnlock, playSE } from './engine/soundManager';
+import { AudioSettingsButton } from './ui/AudioSettingsButton';
 
 // ============================================================
 // CHIMERA BATTLE 統合版(本編)のフェーズ制御。
@@ -46,6 +48,11 @@ export default function App() {
   const [state, setState] = useState<RunState>(() => createTitleState(loadIntroSeen()));
   const [codex, setCodex] = useState(() => loadCodexState());
   const [showCodex, setShowCodex] = useState(false);
+
+  // Phase 4: ブラウザの自動再生制限に合わせ、最初のユーザー操作でAudioContextを起動する。
+  useEffect(() => {
+    initAudioUnlock();
+  }, []);
 
   // 起動時: 保存されたランがあれば「続きから」の選択待ちにする(TEST18/19のラン途中保存を踏襲)。
   useEffect(() => {
@@ -129,6 +136,7 @@ export default function App() {
   return (
     <div className="app-root">
       {incompatibleBanner}
+      <AudioSettingsButton />
       {codexButtonVisible && (
         <button type="button" className="codex-fab" onClick={() => setShowCodex(true)} title="図鑑">
           📖
@@ -200,7 +208,10 @@ export default function App() {
         <RewardScreen
           candidateIds={state.dropCandidateIds}
           fromEnemyId={state.lastDefeatedEnemyId}
-          onAccept={(partId) => setState((s) => acceptDrop(s, partId, true))}
+          onAccept={(partId) => {
+            playSE('part');
+            setState((s) => acceptDrop(s, partId, true));
+          }}
           onSkip={() => setState((s) => skipDrop(s))}
         />
       )}
