@@ -18,8 +18,26 @@ OUTPUT = ROOT / "docs/data/chimera_battle_ctb_redesign_v02_clean.xlsx"
 
 def load_payload() -> dict:
     encoded = PAYLOAD.read_text(encoding="utf-8").strip()
-    raw = zlib.decompress(base64.b64decode(encoded))
-    return json.loads(raw.decode("utf-8"))
+    # The bootstrap is temporary transport data. GitHub text transport may leave
+    # harmless trailing base64 characters, so restore padding before decoding.
+    encoded += "=" * (-len(encoded) % 4)
+    compressed = base64.b64decode(encoded)
+    raw = zlib.decompress(compressed)
+    payload = json.loads(raw.decode("utf-8"))
+
+    expected = {
+        "コマンド": 61,      # header + 60 rows
+        "部位": 81,          # header + 80 rows
+        "敵": 46,            # header + 45 rows
+        "シナジー": 37,      # header + 36 rows
+        "状態異常": 25,      # header + 24 rows
+        "代表ビルド": 21,    # header + 20 rows
+    }
+    for sheet, expected_rows in expected.items():
+        actual = len(payload["sheets"].get(sheet, []))
+        if actual != expected_rows:
+            raise ValueError(f"bootstrap row count mismatch: {sheet}: {actual} != {expected_rows}")
+    return payload
 
 
 def build_workbook(payload: dict) -> None:
