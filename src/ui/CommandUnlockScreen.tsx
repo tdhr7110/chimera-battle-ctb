@@ -78,6 +78,24 @@ export function CommandUnlockScreen({
 
   return (
     <div className="unlock-screen" onClick={handleTap} role="button" tabIndex={0} onKeyDown={handleTap}>
+      {/* 派手側の演出レイヤー(表示専用) */}
+      <div className="burst__flash burst__flash--unlock" aria-hidden />
+      <div className="unlock-rays" aria-hidden />
+      <div className="unlock-ring unlock-ring--a" aria-hidden />
+      <div className="unlock-ring unlock-ring--b" aria-hidden />
+      <div className="unlock-sparks" aria-hidden>
+        {Array.from({ length: 18 }, (_, i) => (
+          <span
+            key={i}
+            className="unlock-spark"
+            style={{
+              ['--angle' as string]: `${20 * i}deg`,
+              ['--delay' as string]: `${(i % 6) * 50}ms`,
+            }}
+          />
+        ))}
+      </div>
+
       <div className="unlock-screen__title">⚡ 新コマンド解放</div>
       {part && (
         <div className="unlock-screen__sub">

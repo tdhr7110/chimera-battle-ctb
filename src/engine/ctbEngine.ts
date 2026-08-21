@@ -119,6 +119,7 @@ export interface CommandPreviewInfo {
   name: string;
   icon: string;
   kind: CommandDef['kind'];
+  category: CommandDef['category']; // Excel「系統」。戦闘画面の4カテゴリ分けに使う
   damageEstimate: number | null; // 防御・待機・チャージ等はnull
   mpCost: number;
   ctLabel: string;
@@ -1265,6 +1266,7 @@ export class CtbEngine {
       name: cmd.name,
       icon: cmd.icon,
       kind: cmd.kind,
+      category: cmd.category,
       damageEstimate,
       mpCost: effectiveMpCost,
       ctLabel: `${labelPrefix}${CT_WEIGHT_LABEL[cmd.ctWeight]}`,

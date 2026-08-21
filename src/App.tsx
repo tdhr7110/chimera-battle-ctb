@@ -241,6 +241,8 @@ export default function App() {
               equippedParts={equippedPartDefs(state)}
               startingHp={state.coreHp}
               startingMp={state.mp}
+              battleIndex={state.battleIndex}
+              totalBattles={TOTAL_BATTLES}
               onExit={(result, finalHp, finalMp) => {
                 if (result === 'won') setCodex((prev) => markEnemyDefeated(prev, enemy.id));
                 const parts = equippedPartDefs(state);
@@ -272,7 +274,6 @@ export default function App() {
           candidateIds={state.dropCandidateIds}
           fromEnemyId={state.lastDefeatedEnemyId}
           onAccept={(partId) => {
-            playSE('part');
             recordDrop(partId, state.dropCandidateIds);
             setState((s) => acceptDrop(s, partId, true));
           }}

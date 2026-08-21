@@ -126,10 +126,14 @@ export type CommandKind = 'attack' | 'guard' | 'wait' | 'charge';
 // engine/ctbEngine.tsに持つ(自由記述の効果文をそのまま実装するのではなく、共通パターン
 // ごとに構造化データへ落とし込んでいる)。どのコマンドがどのフィールドを使うかは
 // data/commands.tsのコメントを参照。
+// Excel「コマンド」シートの「系統」列。戦闘画面の大カテゴリ分けに使う。
+export type CommandCategory = '攻撃' | '防御' | '補助' | '妨害' | '特殊';
+
 export interface CommandDef {
   id: string;
   name: string;
   icon: string;
+  category: CommandCategory;
   kind: CommandKind;
   powerMult: number; // 基礎攻撃力に対する倍率。0 = ダメージを与えない
   mpCost: number;
