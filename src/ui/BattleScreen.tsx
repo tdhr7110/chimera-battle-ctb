@@ -1,9 +1,14 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { CtbEngine, type CtbEvent, type CtbSnapshot } from '../engine/ctbEngine';
+import { CtbEngine, type CommandPreviewInfo, type CtbEvent, type CtbSnapshot } from '../engine/ctbEngine';
 import type { EnemyDef, PartDef } from '../data/types';
 import { ENEMY_INTENT_LABEL, STATUS_LABEL } from '../data/types';
 import { ChimeraFigure } from './freeLayer/ChimeraFigure';
 import { getCommand } from '../data/commands';
+import { COMMAND_CATEGORIES, categoryIdForCommand } from '../data/commandCategories';
+import { MAX_EQUIPPED_PARTS } from '../engine/run';
+
+// 参考画像の S/A/C 表記に合わせた、Excelレア度の1文字表現。
+const RARITY_RANK: Record<string, string> = { Common: 'C', Rare: 'B', Epic: 'A', Legendary: 'S' };
 import { playSE } from '../engine/soundManager';
 import { recordBattleStart, recordCommandUse } from '../engine/metrics';
 
@@ -36,17 +41,23 @@ export function BattleScreen({
   equippedParts,
   startingHp,
   startingMp,
+  battleIndex,
+  totalBattles,
   onExit,
 }: {
   enemy: EnemyDef;
   equippedParts: PartDef[];
   startingHp?: number;
   startingMp?: number;
+  battleIndex?: number;
+  totalBattles?: number;
   onExit: (result: 'won' | 'lost', finalHp: number, finalMp: number) => void;
 }) {
   const engineRef = useRef<CtbEngine | null>(null);
   const [snapshot, setSnapshot] = useState<CtbSnapshot | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  // 開いている大カテゴリ。null = 4つの大ボタンを出している状態。
+  const [openCategory, setOpenCategory] = useState<string | null>(null);
   const [shakeOn, setShakeOn] = useState(false);
   const [telegraphBanner, setTelegraphBanner] = useState<string | null>(null);
   const floatersRef = useRef<Floater[]>([]);
@@ -208,6 +219,7 @@ export function BattleScreen({
       if (cmd && (cmd.ctWeight === 'heavy' || cmd.ctWeight === 'very_heavy')) playSE('heavy');
       processEvents(engine.drainEvents());
       setSelectedId(null);
+      setOpenCategory(null); // 実行したら大カテゴリ表示へ戻す
     }
     setSnapshot(engine.getSnapshot());
   }
@@ -225,6 +237,15 @@ export function BattleScreen({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [snapshot]);
 
+  function openCategoryPanel(catId: string) {
+    setOpenCategory(catId);
+    setSelectedId(null);
+  }
+  function closeCategoryPanel() {
+    setOpenCategory(null);
+    setSelectedId(null);
+  }
+
   function handleCommandTap(commandId: string, usable: boolean) {
     if (!usable) return;
     if (selectedId === commandId) executeCommand(commandId);
@@ -238,12 +259,23 @@ export function BattleScreen({
     setSnapshot(engine.getSnapshot());
   }
 
+  // 解放済みコマンドを4つの大カテゴリへ振り分ける(Excelの系統列そのまま)。
+  const commandsByCategory = useMemo(() => {
+    const out: Record<string, CommandPreviewInfo[]> = {};
+    for (const cat of COMMAND_CATEGORIES) out[cat.id] = [];
+    for (const cmd of snapshot?.commands ?? []) out[categoryIdForCommand(cmd.category)]?.push(cmd);
+    // 使えるものを先に、その中はMPの安い順(手が届くものから目に入るように)
+    for (const id of Object.keys(out)) {
+      out[id].sort((a, b) => Number(b.usable) - Number(a.usable) || a.mpCost - b.mpCost);
+    }
+    return out;
+  }, [snapshot]);
+
   const previewOrder = useMemo(() => engineRef.current?.previewOrder(selectedId) ?? [], [selectedId, snapshot]);
 
   if (!snapshot) return <div className="app-root">戦闘を準備中...</div>;
 
   const order = previewOrder.length > 0 ? previewOrder : snapshot.order;
-  const anySelected = selectedId !== null;
 
   const fxNow = performance.now();
   const playerAttackFx = fxNow - attackFxRef.current.player < 200;
@@ -253,29 +285,93 @@ export function BattleScreen({
 
   return (
     <div className="battle-screen">
-      <header className="battle-header">
-        <h1>
-          ⏱️ CTB戦闘 <span className="badge">TURN {snapshot.turnCount}</span>
-        </h1>
+      {/* 参考画像に寄せたヘッダ: 進行度をドットで示し、右に設定を置く */}
+      <header className="bt-header">
+        <div className="bt-header__logo">
+          <span className="bt-header__logo-mark">🧬</span>
+          <span className="bt-header__logo-text">キメラバトル</span>
+        </div>
+        <div className="bt-progress">
+          <div className="bt-progress__label">
+            第{battleIndex ?? 1}戦 / 全{totalBattles ?? 7}戦
+          </div>
+          <div className="bt-progress__dots">
+            {Array.from({ length: totalBattles ?? 7 }, (_, i) => (
+              <span
+                key={i}
+                className={`bt-dot${i + 1 < (battleIndex ?? 1) ? ' bt-dot--done' : ''}${
+                  i + 1 === (battleIndex ?? 1) ? ' bt-dot--now' : ''
+                }${i + 1 === (totalBattles ?? 7) ? ' bt-dot--boss' : ''}`}
+              />
+            ))}
+          </div>
+          <div className="bt-progress__turn">TURN {snapshot.turnCount}</div>
+        </div>
       </header>
 
-      <div className="ctb-order">
-        <div className="ctb-order__title">⏱ 行動順 (NOW → NEXT)</div>
-        <div className="ctb-order__track">
-          {order.map((slot, i) => (
-            <div key={i} className={`ctb-order__slot ctb-order__slot--${slot.side}${i === 0 ? ' ctb-order__slot--now' : ''}`}>
-              <span>{slot.side === 'player' ? '🧬' : enemy.icon}</span>
-              {slot.telegraph && <span className="ctb-order__telegraph">⚠️</span>}
-              {i === 0 ? <span className="ctb-order__now-label">NOW</span> : slot.intent && <span className="ctb-order__intent">{ENEMY_INTENT_LABEL[slot.intent]}</span>}
-            </div>
-          ))}
-        </div>
-        {snapshot.nextEnemyAction && (
-          <div className="next-enemy-action">
-            {enemy.icon}次の敵行動: {snapshot.nextEnemyAction.icon} {snapshot.nextEnemyAction.moveName}
-            <span className="next-enemy-action__intent">{ENEMY_INTENT_LABEL[snapshot.nextEnemyAction.intent]}</span>
+      {/* 両者のステータスを上部に並べる(名前・HP・MP・状態異常) */}
+      <div className="bt-status">
+        <div className="bt-card bt-card--player">
+          <div className="bt-card__name">
+            <span className="bt-card__badge">🧬</span>キメラ
           </div>
-        )}
+          <div className="bt-gauge bt-gauge--hp">
+            <div className="bt-gauge__fill bt-gauge__fill--player" style={{ width: `${(snapshot.player.hp / snapshot.player.maxHp) * 100}%` }} />
+            <div className="bt-gauge__text">
+              {snapshot.player.hp} / {snapshot.player.maxHp}
+            </div>
+          </div>
+          <div className="bt-mp">
+            <span className="bt-mp__label">MP</span>
+            <div className="bt-mp__track">
+              <div className="bt-mp__fill" style={{ width: `${(snapshot.mp.current / snapshot.mp.max) * 100}%` }} />
+            </div>
+            <span className="bt-mp__num">
+              {snapshot.mp.current} / {snapshot.mp.max}
+            </span>
+          </div>
+          <div className="bt-chips">
+            {snapshot.player.guardActive && <span className="bt-chip bt-chip--guard" title="防御中">🛡️</span>}
+            {snapshot.player.chargeActive && <span className="bt-chip" title="チャージ中">🔋</span>}
+            {snapshot.player.statuses.map((st) => (
+              <span key={st.kind} className="bt-chip" title={`${STATUS_LABEL[st.kind].name} 残り${st.turnsLeft}ターン`}>
+                {STATUS_LABEL[st.kind].icon}
+                <i>{st.turnsLeft}</i>
+              </span>
+            ))}
+          </div>
+        </div>
+
+        <div className="bt-card bt-card--enemy">
+          <div className="bt-card__name">
+            <span className="bt-card__badge">{enemy.icon}</span>
+            {snapshot.enemy.name}
+          </div>
+          <div className="bt-gauge bt-gauge--hp">
+            <div className="bt-gauge__fill bt-gauge__fill--enemy" style={{ width: `${(snapshot.enemy.hp / snapshot.enemy.maxHp) * 100}%` }} />
+            <div className="bt-gauge__text">
+              {snapshot.enemy.hp} / {snapshot.enemy.maxHp}
+            </div>
+          </div>
+          <div className="bt-enemy-intent">
+            {snapshot.nextEnemyAction ? (
+              <>
+                {snapshot.nextEnemyAction.icon} {snapshot.nextEnemyAction.moveName}
+                <span className="bt-intent-tag">{ENEMY_INTENT_LABEL[snapshot.nextEnemyAction.intent]}</span>
+              </>
+            ) : (
+              <span className="muted">—</span>
+            )}
+          </div>
+          <div className="bt-chips">
+            {snapshot.enemy.statuses.map((st) => (
+              <span key={st.kind} className="bt-chip bt-chip--enemy" title={`${STATUS_LABEL[st.kind].name} 残り${st.turnsLeft}ターン`}>
+                {STATUS_LABEL[st.kind].icon}
+                <i>{st.turnsLeft}</i>
+              </span>
+            ))}
+          </div>
+        </div>
       </div>
 
       <div className={`stage${shakeOn ? ' stage--shake' : ''}`}>
@@ -307,44 +403,14 @@ export function BattleScreen({
               hitFx={playerHitFx}
               isDead={snapshot.player.isDead}
             />
-            <div className="combatant__name">キメラ {snapshot.player.isDead && '（機能停止）'}</div>
-            <div className="hp-bar">
-              <div className="hp-bar__fill" style={{ width: `${(snapshot.player.hp / snapshot.player.maxHp) * 100}%`, background: 'var(--color-player)' }} />
-              <div className="hp-bar__label">
-                {snapshot.player.hp} / {snapshot.player.maxHp}
-              </div>
-            </div>
-            <div className="combatant__badges">
-              {snapshot.player.guardActive && <span title="防御中">🛡️</span>}
-              {snapshot.player.chargeActive && <span title="チャージ中">🔋</span>}
-              {snapshot.player.statuses.map((s) => (
-                <span key={s.kind} title={`${STATUS_LABEL[s.kind].name} 残り${s.turnsLeft}ターン`}>
-                  {STATUS_LABEL[s.kind].icon}
-                  {s.turnsLeft}
-                </span>
-              ))}
-            </div>
+            {snapshot.player.isDead && <div className="combatant__ko">機能停止</div>}
           </div>
+
+          <div className="stage__vs">VS</div>
 
           <div className="combatant combatant--enemy">
             <div className={`combatant__figure${enemyAttackFx ? ' combatant__figure--attack' : ''}${enemyHitFx ? ' combatant__figure--hit' : ''}`}>{enemy.icon}</div>
-            <div className="combatant__name">
-              {snapshot.enemy.name} {snapshot.enemy.isDead && '（撃破）'}
-            </div>
-            <div className="hp-bar">
-              <div className="hp-bar__fill" style={{ width: `${(snapshot.enemy.hp / snapshot.enemy.maxHp) * 100}%`, background: 'var(--color-enemy)' }} />
-              <div className="hp-bar__label">
-                {snapshot.enemy.hp} / {snapshot.enemy.maxHp}
-              </div>
-            </div>
-            <div className="combatant__badges">
-              {snapshot.enemy.statuses.map((s) => (
-                <span key={s.kind} title={`${STATUS_LABEL[s.kind].name} 残り${s.turnsLeft}ターン`}>
-                  {STATUS_LABEL[s.kind].icon}
-                  {s.turnsLeft}
-                </span>
-              ))}
-            </div>
+            {snapshot.enemy.isDead && <div className="combatant__ko">撃破</div>}
           </div>
         </div>
 
@@ -380,43 +446,92 @@ export function BattleScreen({
         )}
       </div>
 
-      <div className="mp-bar" title="MPゲージ: 戦闘中は回復しない。コマンド発動に消費し、勝利後にまとめて回復する">
-        <div className="mp-bar__fill" style={{ width: `${(snapshot.mp.current / snapshot.mp.max) * 100}%` }} />
-        <div className="mp-bar__label">
-          🔷MP {snapshot.mp.current} / {snapshot.mp.max}
+      {/* 行動順: 参考画像に合わせて番号 + PLAYER/ENEMY を明示する */}
+      <div className="bt-order">
+        <div className="bt-order__title">行動順</div>
+        <div className="bt-order__track">
+          {order.map((slot, i) => (
+            <div key={i} className={`bt-slot bt-slot--${slot.side}${i === 0 ? ' bt-slot--now' : ''}`}>
+              <span className="bt-slot__no">{String(i + 1).padStart(2, '0')}</span>
+              <span className="bt-slot__icon">{slot.side === 'player' ? '🧬' : enemy.icon}</span>
+              {slot.telegraph && <span className="bt-slot__warn">⚠️</span>}
+              <span className="bt-slot__side">{slot.side === 'player' ? 'PLAYER' : 'ENEMY'}</span>
+            </div>
+          ))}
         </div>
       </div>
 
-      <div className="command-grid">
-        {snapshot.commands.map((cmd) => {
-          const isSelected = selectedId === cmd.id;
-          return (
-            <button
-              key={cmd.id}
-              type="button"
-              disabled={!cmd.usable}
-              onClick={() => handleCommandTap(cmd.id, cmd.usable)}
-              className={`command${cmd.usable ? ' command--usable' : ''}${isSelected ? ' command--selected' : ''}${
-                anySelected && !isSelected ? ' command--dimmed' : ''
-              }`}
-            >
-              <span className="command__icon">{cmd.icon}</span>
-              <span className="command__name">{cmd.name}</span>
-              {isSelected && (
-                <>
-                  <div className="command__detail">
-                    {cmd.damageEstimate !== null && <span className="command__stat">⚔️ {cmd.damageEstimate} DAMAGE</span>}
-                    <span className="command__stat">🔷MP {cmd.mpCost}</span>
-                    <span className="command__stat">次回：{cmd.ctLabel}</span>
-                    {cmd.applyStatusLabel && <span className="command__stat">{cmd.applyStatusLabel}</span>}
-                  </div>
-                  <div className="command__detail-desc">{cmd.description}</div>
-                  <div className="command__hint">もう一度タップで実行</div>
-                </>
-              )}
+      {/* ============================================================
+          コマンド操作は3段階。
+            1. 4つの大カテゴリ(常時この4枚だけ。スクロールしない)
+            2. カテゴリをタップ → その系統のコマンドが横スクロールで出る
+            3. コマンドをタップ → 同じ位置・同じ大きさのまま詳細に切り替わる
+               もう一度タップで実行(2タップ実行の操作感は従来どおり)
+          ============================================================ */}
+      <div className="cmd-panel">
+        {openCategory === null ? (
+          <div className="cmd-cats">
+            {COMMAND_CATEGORIES.map((cat) => {
+              const list = commandsByCategory[cat.id] ?? [];
+              const anyUsable = list.some((c) => c.usable);
+              return (
+                <button
+                  key={cat.id}
+                  type="button"
+                  className={`cmd-cat cmd-cat--${cat.id}${anyUsable ? '' : ' cmd-cat--empty'}`}
+                  disabled={list.length === 0}
+                  onClick={() => openCategoryPanel(cat.id)}
+                >
+                  <span className="cmd-cat__icon">{cat.icon}</span>
+                  <span className="cmd-cat__label">{cat.label}</span>
+                  <span className="cmd-cat__sub">{cat.sub}</span>
+                  <span className="cmd-cat__count">{list.length}</span>
+                </button>
+              );
+            })}
+          </div>
+        ) : (
+          <div className="cmd-list-wrap">
+            <button type="button" className="cmd-back" onClick={closeCategoryPanel}>
+              ‹
             </button>
-          );
-        })}
+            <div className="cmd-list">
+              {(commandsByCategory[openCategory] ?? []).map((cmd) => {
+                const isSelected = selectedId === cmd.id;
+                return (
+                  <button
+                    key={cmd.id}
+                    type="button"
+                    disabled={!cmd.usable}
+                    onClick={() => handleCommandTap(cmd.id, cmd.usable)}
+                    className={`cmd-card${cmd.usable ? ' cmd-card--usable' : ''}${isSelected ? ' cmd-card--detail' : ''}`}
+                  >
+                    {isSelected ? (
+                      // 詳細はカードと同じ枠の中で差し替える(位置もサイズも動かさない)
+                      <span className="cmd-card__detail">
+                        <span className="cmd-card__detail-name">{cmd.name}</span>
+                        <span className="cmd-card__stats">
+                          {cmd.damageEstimate !== null && <span className="cmd-card__stat cmd-card__stat--dmg">⚔{cmd.damageEstimate}</span>}
+                          <span className="cmd-card__stat">🔷{cmd.mpCost}</span>
+                          <span className="cmd-card__stat">{cmd.ctLabel}</span>
+                          {cmd.applyStatusLabel && <span className="cmd-card__stat">{cmd.applyStatusLabel}</span>}
+                        </span>
+                        <span className="cmd-card__desc">{cmd.description}</span>
+                        <span className="cmd-card__go">もう一度タップで実行</span>
+                      </span>
+                    ) : (
+                      <>
+                        <span className="cmd-card__icon">{cmd.icon}</span>
+                        <span className="cmd-card__name">{cmd.name}</span>
+                        <span className="cmd-card__cost">{cmd.mpCost > 0 ? `🔷${cmd.mpCost}` : 'FREE'}</span>
+                      </>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="controls-row">
@@ -425,8 +540,28 @@ export function BattleScreen({
         </button>
       </div>
 
+      {/* 装備中のパーツ(参考画像の下段) */}
+      <div className="bt-parts">
+        <div className="bt-parts__head">
+          <span>装備中のパーツ</span>
+          <span className="bt-parts__cap">
+            装着枠 {equippedParts.length} / {MAX_EQUIPPED_PARTS}
+          </span>
+        </div>
+        <div className="bt-parts__row">
+          {equippedParts.map((part) => (
+            <div key={part.id} className={`bt-part bt-part--${part.rarity.toLowerCase()}`} title={`${part.name} — ${part.description}`}>
+              <span className={`bt-part__rank bt-part__rank--${part.rarity.toLowerCase()}`}>{RARITY_RANK[part.rarity]}</span>
+              <span className="bt-part__icon">{part.icon}</span>
+              <span className="bt-part__type">{part.type}</span>
+            </div>
+          ))}
+          {equippedParts.length === 0 && <span className="muted" style={{ fontSize: '0.6rem' }}>装着中の部位はありません</span>}
+        </div>
+      </div>
+
       <div className="log-panel">
-        {snapshot.log.slice(0, 10).map((line) => (
+        {snapshot.log.slice(0, 6).map((line) => (
           <div key={line}>{line}</div>
         ))}
       </div>

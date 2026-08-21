@@ -83,6 +83,24 @@ SPECS = {
         },
         "arrays": {"tags"},
     },
+    # Phase 7(難易度調整の仕組み)で追加。1行 = 1プリセット。数値はすべて現行データへの倍率。
+    "難易度": {
+        "file": "difficulty.json",
+        "columns": {
+            "ID": "id", "プリセット": "name", "既定": "isDefault",
+            "敵HP倍率_通常": "hpNormal", "敵HP倍率_エリート": "hpElite", "敵HP倍率_ボス": "hpBoss",
+            "敵攻撃力倍率_通常": "powerNormal", "敵攻撃力倍率_エリート": "powerElite", "敵攻撃力倍率_ボス": "powerBoss",
+            "敵防御力倍率": "defenseMult", "敵回避率倍率": "evasionMult",
+            "プレイヤーHP倍率": "playerHpMult", "戦闘後HP回復率": "postBattleHealPct",
+            "戦闘後MP回復倍率": "postBattleMpMult", "レア報酬加算_戦ごと": "rareBonusPerBattle",
+            "説明": "description",
+        },
+        "numbers": {
+            "hpNormal", "hpElite", "hpBoss", "powerNormal", "powerElite", "powerBoss",
+            "defenseMult", "evasionMult", "playerHpMult", "postBattleHealPct",
+            "postBattleMpMult", "rareBonusPerBattle",
+        },
+    },
     "代表ビルド": {
         "file": "representative-builds.json",
         "columns": {
@@ -205,7 +223,7 @@ def read_workbook(path: Path) -> dict[str, list[dict[str, object]]]:
 
 
 def validate(data: dict[str, list[dict[str, object]]]) -> None:
-    for sheet_name in ["コマンド", "部位", "敵", "シナジー", "状態異常", "融合"]:
+    for sheet_name in ["コマンド", "部位", "敵", "シナジー", "状態異常", "融合", "難易度"]:
         records = data[sheet_name]
         ids = [str(r.get("id", "")).strip() for r in records]
         if any(not x for x in ids):

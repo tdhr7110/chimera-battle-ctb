@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { DIFFICULTIES } from '../data/difficulty';
 
 // ============================================================
 // 統合版(本編)のタイトル画面(仕様書28章)。
@@ -9,8 +10,17 @@ import { useState } from 'react';
 // 「続きから」はランの途中保存がある場合、App.tsx側でこの画面より前に専用の
 // 再開プロンプトとして出す(TEST18/19のResumePromptModalと同じ考え方)ため、
 // このコンポーネント自体はCONTINUEボタンを持たない(常に新規ラン開始の入口)。
-export function TitleScreen({ onNewRun }: { onNewRun: () => void }) {
+export function TitleScreen({
+  onNewRun,
+  difficultyId,
+  onSelectDifficulty,
+}: {
+  onNewRun: () => void;
+  difficultyId: string;
+  onSelectDifficulty: (id: string) => void;
+}) {
   const [showHowTo, setShowHowTo] = useState(false);
+  const selected = DIFFICULTIES.find((d) => d.id === difficultyId) ?? DIFFICULTIES[0];
 
   return (
     <div className="title-screen">
@@ -18,6 +28,25 @@ export function TitleScreen({ onNewRun }: { onNewRun: () => void }) {
         🧬
         <div className="title-screen__name">CHIMERA BATTLE</div>
         <div className="title-screen__sub">CTB Edition</div>
+      </div>
+
+      {/* 難易度は Excel「難易度」シートのプリセットをそのまま並べている。
+          シートに行を足せばここも自動で増える。 */}
+      <div className="difficulty-picker">
+        <div className="difficulty-picker__title">難易度</div>
+        <div className="difficulty-picker__row">
+          {DIFFICULTIES.map((d) => (
+            <button
+              key={d.id}
+              type="button"
+              className={`difficulty-chip${d.id === difficultyId ? ' difficulty-chip--on' : ''}`}
+              onClick={() => onSelectDifficulty(d.id)}
+            >
+              {d.name}
+            </button>
+          ))}
+        </div>
+        <div className="difficulty-picker__desc">{selected.description}</div>
       </div>
 
       <div className="title-screen__buttons">

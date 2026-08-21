@@ -1,5 +1,8 @@
+import { useState } from 'react';
 import { getEnemy } from '../data/enemies';
 import { getPart } from '../data/parts';
+import { AcquireBurst, type BurstTone } from './AcquireBurst';
+import { playSE } from '../engine/soundManager';
 
 // ============================================================
 // 仕様書35章: Vampire Survivors系の「中央報酬選択」を参考にした部位獲得画面。
@@ -22,6 +25,27 @@ export function RewardScreen({
   onSkip: () => void;
 }) {
   const enemy = fromEnemyId ? getEnemy(fromEnemyId) : undefined;
+  // 選んだ瞬間に画面遷移せず、まず獲得演出を挟む。
+  const [celebrating, setCelebrating] = useState<string | null>(null);
+  const celebrated = celebrating ? getPart(celebrating) : undefined;
+
+  if (celebrated) {
+    return (
+      <AcquireBurst
+        tone={celebrated.rarity.toLowerCase() as BurstTone}
+        icon={celebrated.icon}
+        title={celebrated.name}
+        subtitle={`${celebrated.type} ・ ${celebrated.tags.join(' / ')}`}
+        badge={celebrated.rarity}
+        banner="部位を獲得！"
+        hint="タップして次へ"
+        autoAdvanceMs={2400}
+        onDone={() => onAccept(celebrated.id)}
+      >
+        <div className="burst__desc">{celebrated.description}</div>
+      </AcquireBurst>
+    );
+  }
   return (
     <div className="reward-screen">
       <div className="reward-screen__title">🎁 部位を獲得</div>
@@ -33,7 +57,15 @@ export function RewardScreen({
           const part = getPart(id);
           if (!part) return null;
           return (
-            <button key={id} type="button" className={`reward-card reward-card--${part.rarity.toLowerCase()}`} onClick={() => onAccept(id)}>
+            <button
+              key={id}
+              type="button"
+              className={`reward-card reward-card--${part.rarity.toLowerCase()}`}
+              onClick={() => {
+                playSE('part');
+                setCelebrating(id);
+              }}
+            >
               <div className="reward-card__icon">{part.icon}</div>
               <div className="reward-card__name">{part.name}</div>
               <div className="reward-card__type">

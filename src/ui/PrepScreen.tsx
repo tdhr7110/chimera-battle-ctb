@@ -5,7 +5,7 @@ import { SYNERGIES } from '../data/synergies';
 import { PLAYER_BASE } from '../engine/ctbEngine';
 import { activeSynergies, computePlayerModifiers, isCommandUnlocked, synergyPartCount } from '../engine/modifiers';
 import { CT_WEIGHT_LABEL } from '../data/types';
-import { currentMaxMp, equippedPartDefs, MAX_EQUIPPED_PARTS, TOTAL_BATTLES, tierOfCurrentBattle, type RunState } from '../engine/run';
+import { currentMaxHp, currentMaxMp, equippedPartDefs, MAX_EQUIPPED_PARTS, TOTAL_BATTLES, tierOfCurrentBattle, type RunState } from '../engine/run';
 
 // ============================================================
 // 統合版(本編)の戦闘待機/キメラビルド画面(仕様書3章)。
@@ -49,6 +49,7 @@ export function PrepScreen({
   const unlockedCount = useMemo(() => COMMANDS.filter((c) => isCommandUnlocked(c, equippedDefs)).length, [equippedDefs]);
 
   const speed = Math.round(PLAYER_BASE.speed + mods.speedFlatBonus);
+  const maxHp = currentMaxHp(state);
   const maxMp = currentMaxMp(state);
   const nextTier = TIER_LABEL[tierOfCurrentBattle(state)] ?? '通常戦';
 
@@ -61,9 +62,9 @@ export function PrepScreen({
       </header>
 
       <div className="hp-bar hp-bar--large">
-        <div className="hp-bar__fill" style={{ width: `${(state.coreHp / PLAYER_BASE.maxHp) * 100}%`, background: 'var(--color-player)' }} />
+        <div className="hp-bar__fill" style={{ width: `${(state.coreHp / maxHp) * 100}%`, background: 'var(--color-player)' }} />
         <div className="hp-bar__label">
-          🧬 コアHP {state.coreHp} / {PLAYER_BASE.maxHp}
+          🧬 コアHP {state.coreHp} / {maxHp}
         </div>
       </div>
 
