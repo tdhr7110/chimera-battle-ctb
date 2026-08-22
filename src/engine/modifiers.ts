@@ -199,6 +199,12 @@ export function computePlayerModifiers(equippedParts: PartDef[]): PlayerModifier
   return mods;
 }
 
+// 戦闘中に後から効果を1つ足す(変異コマンド)。装備を組み替えたのではなく、その場限りの
+// 効果を積むだけなので、既に合成済みのPlayerModifiersへ直接適用する。
+export function applyPartEffectToModifiers(mods: PlayerModifiers, effect: PartEffect) {
+  applyEffect(mods, effect);
+}
+
 // TSの制御フロー解析はsyn.countBy.kindでの分岐narrowingをコールバック(filterの引数)の
 // 中まで保持できないため、countByをローカル変数へ切り出してから判定する。
 // UI側(PrepScreenのシナジータブ等)からも同じロジックを使えるようexportしている。

@@ -2318,6 +2318,35 @@ button {
 .bt-mp__track { flex: 1; height: 7px; background: #120c1e; border-radius: var(--radius-pill); overflow: hidden; }
 .bt-mp__fill { height: 100%; background: linear-gradient(90deg, #1d4ed8, #38bdf8); transition: width 0.25s ease; }
 .bt-mp__num { font-size: 0.5rem; color: var(--color-text-muted); white-space: nowrap; }
+/* 敵のMP。プレイヤー側と同じ形だが、色だけ敵側に寄せる。 */
+.bt-mp--enemy .bt-mp__fill { background: linear-gradient(90deg, #f472b6, #fb7185); }
+
+/* 観察中の「次の2手」表示 */
+.bt-observed {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  flex-wrap: wrap;
+}
+.bt-observed__arrow {
+  margin: 0 2px;
+  color: var(--color-text-muted);
+}
+.bt-intent-tag--observe {
+  background: rgba(56, 189, 248, 0.22);
+  color: #7dd3fc;
+}
+
+/* 解析中・変異中のチップ */
+.bt-chip--analyzed {
+  background: rgba(56, 189, 248, 0.2);
+  border-color: rgba(56, 189, 248, 0.6);
+}
+.bt-chip--mutation {
+  background: rgba(192, 132, 252, 0.2);
+  border-color: rgba(192, 132, 252, 0.6);
+}
+
 .bt-enemy-intent {
   margin-top: 3px;
   font-size: 0.52rem;

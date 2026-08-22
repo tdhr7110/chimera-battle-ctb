@@ -7,9 +7,10 @@ import type { CommandDef } from './types';
 // 自由記述はコマンドごとに個別解釈してCommandDefの専用フィールドへ落とし込んでいる
 // (types.tsのコメント参照)。データの変更は必ずExcel側で行い、
 // npm run data:import → npm run data:check の順で反映すること。
-// 解析・適応・変異・挑発・観察・MP吸収の6種は、弱点/属性/ランダム効果プール/敵AI応答
-// といった現行エンジンに無いシステムを要するため、効果テキストの一部を未実装のまま
-// 残している(コマンド自体は登録済み・使用可能・基礎ダメージ/CTは機能する)。
+// MP吸収・挑発・観察・解析・変異の5種はExcelの「効果」列どおりに実装済み
+// (敵MP=Excel「敵」シートの最大MP、弱点=同シートの弱点対策列を使う)。
+// 適応だけは属性システム(現行エンジンに属性の概念が無い)を要するため未実装のまま。
+// コマンド自体は登録済み・使用可能で、基礎ダメージ/CTは機能する。
 //
 // 段階的解放: unlockAlways(通常攻撃・速撃・防御・待機)以外のコマンドは、対応する
 // unlockTagを持つ部位を1つでも装着するまでバトル画面に出てこない。unlockTagは
@@ -354,7 +355,8 @@ export const COMMANDS: CommandDef[] = [
     powerMult: 1.2,
     mpCost: 8,
     ctWeight: 'standard',
-    description: '敵のMPを奪おうとする攻撃(現状の敵にMPという資源が無いため、通常攻撃として機能する。未実装の特殊効果)。',
+    drainEnemyMp: 12,
+    description: '攻撃しながら敵のMPを最大12奪い、自分のMPにする。敵は危険技にMPを払うので、削るほど大技の間隔が空く。',
   },
   {
     id: 'CMD026',
@@ -683,7 +685,8 @@ export const COMMANDS: CommandDef[] = [
     powerMult: 0.0,
     mpCost: 16,
     ctWeight: 'standard',
-    description: '敵を挑発する(現状の敵AIは固定パターンで反応しないため、未実装の特殊効果)。',
+    taunt: true,
+    description: '敵を挑発し、次の1手を「今その敵が撃てる最も強い技」に固定する。何が来るか読めるので、防御や遅延で受ける準備ができる。',
   },
   {
     id: 'CMD050',
@@ -695,7 +698,8 @@ export const COMMANDS: CommandDef[] = [
     powerMult: 0.0,
     mpCost: 0,
     ctWeight: 'standard',
-    description: '敵の次の行動を詳しく観察する(行動順プレビューで既に数手先まで表示されているため、追加効果は無し)。',
+    observeNextActions: 2,
+    description: '敵の次2手を技名まで読み切る。MPを使わず、行動順の予告よりも詳しく分かる。',
   },
   {
     id: 'CMD051',
@@ -708,7 +712,8 @@ export const COMMANDS: CommandDef[] = [
     powerMult: 0.0,
     mpCost: 16,
     ctWeight: 'standard',
-    description: '敵の弱点を解析する(弱点システム未実装のため、未実装の特殊効果)。',
+    analyzeEnemy: { turns: 4, damageBonusPct: 30 },
+    description: 'その敵の弱点を暴き、4ターンのあいだ与えるダメージを30%上げる。',
   },
   {
     id: 'CMD052',
@@ -747,7 +752,8 @@ export const COMMANDS: CommandDef[] = [
     powerMult: 0.0,
     mpCost: 28,
     ctWeight: 'standard',
-    description: '戦闘中ランダムな部位効果を一時的に得る(ランダム効果プール未実装のため、未実装の特殊効果)。',
+    mutate: true,
+    description: 'この戦闘のあいだだけ、ランダムな部位効果を1つ得る(重ねがけ可能)。何を引くかは撃つまで分からない。',
   },
   {
     id: 'CMD055',

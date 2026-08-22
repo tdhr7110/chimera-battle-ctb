@@ -89,6 +89,14 @@ for (const vp of VIEWPORTS) {
   if (autoBox.height > 30) fail(`AUTOボタンが大きすぎる (${Math.round(autoBox.height)}px)`);
   else ok(`ログ=左下 / AUTO=右下、AUTOは小さい (${Math.round(autoBox.width)}x${Math.round(autoBox.height)})`);
 
+  // 敵にもMPがある(Excel「敵」シートの最大MP)。危険技の燃料でMP吸収の的になる。
+  if ((await page.locator('.bt-mp--enemy').count()) !== 1) fail('敵のMPゲージが出ていない');
+  else {
+    const enemyMp = await page.locator('.bt-mp--enemy .bt-mp__num').innerText();
+    if (!/^\d+ \/ \d+$/.test(enemyMp.trim())) fail(`敵MPの表示が数値でない (${enemyMp})`);
+    else ok(`敵のMPゲージが出る (${enemyMp.trim()})`);
+  }
+
   const m1 = await noScroll(page, '戦闘開始時');
   ok(`戦闘画面がスクロールしない (${m1.s}=${m1.c})`);
 
@@ -112,10 +120,23 @@ for (const vp of VIEWPORTS) {
   else ok('既定ではカテゴリを開いたまま次の手を選べる');
 
   // --- 敵の行動には間があり、何をしたか帯で出る ---
-  let sawBanner = (await page.locator('.enemy-turn-banner').count()) > 0;
-  for (let i = 0; i < 10 && !sawBanner; i++) {
-    await page.waitForTimeout(120);
-    if ((await page.locator('.enemy-turn-banner').count()) > 0) sawBanner = true;
+  // 帯は1手あたり620msで消えるので、確実に捕まえるまで長めに見る。
+  // 自分の手番が連続して敵の手番がまだ来ていない場合もあるため、
+  // 帯が出なければ次の手を撃ってからもう一度待つ。
+  let sawBanner = false;
+  for (let round = 0; round < 3 && !sawBanner; round++) {
+    for (let i = 0; i < 30 && !sawBanner; i++) {
+      if ((await page.locator('.enemy-turn-banner').count()) > 0) sawBanner = true;
+      else await page.waitForTimeout(100);
+    }
+    if (!sawBanner) {
+      const again = page.locator('.cmd-card').first();
+      if ((await again.count()) > 0 && (await again.isEnabled())) {
+        await again.click();
+        await page.waitForTimeout(120);
+        await again.click();
+      }
+    }
   }
   if (!sawBanner) fail('敵の行動を知らせる帯が出ない');
   else ok('自分の行動のあと一拍置いて、敵の行動が帯で出る');

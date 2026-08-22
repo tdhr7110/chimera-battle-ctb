@@ -171,6 +171,15 @@ export interface CommandDef {
   mimicPreviousCommand?: boolean; // 模倣: 直前に使った自分のコマンドを(このコマンドのMPで)再使用する
   refundLastMpSpentPct?: number; // 巻き戻し: 直前に消費したMPの一部を返す
 
+  // --- 「情報・かく乱」系(Excel「効果」列をそのまま実装したもの) ---
+  // 敵にもMPがある(Excel「敵」シートの最大MP列)。敵は危険技にMPを払うので、
+  // 奪えばその分だけ危険技が撃てなくなる。奪ったMPはそのまま自分のMPになる。
+  drainEnemyMp?: number; // MP吸収: 命中時に敵のMPをこの量まで奪い、自分のMPへ移す
+  taunt?: boolean; // 挑発: 敵の次の行動を、その敵がいま撃てる最も強い技に固定して予告する
+  observeNextActions?: number; // 観察: 敵の次のN行動を詳細表示する(継続ターン数ではなく手数)
+  analyzeEnemy?: { turns: number; damageBonusPct: number }; // 解析: 敵の弱点を暴き、その敵への与ダメージを一定ターン強化する
+  mutate?: boolean; // 変異: この戦闘のあいだだけ、ランダムな部位効果を1つ得る
+
   // --- コマンド段階的解放で追加 ---
   unlockAlways?: boolean; // 通常攻撃・速撃・防御・待機: 部位が無くても最初から使える基礎コマンド
   unlockTag?: PartTag; // このタグを持つ部位を装着すると解放される(Excelコマンドのtags列と対応)
@@ -225,6 +234,9 @@ export interface EnemyMoveDef {
   hits?: number; // 多段系: この技が複数回命中し、命中のたびapplyStatusを積み重ねる(プレイヤーのvulnerable等)
   executeBonus?: { hpPctThreshold: number; bonusMult: number }; // 処刑系: プレイヤーのHP割合が閾値以下なら威力UP
   selfApplyStatus?: StatusApply; // 暴走/雷/氷系: 自分自身に状態異常を付与する(狂化・不死・加速など)
+  // Excel「敵」シートの危険技(dangerMove)にだけ付く消費MP。払えないターンは
+  // 最も軽い技へ差し替わる(MP吸収コマンドが意味を持つのはこのため)。
+  mpCost?: number;
 }
 
 // 仕様書12章: 通常/エリート/ボスで遅延耐性を変えられるデータ構造。
@@ -262,6 +274,11 @@ export interface EnemyDef {
   power: number;
   evasionPct: number;
   baseSpeed: number; // CTB上の基礎速度(プレイヤーの基準値100に対する相対値)
+  // Excel「敵」シートの最大MP列。敵は危険技(dangerMove)を撃つときだけMPを払う。
+  // MP吸収で削られると危険技が撃てなくなるので、Excelの列が実際の駆け引きになる。
+  maxMp: number;
+  // Excel「敵」シートの弱点対策列。解析コマンドで暴くまでプレイヤーには見せない。
+  weakness: string;
   moves: EnemyMoveDef[]; // 単純な周期パターンで順番に使用する(仮のAI)。フェーズ1の行動パターン。
   phases?: EnemyPhase[]; // HP閾値で行動パターンそのものが変わる敵(エリート/ボス級)のみ設定
   counter?: EnemyCounter; // 反撃型: 被弾時に一定確率で即時反撃する

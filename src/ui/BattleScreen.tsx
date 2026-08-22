@@ -374,6 +374,11 @@ export function BattleScreen({
           <div className="bt-chips">
             {snapshot.player.guardActive && <span className="bt-chip bt-chip--guard" title="防御中">🛡️</span>}
             {snapshot.player.chargeActive && <span className="bt-chip" title="チャージ中">🔋</span>}
+            {snapshot.mutations.length > 0 && (
+              <span className="bt-chip bt-chip--mutation" title={`変異: ${snapshot.mutations.join(' / ')}`}>
+                🎲<i>{snapshot.mutations.length}</i>
+              </span>
+            )}
             {snapshot.player.statuses.map((st) => (
               <span key={st.kind} className="bt-chip" title={`${STATUS_LABEL[st.kind].name} 残り${st.turnsLeft}ターン`}>
                 {STATUS_LABEL[st.kind].icon}
@@ -394,8 +399,32 @@ export function BattleScreen({
               {snapshot.enemy.hp} / {snapshot.enemy.maxHp}
             </div>
           </div>
+          {/* 敵のMP(Excel「敵」シートの最大MP)。危険技の燃料なので、MP吸収で削れば大技が止まる。 */}
+          <div className="bt-mp bt-mp--enemy">
+            <span className="bt-mp__label">MP</span>
+            <div className="bt-mp__track">
+              <div
+                className="bt-mp__fill"
+                style={{ width: `${snapshot.enemyMp.max > 0 ? (snapshot.enemyMp.current / snapshot.enemyMp.max) * 100 : 0}%` }}
+              />
+            </div>
+            <span className="bt-mp__num">
+              {snapshot.enemyMp.current} / {snapshot.enemyMp.max}
+            </span>
+          </div>
           <div className="bt-enemy-intent">
-            {snapshot.nextEnemyAction ? (
+            {/* 観察中は次の2手まで読める。それ以外はこれまでどおり次の1手だけ。 */}
+            {snapshot.observedEnemyActions.length > 0 ? (
+              <span className="bt-observed">
+                {snapshot.observedEnemyActions.map((a, i) => (
+                  <span key={i}>
+                    {i > 0 && <span className="bt-observed__arrow">→</span>}
+                    {a.icon} {a.moveName}
+                  </span>
+                ))}
+                <span className="bt-intent-tag bt-intent-tag--observe">🔭 観察中</span>
+              </span>
+            ) : snapshot.nextEnemyAction ? (
               <>
                 {snapshot.nextEnemyAction.icon} {snapshot.nextEnemyAction.moveName}
                 <span className="bt-intent-tag">{ENEMY_INTENT_LABEL[snapshot.nextEnemyAction.intent]}</span>
@@ -405,6 +434,14 @@ export function BattleScreen({
             )}
           </div>
           <div className="bt-chips">
+            {snapshot.enemyAnalysis && (
+              <span
+                className="bt-chip bt-chip--analyzed"
+                title={`弱点: ${snapshot.enemyAnalysis.weakness} / 与ダメージ +${snapshot.enemyAnalysis.damageBonusPct}%`}
+              >
+                🔬<i>{snapshot.enemyAnalysis.turns}</i>
+              </span>
+            )}
             {snapshot.enemy.statuses.map((st) => (
               <span key={st.kind} className="bt-chip bt-chip--enemy" title={`${STATUS_LABEL[st.kind].name} 残り${st.turnsLeft}ターン`}>
                 {STATUS_LABEL[st.kind].icon}
