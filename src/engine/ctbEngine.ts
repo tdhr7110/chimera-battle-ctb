@@ -1,6 +1,6 @@
 import { COMMANDS, getCommand } from '../data/commands';
-import { activeSynergies, activeSynergyRuleChanges, computePlayerModifiers, computeUnlockedCommandIds, type PlayerModifiers } from './modifiers';
-import type { CommandDef, EnemyDef, EnemyIntent, EnemyMoveDef, EnemyPhase, EnemyTier, PartDef, Side, StatusApply, StatusKind } from '../data/types';
+import { activeSynergies, activeSynergyRuleChanges, applyPartEffectToModifiers, computePlayerModifiers, computeUnlockedCommandIds, type PlayerModifiers } from './modifiers';
+import type { CommandDef, EnemyDef, EnemyIntent, EnemyMoveDef, EnemyPhase, EnemyTier, PartDef, PartEffect, Side, StatusApply, StatusKind } from '../data/types';
 import {
   CT_DELAY_UNITS_CEILING,
   CT_WEIGHT_INTERVAL_MULT,
@@ -31,7 +31,13 @@ import {
 // player_turn)は従来通り。engine自体はタイマーを持たない純粋な状態機械。
 // ============================================================
 
-export type CtbPhase = 'battle_start' | 'order_reveal' | 'enemy_first_announce' | 'player_turn' | 'ended';
+export type CtbPhase =
+  | 'battle_start'
+  | 'order_reveal'
+  | 'enemy_first_announce'
+  | 'player_turn'
+  | 'enemy_pending' // stepwise: プレイヤーの行動が終わり、敵の行動が1つ以上待っている
+  | 'ended';
 export type CtbStatus = 'ongoing' | 'won' | 'lost';
 
 export type CtbEvent =
@@ -56,6 +62,26 @@ type EventWithoutTime<T> = T extends CtbEvent ? Omit<T, 'time'> : never;
 
 const CTB_BASE_INTERVAL = 100;
 const CTB_PREVIEW_STEPS = 8; // Excel CTB設定「行動順表示」に合わせる
+
+// 敵が自分の手番ごとに戻すMP量。危険技のコストは最大MPの45%なので、放っておけば
+// 危険技はこれまでと同じ間隔で回ってくる。MP吸収で削ったぶんだけ間隔が空く。
+const ENEMY_MP_REGEN_PER_TURN = 5;
+
+// 変異(CMD054)が引くランダム効果プール。すべて engine が実際に解決する PartEffect のみ。
+// 「戦闘中ランダムな部位効果を一時獲得」というExcelの記述をそのまま、この戦闘限りの
+// PlayerModifiers への追記として実装している。
+const MUTATION_POOL: { label: string; effect: PartEffect }[] = [
+  { label: '全攻撃の威力 +20%', effect: { kind: 'power_bonus_all_pct', pct: 20 } },
+  { label: '速度 +12', effect: { kind: 'speed_flat', amount: 12 } },
+  { label: '防御力 +6', effect: { kind: 'defense_flat_bonus', amount: 6 } },
+  { label: '全行動のCT -12%', effect: { kind: 'ct_mult_all_pct', pct: -12 } },
+  { label: '命中率 +12%', effect: { kind: 'accuracy_bonus_pct', pct: 12 } },
+  { label: '回避率 +10%', effect: { kind: 'evasion_bonus_pct', pct: 10 } },
+  { label: '敵防御力の 35% を無視', effect: { kind: 'ignore_defense_pct', pct: 35 } },
+  { label: '手番開始時にHP +6', effect: { kind: 'passive_regen_per_turn', amount: 6 } },
+  { label: '被弾するたびダメージの 25% を反射', effect: { kind: 'reflect_on_hit_pct', pct: 25 } },
+  { label: '多段コマンドのヒット数 +1', effect: { kind: 'bonus_hits_flat', amount: 1 } },
+];
 const CTB_MAX_RESOLVE_STEPS = 60;
 
 // MP改定: 「戦闘中は回復せず、勝利後にまとめて回復する」方式へ変更(Excel CTB設定を
@@ -112,6 +138,13 @@ interface EnemyRuntime extends RuntimeActor {
   tier: EnemyTier;
   delayResistancePct: number;
   counter?: { chancePct: number; powerMult: number };
+  // Excel「敵」シートの最大MP。危険技(mpCost付き)を撃つときだけ支払う。
+  // MP吸収で削られると危険技を選べなくなり、軽い技へ差し替わる。
+  mp: number;
+  maxMp: number;
+  weakness: string; // Excelの弱点対策列。解析で暴かれるまでUIへ出さない
+  tauntPending: boolean; // 挑発: 次の1手を「いま撃てる最も強い技」に固定する
+  analyzed: { turns: number; pct: number } | null; // 解析: この敵への与ダメージが一定ターン上がる
 }
 
 export interface CommandPreviewInfo {
@@ -167,6 +200,14 @@ export interface CtbSnapshot {
   mp: { current: number; max: number };
   order: OrderSlot[];
   nextEnemyAction: NextEnemyActionInfo | null;
+  // 観察(CMD050)で読めるようになった敵の次の手。観察していないあいだは空配列。
+  observedEnemyActions: NextEnemyActionInfo[];
+  // 敵のMP(Excel「敵」シートの最大MP)。危険技の燃料で、MP吸収で削れる。
+  enemyMp: { current: number; max: number };
+  // 解析(CMD051)中だけ、暴いた弱点と与ダメージ強化量を出す。
+  enemyAnalysis: { weakness: string; damageBonusPct: number; turns: number } | null;
+  // 変異(CMD054)でこの戦闘中に得た効果の表示名。
+  mutations: string[];
   commands: CommandPreviewInfo[];
   activeSynergyNames: string[];
   log: string[];
@@ -199,6 +240,8 @@ export class CtbEngine {
   private lastMpSpent = 0; // 巻き戻し(refundLastMpSpentPct)が参照する直前のコマンドのMP消費量
   private killGrantedInstantAction = false; // 捕食連鎖等(killBonus.instantNextAction)がuseCommandへ伝える一時フラグ
   private firstMpMoveFreeUsed = false; // ゼロコスト核(first_mp_move_free): 1戦1回だけ消費する
+  private observeRemaining = 0; // 観察(CMD050): 敵のあと何手ぶんを詳細表示するか
+  private mutationLabels: string[] = []; // 変異(CMD054): この戦闘で引いた効果の表示名
   // --- シナジー36接続で追加。すべてactiveSynergyRuleChangesから初期化する一戦分の設定値 ---
   private playerReviveInstantAction = false; // シナジー「暴走生命」3段階目: revive_once_instant_actionが未消費か
   private followUpAfterAttackMult = 0; // シナジー「多腕」3段階目: 攻撃後に自動追撃する倍率(0=無効)
@@ -290,6 +333,11 @@ export class CtbEngine {
       tier: enemyDef.tier,
       delayResistancePct: TIER_DELAY_RESISTANCE_PCT[enemyDef.tier],
       counter: enemyDef.counter,
+      mp: enemyDef.maxMp,
+      maxMp: enemyDef.maxMp,
+      weakness: enemyDef.weakness,
+      tauntPending: false,
+      analyzed: null,
     };
     this.enemyPhases = [...(enemyDef.phases ?? [])].sort((a, b) => b.hpPctThreshold - a.hpPctThreshold);
 
@@ -363,8 +411,30 @@ export class CtbEngine {
     return this.nextAt.player <= this.nextAt.enemy ? 'player' : 'enemy';
   }
 
+  // ------------------------------------------------------------
+  // 敵の技選び。基本は今までどおり moves を順番に回すだけで、そこへ2つだけ条件を足している:
+  //   - 危険技(mpCost付き)はMPを払えないと撃てない → 最も軽い技へ差し替わる
+  //   - 挑発を受けた次の1手だけは「いま撃てる最も強い技」に固定される
+  // どちらも行動順プレビューから見えるように currentEnemyMove を通す(挑発の「予測可能化」)。
+  // ------------------------------------------------------------
+
+  /** MPを払えない危険技は、MP不要の技のうち最も軽いものへ差し替える。 */
+  private affordableMove(move: EnemyMoveDef): EnemyMoveDef {
+    if (!move.mpCost || this.enemy.mp >= move.mpCost) return move;
+    const free = this.enemy.moves.filter((m) => !m.mpCost);
+    if (free.length === 0) return move;
+    return free.reduce((m, x) => (x.powerMult < m.powerMult ? x : m));
+  }
+
+  /** いまMPを払える技のうち、最も威力の高いもの(挑発が誘発する技)。 */
+  private strongestAffordableMove(): EnemyMoveDef {
+    const pool = this.enemy.moves.filter((m) => !m.mpCost || this.enemy.mp >= m.mpCost);
+    return (pool.length > 0 ? pool : this.enemy.moves).reduce((m, x) => (x.powerMult > m.powerMult ? x : m));
+  }
+
   private currentEnemyMove(offset = 0): EnemyMoveDef {
-    return this.enemy.moves[(this.enemy.moveIndex + offset) % this.enemy.moves.length];
+    if (offset === 0 && this.enemy.tauntPending) return this.strongestAffordableMove();
+    return this.affordableMove(this.enemy.moves[(this.enemy.moveIndex + offset) % this.enemy.moves.length]);
   }
 
   // ------------------------------------------------------------
@@ -377,6 +447,14 @@ export class CtbEngine {
   private tickStatusesAtTurnStart(side: Side) {
     const actor = side === 'player' ? this.player : this.enemy;
     if (actor.isDead) return;
+    // 解析(analyzeEnemy)の残りターン。自分の手番が回ってくるたびに1減る。
+    if (side === 'player' && this.enemy.analyzed) {
+      this.enemy.analyzed.turns -= 1;
+      if (this.enemy.analyzed.turns <= 0) {
+        this.enemy.analyzed = null;
+        this.pushLog(`🔬 ${this.enemy.name}の解析が切れた`);
+      }
+    }
     // 再生胴系(passive_regen_per_turn): 状態異常ではなく部位由来の常時パッシブ回復。
     // シナジー「再生体」3段階目(overheal_shield)が有効な場合、HP上限を超える分はシールドになる。
     if (side === 'player' && this.player.mods.passiveRegenPerTurn > 0 && actor.hp > 0) {
@@ -675,8 +753,19 @@ export class CtbEngine {
   // 行動解決
   // ------------------------------------------------------------
   private resolveEnemyAttack() {
+    const scheduled = this.enemy.moves[this.enemy.moveIndex % this.enemy.moves.length];
     const move = this.currentEnemyMove();
     this.enemy.moveIndex += 1;
+
+    if (this.enemy.tauntPending) {
+      this.enemy.tauntPending = false;
+      this.pushLog(`😈 挑発に乗って${this.enemy.name}は${move.name}を仕掛けてきた`);
+    } else if (move !== scheduled && scheduled.mpCost) {
+      this.pushLog(`🕳️ ${this.enemy.name}はMPが足りず${scheduled.name}を撃てない`);
+    }
+    if (move.mpCost) this.enemy.mp = Math.max(0, this.enemy.mp - move.mpCost);
+    // 観察は「次のN行動」を見せる約束なので、敵が1手動くたびに1つ減る。
+    if (this.observeRemaining > 0) this.observeRemaining -= 1;
 
     if (move.telegraph) {
       this.pushLog(move.telegraph);
@@ -723,6 +812,9 @@ export class CtbEngine {
       if (move.delayTargetBy && !this.player.isDead) this.applyDelayToPlayer(move.delayTargetBy);
       if (!this.player.isDead && totalDmg > 0) this.triggerBleedOnHit(this.player);
     }
+    // 敵のMPは自分の手番ごとに少しずつ戻る。奪わなければ危険技はいつもどおり回ってくる。
+    this.enemy.mp = Math.min(this.enemy.maxMp, this.enemy.mp + ENEMY_MP_REGEN_PER_TURN);
+
     const weightMult = this.effectiveWeightMult(this.enemy, move.ctWeight) * this.consumeParalyzeExtraMult(this.enemy);
     this.nextAt.enemy += actionInterval(this.enemy.speed, weightMult);
   }
@@ -755,6 +847,41 @@ export class CtbEngine {
       }
     }
     if (cmd.followUpNextAttack) this.player.pendingFollowUp = cmd.followUpNextAttack;
+
+    // --- 「情報・かく乱」系(Excel「効果」列の実装) ---
+    // 挑発: 敵の次の1手を「いま撃てる最も強い技」に固定する。currentEnemyMove を通すので
+    // 行動順プレビューにもその技が出る(= Excelの言う「予測可能化」)。
+    if (cmd.taunt && !this.enemy.isDead) {
+      this.enemy.tauntPending = true;
+      const forced = this.strongestAffordableMove();
+      this.pushLog(`😈 ${cmd.name}！${this.enemy.name}は次に${forced.name}を狙っている`);
+      this.pushEvent({ type: 'telegraph', message: `${this.enemy.name}は次に「${forced.name}」！` });
+    }
+    // 観察: 敵の次N手を詳細表示する。すでに観察中なら手数を上書きせず長いほうを採る。
+    if (cmd.observeNextActions) {
+      this.observeRemaining = Math.max(this.observeRemaining, cmd.observeNextActions);
+      this.pushLog(`🔭 ${cmd.name}！敵の次${cmd.observeNextActions}手が読めるようになった`);
+    }
+    // 解析: 弱点を暴き、その敵への与ダメージを一定ターン上げる。
+    if (cmd.analyzeEnemy && !this.enemy.isDead) {
+      this.enemy.analyzed = { turns: cmd.analyzeEnemy.turns, pct: cmd.analyzeEnemy.damageBonusPct };
+      this.pushLog(
+        `🔬 ${cmd.name}！${this.enemy.name}の弱点は「${this.enemy.weakness || '不明'}」— 与ダメージ+${cmd.analyzeEnemy.damageBonusPct}%`
+      );
+    }
+    // 変異: この戦闘のあいだだけ、ランダムな部位効果を1つ得る。
+    if (cmd.mutate) {
+      const pick = MUTATION_POOL[this.randomInt(0, MUTATION_POOL.length - 1)];
+      applyPartEffectToModifiers(this.player.mods, pick.effect);
+      this.mutationLabels.push(pick.label);
+      // 最大HP/最大MPを動かす効果を引いた場合は、上限を即座に追従させる。
+      this.player.maxHp = PLAYER_BASE.maxHp + this.player.mods.maxHpBonus;
+      this.player.maxMp = CTB_MP_MAX_BASE + this.player.mods.maxMpBonus;
+      this.player.speed = PLAYER_BASE.speed + this.player.mods.speedFlatBonus;
+      this.player.evasionPct = PLAYER_BASE.evasionPct + this.player.mods.evasionBonusPct;
+      this.pushLog(`🎲 ${cmd.name}！この戦闘のあいだ「${pick.label}」を得た`);
+      this.pushEvent({ type: 'charge', side: 'player' });
+    }
 
     // 模倣: 直前の自分のコマンドをこのコマンドのMPで再現する(参照先自身が模倣の場合は不発)。
     if (cmd.mimicPreviousCommand) {
@@ -856,9 +983,11 @@ export class CtbEngine {
     const baseHitCount = cmd.randomHitsRange ? this.randomInt(cmd.randomHitsRange[0], cmd.randomHitsRange[1]) : (cmd.hits ?? 1);
     const hitCount = cmd.hits || cmd.randomHitsRange ? baseHitCount + this.player.mods.bonusHitsFlat : baseHitCount;
     const perHitPower = power / hitCount;
+    // 解析(analyzeEnemy)で暴いた弱点は、被ダメージ増加としてそのまま乗る。
+    const analyzedPct = this.enemy.analyzed?.pct ?? 0;
     let totalDmg = 0;
     for (let h = 0; h < hitCount && !this.enemy.isDead; h++) {
-      const dmg = this.computeDamage(perHitPower, enemyDefense, 0, 0);
+      const dmg = this.computeDamage(perHitPower, enemyDefense, 0, analyzedPct);
       this.enemy.hp = Math.max(0, this.enemy.hp - dmg);
       totalDmg += dmg;
       this.pushLog(`${cmd.icon}${cmd.name}が${this.enemy.name}に${dmg}ダメージ${hitCount > 1 ? `(${h + 1}/${hitCount})` : ''}`);
@@ -868,6 +997,20 @@ export class CtbEngine {
       if (!this.enemy.isDead) {
         for (const onHit of this.player.mods.onHitApplyStatuses) this.applyStatus(this.enemy, this.boostOutgoingStatus(onHit));
       }
+    }
+
+    // MP吸収: 命中したぶんだけ敵のMPを奪い、そのまま自分のMPにする。
+    // 敵のMPは危険技の燃料なので、奪うほど危険技の間隔が空く。
+    if (cmd.drainEnemyMp && totalDmg > 0) {
+      const drained = Math.min(this.enemy.mp, cmd.drainEnemyMp);
+      this.enemy.mp -= drained;
+      const before = this.mp;
+      this.mp = Math.min(this.player.maxMp, this.mp + drained);
+      this.pushLog(
+        drained > 0
+          ? `🕳️ ${cmd.name}で${this.enemy.name}のMPを${drained}奪った(自分のMP +${this.mp - before})`
+          : `🕳️ ${cmd.name}を当てたが、${this.enemy.name}にはもうMPが無い`
+      );
     }
 
     if (cmd.statusConsumeNuke && !this.enemy.isDead) {
@@ -1027,7 +1170,16 @@ export class CtbEngine {
   // ------------------------------------------------------------
   // 外部API
   // ------------------------------------------------------------
-  useCommand(commandId: string): { ok: boolean; reason?: string } {
+  /**
+   * コマンドを実行する。
+   *
+   * 既定では従来どおり、敵の行動まで一気に解決してプレイヤーの手番へ戻す。
+   * opts.stepwise = true のときは自分の行動だけを解決して 'enemy_pending' で止まり、
+   * 敵の行動は stepEnemyTurn() を呼ぶたびに1つずつ進む。
+   * UI が「自分の行動 → 一拍 → 敵の行動」と見せるためのモードで、
+   * 解決の中身・乱数の使い方は完全に同じ(止まる位置が違うだけ)。
+   */
+  useCommand(commandId: string, opts?: { stepwise?: boolean }): { ok: boolean; reason?: string } {
     if (this.status !== 'ongoing') return { ok: false, reason: '戦闘は終了しています' };
     if (this.phase !== 'player_turn') return { ok: false, reason: 'まだ行動順ではありません' };
     const cmd = getCommand(commandId);
@@ -1096,8 +1248,38 @@ export class CtbEngine {
     this.turnCount += 1;
 
     if (this.checkEnd()) return { ok: true };
+    if (opts?.stepwise) {
+      // 次に動くのが自分ならそのまま手番へ。敵なら 'enemy_pending' で一旦止める。
+      this.phase = this.firstActingSide() === 'player' ? 'player_turn' : 'enemy_pending';
+      if (this.phase === 'player_turn') {
+        this.tickStatusesAtTurnStart('player');
+        this.checkEnd();
+      }
+      return { ok: true };
+    }
     this.resolveUntilPlayerOrEnd();
     return { ok: true };
+  }
+
+  /**
+   * stepwiseモード用: 待機中の敵の行動を1つだけ解決する。
+   * 解決後、次に動くのが自分なら 'player_turn' へ、まだ敵なら 'enemy_pending' のまま。
+   * @returns さらに敵の行動が続くなら true
+   */
+  stepEnemyTurn(): boolean {
+    if (this.phase !== 'enemy_pending' || this.status !== 'ongoing') return false;
+    this.tickStatusesAtTurnStart('enemy');
+    if (this.checkEnd()) return false;
+    this.resolveEnemyAttack();
+    if (this.checkEnd()) return false;
+    if (this.firstActingSide() === 'player') {
+      this.tickStatusesAtTurnStart('player');
+      if (this.checkEnd()) return false;
+      this.phase = 'player_turn';
+      return false;
+    }
+    this.phase = 'enemy_pending';
+    return true;
   }
 
   previewOrder(commandId: string | null, steps: number = CTB_PREVIEW_STEPS): OrderSlot[] {
@@ -1145,15 +1327,6 @@ export class CtbEngine {
     const nextMove = this.currentEnemyMove();
     const bigIncoming = nextMove.intent === 'ULTIMATE' || nextMove.intent === 'STRONG';
 
-    // 瀕死なら守る。大技が来るなら遅延で押し返すか防御する。
-    if (hpPct < 0.25) return guard;
-    if (bigIncoming) {
-      const delayStrike = getCommand('CMD011')!;
-      const preview = this.commandPreview(delayStrike);
-      if (this.unlockedCommandIds.has(delayStrike.id) && preview.usable && Math.random() < 0.6) return delayStrike;
-      if (hpPct < 0.6) return guard;
-    }
-
     // 解放済み・いま撃てるコマンドを全部評価する。
     const candidates = COMMANDS.filter((c) => this.unlockedCommandIds.has(c.id)).map((cmd) => ({
       cmd,
@@ -1161,6 +1334,36 @@ export class CtbEngine {
     }));
     const usable = candidates.filter((c) => c.preview.usable);
     if (usable.length === 0) return guard;
+
+    // いま出せる最大ダメージ。準備系(解析・変異)の価値を「何ダメージぶんか」に
+    // 換算するための物差しに使う。
+    const bestDmg = usable.reduce((m, c) => Math.max(m, c.preview.damageEstimate ?? 0), 0);
+
+    // 瀕死なら立て直す。防御しかないなら防御だが、継続回復や吸血が撃てるならそちらが優先。
+    // 防御は被害を減らすだけで、削られたHPは戻らないため。
+    if (hpPct < 0.25) {
+      const recovery = usable.filter(
+        ({ cmd, preview }) =>
+          cmd.applySelfStatus?.kind === 'regen' || (cmd.lifestealPct && (preview.damageEstimate ?? 0) > 0)
+      );
+      if (recovery.length > 0) {
+        // 吸血は当たらないと戻らないので、回復量の見積が大きいほうを採る。
+        const best = recovery.reduce((m, c) =>
+          (c.cmd.lifestealPct ?? 0) * (c.preview.damageEstimate ?? 0) >
+          (m.cmd.lifestealPct ?? 0) * (m.preview.damageEstimate ?? 0)
+            ? c
+            : m
+        );
+        return best.cmd;
+      }
+      return guard;
+    }
+    if (bigIncoming) {
+      const delayStrike = getCommand('CMD011')!;
+      const preview = this.commandPreview(delayStrike);
+      if (this.unlockedCommandIds.has(delayStrike.id) && preview.usable && Math.random() < 0.6) return delayStrike;
+      if (hpPct < 0.6) return guard;
+    }
 
     // 期待値 = 見積ダメージ / CTの重さ。CTBは「1回の強さ」ではなく「時間あたりの強さ」で
     // competeするので、重い技はその分割り引いて評価する。
@@ -1171,6 +1374,29 @@ export class CtbEngine {
         let score = dmg / ctCost;
         // 状態異常を撒けるなら少し加点(継続ダメージ・弱体の分)。
         if (cmd.applyStatus) score += 3 / ctCost;
+
+        // --- 準備系のコマンドを「何ダメージぶんの価値か」に換算する ---
+        // 解析: 残りの戦闘で2発ぶんは強化が乗る前提。もう解析済みなら価値なし。
+        // 相手が残りわずかなら、1手使うより殴り切ったほうが早いので手を出さない。
+        if (cmd.analyzeEnemy) {
+          const worth = this.enemy.analyzed || this.enemy.hp <= bestDmg * 2
+            ? 0
+            : (bestDmg * cmd.analyzeEnemy.damageBonusPct) / 100 * 2;
+          score = worth / ctCost;
+        }
+        // 変異: 効果はこの戦闘のあいだ続くので、長引きそうなときほど価値が高い。
+        if (cmd.mutate) {
+          score = this.enemy.hp > bestDmg * 4 ? (bestDmg * 0.5) / ctCost : 0;
+        }
+        // MP吸収: ダメージに加え、戻ってくるMPぶんも価値に含める(MPが渇いているほど大きい)。
+        if (cmd.drainEnemyMp) {
+          const gained = Math.min(cmd.drainEnemyMp, this.enemy.mp, this.player.maxMp - this.mp);
+          score += gained / 2 / ctCost;
+        }
+        // 挑発・観察はAUTOには使いこなせない(挑発は最強技を呼び込むだけになり、
+        // 観察は情報を活かす先が無い)。人間が手動で使うためのコマンドとして扱う。
+        if (cmd.taunt || cmd.observeNextActions) score = 0;
+
         // とどめを刺せるなら最優先。
         if (dmg >= this.enemy.hp) score += 1000;
         return { cmd, score };
@@ -1288,6 +1514,22 @@ export class CtbEngine {
       mp: { current: Math.round(this.mp), max: this.player.maxMp },
       order: this.previewOrder(null),
       nextEnemyAction: nextMove ? { intent: nextMove.intent, moveName: nextMove.name, icon: nextMove.icon } : null,
+      observedEnemyActions:
+        this.status === 'ongoing' && this.observeRemaining > 0
+          ? Array.from({ length: this.observeRemaining }, (_, i) => {
+              const m = this.currentEnemyMove(i);
+              return { intent: m.intent, moveName: m.name, icon: m.icon };
+            })
+          : [],
+      enemyMp: { current: Math.round(this.enemy.mp), max: this.enemy.maxMp },
+      enemyAnalysis: this.enemy.analyzed
+        ? {
+            weakness: this.enemy.weakness || '不明',
+            damageBonusPct: this.enemy.analyzed.pct,
+            turns: this.enemy.analyzed.turns,
+          }
+        : null,
+      mutations: [...this.mutationLabels],
       commands: COMMANDS.filter((c) => this.unlockedCommandIds.has(c.id)).map((c) => this.commandPreview(c)),
       activeSynergyNames: this.activeSynergyNames,
       log: this.log.slice(0, 30),

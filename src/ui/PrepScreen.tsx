@@ -3,9 +3,9 @@ import { PARTS, getPart } from '../data/parts';
 import { COMMANDS } from '../data/commands';
 import { SYNERGIES } from '../data/synergies';
 import { PLAYER_BASE } from '../engine/ctbEngine';
-import { activeSynergies, computePlayerModifiers, isCommandUnlocked, synergyPartCount } from '../engine/modifiers';
+import { activeSynergies, commandUnlockProgress, computePlayerModifiers, isCommandUnlocked, synergyPartCount } from '../engine/modifiers';
 import { CT_WEIGHT_LABEL } from '../data/types';
-import { currentMaxHp, currentMaxMp, equippedPartDefs, MAX_EQUIPPED_PARTS, TOTAL_BATTLES, tierOfCurrentBattle, type RunState } from '../engine/run';
+import { areaDefOfBattle, currentMaxHp, currentMaxMp, equippedPartDefs, maxEquippedParts, TOTAL_BATTLES, tierOfCurrentBattle, type RunState } from '../engine/run';
 
 // ============================================================
 // 統合版(本編)の戦闘待機/キメラビルド画面(仕様書3章)。
@@ -46,6 +46,8 @@ export function PrepScreen({
   const equippedDefs = useMemo(() => equippedPartDefs(state), [state.equippedPartIds]);
   const mods = useMemo(() => computePlayerModifiers(equippedDefs), [equippedDefs]);
   const activeSynergyIds = useMemo(() => activeSynergies(equippedDefs).map((s) => s.id), [equippedDefs]);
+  // 接続枠は「基本12 + 枠を増やす部位のぶん」なので、装備を変えるたびに動く。
+  const slotCap = useMemo(() => maxEquippedParts(state), [equippedDefs]);
   const unlockedCount = useMemo(() => COMMANDS.filter((c) => isCommandUnlocked(c, equippedDefs)).length, [equippedDefs]);
 
   const speed = Math.round(PLAYER_BASE.speed + mods.speedFlatBonus);
@@ -58,6 +60,9 @@ export function PrepScreen({
       <header className="screen__header">
         <div>
           第{state.battleIndex}戦 / 全{TOTAL_BATTLES}戦（{nextTier}）
+          <span className="prep-area">
+            {areaDefOfBattle(state.battleIndex).icon} {areaDefOfBattle(state.battleIndex).name}
+          </span>
         </div>
       </header>
 
@@ -112,7 +117,7 @@ export function PrepScreen({
             <div className="status-row">
               <span>🦴 装着部位</span>
               <strong>
-                {state.equippedPartIds.length} / {MAX_EQUIPPED_PARTS}
+                {state.equippedPartIds.length} / {slotCap}
               </strong>
             </div>
           </div>
@@ -120,7 +125,7 @@ export function PrepScreen({
 
         {tab === 'parts' && (
           <div className="part-tab">
-            <div className="part-tab__section-title">装着中({state.equippedPartIds.length}/{MAX_EQUIPPED_PARTS})</div>
+            <div className="part-tab__section-title">装着中({state.equippedPartIds.length}/{slotCap})</div>
             <div className="part-grid">
               {state.equippedPartIds.map((id) => {
                 const part = getPart(id);
@@ -145,7 +150,7 @@ export function PrepScreen({
                   {state.inventoryPartIds.map((id) => {
                     const part = getPart(id);
                     if (!part) return null;
-                    const full = state.equippedPartIds.length >= MAX_EQUIPPED_PARTS;
+                    const full = state.equippedPartIds.length >= slotCap;
                     return (
                       <button key={id} type="button" className="part-card" disabled={full} onClick={() => onEquip(id)} title={full ? '装着枠が空いていません' : '装着する'}>
                         <div className="part-card__head">
@@ -197,7 +202,7 @@ export function PrepScreen({
         {tab === 'commands' && (
           <div className="command-tab">
             <p className="muted" style={{ fontSize: '0.65rem' }}>
-              対応するタグの部位を1つでも装着すると解放される({unlockedCount}/{COMMANDS.length}解放中)。
+              同じタグの部位を集めるほど、その系統の深いコマンドが順に解放される({unlockedCount}/{COMMANDS.length}解放中)。
             </p>
             {COMMANDS.map((cmd) => {
               const unlocked = isCommandUnlocked(cmd, equippedDefs);
@@ -214,7 +219,10 @@ export function PrepScreen({
                       {isNew && <span className="command-tab__new">NEW</span>}
                     </div>
                     <div className="command-tab__desc">
-                      {unlocked ? cmd.description : `「${cmd.unlockTag}」タグの部位を装着すると解放`}
+                      {unlocked ? cmd.description : (() => {
+                        const p = commandUnlockProgress(cmd, equippedDefs);
+                        return p ? `「${p.tag}」タグの部位 ${p.have}/${p.need} 個で解放` : '解放条件不明';
+                      })()}
                     </div>
                   </div>
                   <div className="command-tab__stats">

@@ -5,7 +5,9 @@ import { ENEMY_INTENT_LABEL, STATUS_LABEL } from '../data/types';
 import { ChimeraFigure } from './freeLayer/ChimeraFigure';
 import { getCommand } from '../data/commands';
 import { COMMAND_CATEGORIES, categoryIdForCommand } from '../data/commandCategories';
-import { MAX_EQUIPPED_PARTS } from '../engine/run';
+import { areaDefOfBattle, battleInArea, BATTLES_PER_AREA, maxEquippedPartsFor, TOTAL_AREAS, TOTAL_BATTLES } from '../engine/run';
+import { BattleEndOverlay } from './BattleEndOverlay';
+import { getUiPrefs } from '../engine/uiPrefs';
 
 // 参考画像の S/A/C 表記に合わせた、Excelレア度の1文字表現。
 const RARITY_RANK: Record<string, string> = { Common: 'C', Rare: 'B', Epic: 'A', Legendary: 'S' };
@@ -16,6 +18,8 @@ const INTRO_START_MS = 900;
 const INTRO_ORDER_MS = 700;
 const INTRO_ENEMY_FIRST_MS = 950;
 const AUTO_DELAY_MS = 900;
+// 自分の行動が終わってから敵が動くまでの「間」。敵が何をしたのか見て分かるようにするための溜め。
+const ENEMY_BEAT_MS = 620;
 const FLOATER_TTL_MS = 1000;
 const SHAKE_MS = 240;
 
@@ -53,11 +57,19 @@ export function BattleScreen({
   totalBattles?: number;
   onExit: (result: 'won' | 'lost', finalHp: number, finalMp: number) => void;
 }) {
+  // エリア表示。第何戦かからエリアとエリア内の位置を引く(表示専用)。
+  const area = areaDefOfBattle(battleIndex ?? 1);
+  const stepInArea = battleInArea(battleIndex ?? 1);
+
   const engineRef = useRef<CtbEngine | null>(null);
   const [snapshot, setSnapshot] = useState<CtbSnapshot | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   // 開いている大カテゴリ。null = 4つの大ボタンを出している状態。
   const [openCategory, setOpenCategory] = useState<string | null>(null);
+  const [showLog, setShowLog] = useState(false);
+  // 敵が何をしたかを見せる帯。行動の「間」に出る。
+  const [enemyBanner, setEnemyBanner] = useState<string | null>(null);
+  const beatTimersRef = useRef<number[]>([]);
   const [shakeOn, setShakeOn] = useState(false);
   const [telegraphBanner, setTelegraphBanner] = useState<string | null>(null);
   const floatersRef = useRef<Floater[]>([]);
@@ -140,6 +152,9 @@ export function BattleScreen({
     const engine = new CtbEngine(enemy, equippedParts, startingHp, startingMp);
     engineRef.current = engine;
     endSePlayedRef.current = false;
+    setEnemyBanner(null);
+    beatTimersRef.current.forEach((t) => clearTimeout(t));
+    beatTimersRef.current = [];
     recordBattleStart();
     floatersRef.current = [];
     toastsRef.current = [];
@@ -173,6 +188,8 @@ export function BattleScreen({
 
     return () => {
       timers.forEach((t) => clearTimeout(t));
+      beatTimersRef.current.forEach((t) => clearTimeout(t));
+      beatTimersRef.current = [];
       engineRef.current = null;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -207,19 +224,45 @@ export function BattleScreen({
     return () => cancelAnimationFrame(raf);
   }, []);
 
+  // 敵の行動を1つずつ、間を置いて進める。1手ごとに「敵が何をしたか」を出す。
+  function runEnemyBeats() {
+    const engine = engineRef.current;
+    if (!engine || engine.getPhase() !== 'enemy_pending') return;
+    const move = engine.getSnapshot().nextEnemyAction;
+    if (move) setEnemyBanner(`${move.icon} ${enemy.name} の ${move.moveName}`);
+    const t = window.setTimeout(() => {
+      const eng = engineRef.current;
+      if (!eng) return;
+      const more = eng.stepEnemyTurn();
+      processEvents(eng.drainEvents());
+      setSnapshot(eng.getSnapshot());
+      if (more) runEnemyBeats();
+      else {
+        const clear = window.setTimeout(() => setEnemyBanner(null), ENEMY_BEAT_MS);
+        beatTimersRef.current.push(clear);
+      }
+    }, ENEMY_BEAT_MS);
+    beatTimersRef.current.push(t);
+  }
+
   function executeCommand(commandId: string) {
     const engine = engineRef.current;
     if (!engine) return;
     // Phase 4: 攻撃イベント側は一律'attack'を鳴らすので、重量級コマンドだけここで
     // 一段重い音を先に重ねて、CT重量の差が耳でも分かるようにする。
     const cmd = getCommand(commandId);
-    const result = engine.useCommand(commandId);
+    // stepwise: 自分の行動だけ解決し、敵の行動はrunEnemyBeats()が間を置いて進める。
+    const result = engine.useCommand(commandId, { stepwise: true });
     if (result.ok) {
       recordCommandUse(commandId); // Phase 6: 計測(読み取り専用。戦闘には影響しない)
       if (cmd && (cmd.ctWeight === 'heavy' || cmd.ctWeight === 'very_heavy')) playSE('heavy');
       processEvents(engine.drainEvents());
       setSelectedId(null);
-      setOpenCategory(null); // 実行したら大カテゴリ表示へ戻す
+      // 設定で「実行後にカテゴリへ戻す」がONのときだけ畳む。既定は開いたまま。
+      if (getUiPrefs().returnToCategories) setOpenCategory(null);
+      setSnapshot(engine.getSnapshot());
+      runEnemyBeats();
+      return;
     }
     setSnapshot(engine.getSnapshot());
   }
@@ -247,6 +290,8 @@ export function BattleScreen({
   }
 
   function handleCommandTap(commandId: string, usable: boolean) {
+    // 敵の行動を見せている間は入力を受けない(演出を飛ばして先に進んでしまうのを防ぐ)
+    if (engineRef.current?.getPhase() === 'enemy_pending') return;
     if (!usable) return;
     if (selectedId === commandId) executeCommand(commandId);
     else setSelectedId(commandId);
@@ -293,15 +338,23 @@ export function BattleScreen({
         </div>
         <div className="bt-progress">
           <div className="bt-progress__label">
-            第{battleIndex ?? 1}戦 / 全{totalBattles ?? 7}戦
+            第{battleIndex ?? 1}戦 / 全{totalBattles ?? TOTAL_BATTLES}戦
+          </div>
+          {/* 全32戦ぶんの点を並べると潰れてしまうので、点は「今いるエリアの8戦」だけ出し、
+              ラン全体の位置はエリア名とエリア番号で示す。 */}
+          <div className="bt-progress__area">
+            {area.icon} {area.name}
+            <span className="bt-progress__area-no">
+              AREA {area.index}/{TOTAL_AREAS}
+            </span>
           </div>
           <div className="bt-progress__dots">
-            {Array.from({ length: totalBattles ?? 7 }, (_, i) => (
+            {Array.from({ length: BATTLES_PER_AREA }, (_, i) => (
               <span
                 key={i}
-                className={`bt-dot${i + 1 < (battleIndex ?? 1) ? ' bt-dot--done' : ''}${
-                  i + 1 === (battleIndex ?? 1) ? ' bt-dot--now' : ''
-                }${i + 1 === (totalBattles ?? 7) ? ' bt-dot--boss' : ''}`}
+                className={`bt-dot${i + 1 < stepInArea ? ' bt-dot--done' : ''}${
+                  i + 1 === stepInArea ? ' bt-dot--now' : ''
+                }${i + 1 === BATTLES_PER_AREA ? ' bt-dot--boss' : ''}`}
               />
             ))}
           </div>
@@ -333,6 +386,11 @@ export function BattleScreen({
           <div className="bt-chips">
             {snapshot.player.guardActive && <span className="bt-chip bt-chip--guard" title="防御中">🛡️</span>}
             {snapshot.player.chargeActive && <span className="bt-chip" title="チャージ中">🔋</span>}
+            {snapshot.mutations.length > 0 && (
+              <span className="bt-chip bt-chip--mutation" title={`変異: ${snapshot.mutations.join(' / ')}`}>
+                🎲<i>{snapshot.mutations.length}</i>
+              </span>
+            )}
             {snapshot.player.statuses.map((st) => (
               <span key={st.kind} className="bt-chip" title={`${STATUS_LABEL[st.kind].name} 残り${st.turnsLeft}ターン`}>
                 {STATUS_LABEL[st.kind].icon}
@@ -353,8 +411,32 @@ export function BattleScreen({
               {snapshot.enemy.hp} / {snapshot.enemy.maxHp}
             </div>
           </div>
+          {/* 敵のMP(Excel「敵」シートの最大MP)。危険技の燃料なので、MP吸収で削れば大技が止まる。 */}
+          <div className="bt-mp bt-mp--enemy">
+            <span className="bt-mp__label">MP</span>
+            <div className="bt-mp__track">
+              <div
+                className="bt-mp__fill"
+                style={{ width: `${snapshot.enemyMp.max > 0 ? (snapshot.enemyMp.current / snapshot.enemyMp.max) * 100 : 0}%` }}
+              />
+            </div>
+            <span className="bt-mp__num">
+              {snapshot.enemyMp.current} / {snapshot.enemyMp.max}
+            </span>
+          </div>
           <div className="bt-enemy-intent">
-            {snapshot.nextEnemyAction ? (
+            {/* 観察中は次の2手まで読める。それ以外はこれまでどおり次の1手だけ。 */}
+            {snapshot.observedEnemyActions.length > 0 ? (
+              <span className="bt-observed">
+                {snapshot.observedEnemyActions.map((a, i) => (
+                  <span key={i}>
+                    {i > 0 && <span className="bt-observed__arrow">→</span>}
+                    {a.icon} {a.moveName}
+                  </span>
+                ))}
+                <span className="bt-intent-tag bt-intent-tag--observe">🔭 観察中</span>
+              </span>
+            ) : snapshot.nextEnemyAction ? (
               <>
                 {snapshot.nextEnemyAction.icon} {snapshot.nextEnemyAction.moveName}
                 <span className="bt-intent-tag">{ENEMY_INTENT_LABEL[snapshot.nextEnemyAction.intent]}</span>
@@ -364,6 +446,14 @@ export function BattleScreen({
             )}
           </div>
           <div className="bt-chips">
+            {snapshot.enemyAnalysis && (
+              <span
+                className="bt-chip bt-chip--analyzed"
+                title={`弱点: ${snapshot.enemyAnalysis.weakness} / 与ダメージ +${snapshot.enemyAnalysis.damageBonusPct}%`}
+              >
+                🔬<i>{snapshot.enemyAnalysis.turns}</i>
+              </span>
+            )}
             {snapshot.enemy.statuses.map((st) => (
               <span key={st.kind} className="bt-chip bt-chip--enemy" title={`${STATUS_LABEL[st.kind].name} 残り${st.turnsLeft}ターン`}>
                 {STATUS_LABEL[st.kind].icon}
@@ -431,18 +521,38 @@ export function BattleScreen({
         </div>
 
         {telegraphBanner && <div className="telegraph-banner">⚠️ {telegraphBanner}</div>}
+        {enemyBanner && <div className="enemy-turn-banner">{enemyBanner}</div>}
+
+        {/* 戦闘画面の左下=ログ、右下=AUTO。どちらも小さく置いて盤面を邪魔しない。 */}
+        <button type="button" className="stage-btn stage-btn--log" onClick={() => setShowLog(true)}>
+          📜 ログ
+        </button>
+        <button
+          type="button"
+          className={`stage-btn stage-btn--auto${snapshot.autoMode ? ' stage-btn--on' : ''}`}
+          onClick={toggleAuto}
+        >
+          🤖 AUTO {snapshot.autoMode ? 'ON' : 'OFF'}
+        </button>
 
         {snapshot.status !== 'ongoing' && (
-          <button
-            type="button"
-            className={`end-overlay end-overlay--${snapshot.status}`}
-            onClick={() =>
-              onExit(snapshot.status === 'won' ? 'won' : 'lost', engineRef.current?.getFinalPlayerHp() ?? 0, engineRef.current?.getFinalPlayerMp() ?? 0)
+          <BattleEndOverlay
+            won={snapshot.status === 'won'}
+            enemyIcon={enemy.icon}
+            enemyName={enemy.name}
+            turnCount={snapshot.turnCount}
+            hp={snapshot.player.hp}
+            maxHp={snapshot.player.maxHp}
+            mp={snapshot.mp.current}
+            maxMp={snapshot.mp.max}
+            onDismiss={() =>
+              onExit(
+                snapshot.status === 'won' ? 'won' : 'lost',
+                engineRef.current?.getFinalPlayerHp() ?? 0,
+                engineRef.current?.getFinalPlayerMp() ?? 0
+              )
             }
-          >
-            <div className="end-overlay__text">{snapshot.status === 'won' ? '勝利！' : '敗北…'}</div>
-            <div className="end-overlay__hint">タップして戻る</div>
-          </button>
+          />
         )}
       </div>
 
@@ -534,18 +644,32 @@ export function BattleScreen({
         )}
       </div>
 
-      <div className="controls-row">
-        <button className={`btn${snapshot.autoMode ? ' btn--active' : ''}`} onClick={toggleAuto}>
-          🤖 AUTO{snapshot.autoMode ? ' ON' : ' OFF'}
-        </button>
-      </div>
+
+      {showLog && (
+        <div className="modal-backdrop" onClick={() => setShowLog(false)}>
+          <div className="modal-card log-modal" onClick={(e) => e.stopPropagation()}>
+            <h2>📜 戦闘ログ</h2>
+            <div className="log-modal__body">
+              {snapshot.log.map((line, i) => (
+                <div key={`${i}-${line}`} className="log-modal__line">
+                  {line}
+                </div>
+              ))}
+              {snapshot.log.length === 0 && <p className="muted">まだ記録がありません。</p>}
+            </div>
+            <button type="button" className="btn btn--primary btn--block" onClick={() => setShowLog(false)}>
+              閉じる
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* 装備中のパーツ(参考画像の下段) */}
       <div className="bt-parts">
         <div className="bt-parts__head">
           <span>装備中のパーツ</span>
           <span className="bt-parts__cap">
-            装着枠 {equippedParts.length} / {MAX_EQUIPPED_PARTS}
+            装着枠 {equippedParts.length} / {maxEquippedPartsFor(equippedParts)}
           </span>
         </div>
         <div className="bt-parts__row">
@@ -560,11 +684,6 @@ export function BattleScreen({
         </div>
       </div>
 
-      <div className="log-panel">
-        {snapshot.log.slice(0, 6).map((line) => (
-          <div key={line}>{line}</div>
-        ))}
-      </div>
     </div>
   );
 }

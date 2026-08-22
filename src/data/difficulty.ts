@@ -28,6 +28,10 @@ export interface DifficultyPreset {
   postBattleHealPct: number;
   postBattleMpMult: number;
   rareBonusPerBattle: number;
+  // エリアごとの上乗せ倍率(エリア1..4)。奥のエリアほど同じ敵でも硬く・痛くなる。
+  // 部位が増えてプレイヤーが強くなるぶんを吸収するための係数。
+  areaHp: number[];
+  areaPower: number[];
   description: string;
 }
 
@@ -40,6 +44,8 @@ interface RawPreset {
   defenseMult: number; evasionMult: number;
   playerHpMult: number; postBattleHealPct: number; postBattleMpMult: number;
   rareBonusPerBattle: number;
+  areaHpMults: string;
+  areaPowerMults: string;
   description: string;
 }
 
@@ -52,6 +58,7 @@ const RAW: RawPreset[] = [
     defenseMult: 0.8, evasionMult: 0.6,
     playerHpMult: 1.15, postBattleHealPct: 0.5, postBattleMpMult: 1.25,
     rareBonusPerBattle: 5,
+    areaHpMults: '0.75/1.0/1.3/1.6', areaPowerMults: '0.7/0.9/1.15/1.35',
     description: '初見・UI確認向け。通常戦はほぼ消耗しない。',
   },
   {
@@ -61,6 +68,7 @@ const RAW: RawPreset[] = [
     defenseMult: 1.0, evasionMult: 1.0,
     playerHpMult: 1.0, postBattleHealPct: 0.4, postBattleMpMult: 1.0,
     rareBonusPerBattle: 4,
+    areaHpMults: '0.85/1.1/1.45/1.85', areaPowerMults: '0.8/1.0/1.25/1.5',
     description: '既定。通常戦は消耗、エリートは山場、ボスはプレイヤーHPの約3倍。',
   },
   {
@@ -70,9 +78,16 @@ const RAW: RawPreset[] = [
     defenseMult: 1.15, evasionMult: 1.2,
     playerHpMult: 0.9, postBattleHealPct: 0.3, postBattleMpMult: 0.85,
     rareBonusPerBattle: 3,
+    areaHpMults: '0.9/1.2/1.6/2.05', areaPowerMults: '0.85/1.1/1.4/1.65',
     description: 'ビルドが噛み合わないと通常戦でも落ちる。',
   },
 ];
+
+// Excelでは「0.85/1.1/1.45/1.85」のようにスラッシュ区切りで書く(1エリア1つ)。
+function parseMults(raw: string): number[] {
+  const list = raw.split('/').map((x) => Number(x.trim())).filter((n) => Number.isFinite(n) && n > 0);
+  return list.length > 0 ? list : [1];
+}
 
 export const DIFFICULTIES: DifficultyPreset[] = RAW.map((r) => ({
   id: r.id,
@@ -86,6 +101,8 @@ export const DIFFICULTIES: DifficultyPreset[] = RAW.map((r) => ({
   postBattleHealPct: r.postBattleHealPct,
   postBattleMpMult: r.postBattleMpMult,
   rareBonusPerBattle: r.rareBonusPerBattle,
+  areaHp: parseMults(r.areaHpMults),
+  areaPower: parseMults(r.areaPowerMults),
   description: r.description,
 }));
 
@@ -95,13 +112,21 @@ export function getDifficulty(id: string | null | undefined): DifficultyPreset {
   return DIFFICULTIES.find((d) => d.id === id) ?? DIFFICULTIES.find((d) => d.id === DEFAULT_DIFFICULTY_ID)!;
 }
 
+/** 配列の範囲外は最後の値で頭打ちにする(エリアが増えてもExcelを直さずに動く)。 */
+function atArea(mults: number[], area: number): number {
+  if (mults.length === 0) return 1;
+  return mults[Math.min(Math.max(1, area), mults.length) - 1];
+}
+
 /**
  * 難易度倍率を適用した戦闘用の敵を返す純粋関数。
- * フェーズごとの技セットは据え置き(行動パターンは難易度で変えない)。
+ * フェーズごとの技セットは据え置き(行動パターンは難易度・エリアで変えない)。
+ *
+ * @param area 1始まりのエリア番号。奥のエリアほど上乗せ倍率が掛かる。
  */
-export function tuneEnemy(enemy: EnemyDef, preset: DifficultyPreset): EnemyDef {
-  const hpMult = preset.hp[enemy.tier] ?? 1;
-  const powerMult = preset.power[enemy.tier] ?? 1;
+export function tuneEnemy(enemy: EnemyDef, preset: DifficultyPreset, area = 1): EnemyDef {
+  const hpMult = (preset.hp[enemy.tier] ?? 1) * atArea(preset.areaHp, area);
+  const powerMult = (preset.power[enemy.tier] ?? 1) * atArea(preset.areaPower, area);
   return {
     ...enemy,
     hp: Math.max(1, Math.round(enemy.hp * hpMult)),
@@ -111,7 +136,11 @@ export function tuneEnemy(enemy: EnemyDef, preset: DifficultyPreset): EnemyDef {
   };
 }
 
-export function getTunedEnemy(enemyId: string, difficultyId: string | null | undefined): EnemyDef | undefined {
+export function getTunedEnemy(
+  enemyId: string,
+  difficultyId: string | null | undefined,
+  area = 1
+): EnemyDef | undefined {
   const enemy = getEnemy(enemyId);
-  return enemy ? tuneEnemy(enemy, getDifficulty(difficultyId)) : undefined;
+  return enemy ? tuneEnemy(enemy, getDifficulty(difficultyId), area) : undefined;
 }

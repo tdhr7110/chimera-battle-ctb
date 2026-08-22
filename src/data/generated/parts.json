@@ -149,7 +149,7 @@
   {
     "id": "PRT008",
     "name": "時喰い眼",
-    "category": "目",
+    "category": "頭",
     "rarity": "Common",
     "tag1": "時間",
     "tag2": "知性",
@@ -170,7 +170,7 @@
   {
     "id": "PRT009",
     "name": "複眼",
-    "category": "目",
+    "category": "頭",
     "rarity": "Rare",
     "tag1": "多眼",
     "tag2": "高速",
@@ -191,7 +191,7 @@
   {
     "id": "PRT010",
     "name": "処刑眼",
-    "category": "目",
+    "category": "頭",
     "rarity": "Rare",
     "tag1": "処刑",
     "tag2": "知性",
@@ -212,7 +212,7 @@
   {
     "id": "PRT011",
     "name": "時喰い眼・改",
-    "category": "目",
+    "category": "頭",
     "rarity": "Epic",
     "tag1": "時間",
     "tag2": "知性",
@@ -233,7 +233,7 @@
   {
     "id": "PRT012",
     "name": "複眼・異",
-    "category": "目",
+    "category": "頭",
     "rarity": "Epic",
     "tag1": "多眼",
     "tag2": "高速",
@@ -254,7 +254,7 @@
   {
     "id": "PRT013",
     "name": "処刑眼・極",
-    "category": "目",
+    "category": "頭",
     "rarity": "Legendary",
     "tag1": "処刑",
     "tag2": "知性",
@@ -275,7 +275,7 @@
   {
     "id": "PRT014",
     "name": "時喰い眼・零",
-    "category": "目",
+    "category": "頭",
     "rarity": "Legendary",
     "tag1": "時間",
     "tag2": "知性",
@@ -296,7 +296,7 @@
   {
     "id": "PRT015",
     "name": "血吸口",
-    "category": "口",
+    "category": "頭",
     "rarity": "Common",
     "tag1": "吸血",
     "tag2": "捕食",
@@ -317,7 +317,7 @@
   {
     "id": "PRT016",
     "name": "毒腺口",
-    "category": "口",
+    "category": "頭",
     "rarity": "Rare",
     "tag1": "毒",
     "tag2": "状態異常",
@@ -338,7 +338,7 @@
   {
     "id": "PRT017",
     "name": "咆哮口",
-    "category": "口",
+    "category": "頭",
     "rarity": "Rare",
     "tag1": "時間",
     "tag2": "妨害",
@@ -359,7 +359,7 @@
   {
     "id": "PRT018",
     "name": "血吸口・改",
-    "category": "口",
+    "category": "頭",
     "rarity": "Epic",
     "tag1": "吸血",
     "tag2": "捕食",
@@ -380,7 +380,7 @@
   {
     "id": "PRT019",
     "name": "毒腺口・異",
-    "category": "口",
+    "category": "頭",
     "rarity": "Epic",
     "tag1": "毒",
     "tag2": "状態異常",
@@ -401,7 +401,7 @@
   {
     "id": "PRT020",
     "name": "咆哮口・極",
-    "category": "口",
+    "category": "頭",
     "rarity": "Legendary",
     "tag1": "時間",
     "tag2": "妨害",
@@ -422,7 +422,7 @@
   {
     "id": "PRT021",
     "name": "血吸口・零",
-    "category": "口",
+    "category": "頭",
     "rarity": "Legendary",
     "tag1": "吸血",
     "tag2": "捕食",
@@ -590,7 +590,7 @@
   {
     "id": "PRT029",
     "name": "俊足脚",
-    "category": "脚",
+    "category": "足",
     "rarity": "Common",
     "tag1": "多脚",
     "tag2": "高速",
@@ -611,7 +611,7 @@
   {
     "id": "PRT030",
     "name": "六節脚",
-    "category": "脚",
+    "category": "足",
     "rarity": "Rare",
     "tag1": "多脚",
     "tag2": "高速",
@@ -632,7 +632,7 @@
   {
     "id": "PRT031",
     "name": "重装脚",
-    "category": "脚",
+    "category": "足",
     "rarity": "Rare",
     "tag1": "重量",
     "tag2": "防御",
@@ -653,7 +653,7 @@
   {
     "id": "PRT032",
     "name": "俊足脚・改",
-    "category": "脚",
+    "category": "足",
     "rarity": "Epic",
     "tag1": "多脚",
     "tag2": "高速",
@@ -674,7 +674,7 @@
   {
     "id": "PRT033",
     "name": "六節脚・異",
-    "category": "脚",
+    "category": "足",
     "rarity": "Epic",
     "tag1": "多脚",
     "tag2": "高速",
@@ -695,7 +695,7 @@
   {
     "id": "PRT034",
     "name": "重装脚・極",
-    "category": "脚",
+    "category": "足",
     "rarity": "Legendary",
     "tag1": "重量",
     "tag2": "防御",
@@ -716,7 +716,7 @@
   {
     "id": "PRT035",
     "name": "俊足脚・零",
-    "category": "脚",
+    "category": "足",
     "rarity": "Legendary",
     "tag1": "多脚",
     "tag2": "高速",
@@ -737,7 +737,7 @@
   {
     "id": "PRT036",
     "name": "第二心臓",
-    "category": "心臓",
+    "category": "コア",
     "rarity": "Common",
     "tag1": "多心臓",
     "tag2": "MP",
@@ -758,7 +758,7 @@
   {
     "id": "PRT037",
     "name": "暴走心臓",
-    "category": "心臓",
+    "category": "コア",
     "rarity": "Rare",
     "tag1": "暴走",
     "tag2": "高速",
@@ -779,7 +779,7 @@
   {
     "id": "PRT038",
     "name": "魔導心臓",
-    "category": "心臓",
+    "category": "コア",
     "rarity": "Rare",
     "tag1": "MP",
     "tag2": "知性",
@@ -800,7 +800,7 @@
   {
     "id": "PRT039",
     "name": "第二心臓・改",
-    "category": "心臓",
+    "category": "コア",
     "rarity": "Epic",
     "tag1": "多心臓",
     "tag2": "MP",
@@ -821,7 +821,7 @@
   {
     "id": "PRT040",
     "name": "暴走心臓・異",
-    "category": "心臓",
+    "category": "コア",
     "rarity": "Epic",
     "tag1": "暴走",
     "tag2": "高速",
@@ -842,7 +842,7 @@
   {
     "id": "PRT041",
     "name": "魔導心臓・極",
-    "category": "心臓",
+    "category": "コア",
     "rarity": "Legendary",
     "tag1": "MP",
     "tag2": "知性",
@@ -863,7 +863,7 @@
   {
     "id": "PRT042",
     "name": "第二心臓・零",
-    "category": "心臓",
+    "category": "コア",
     "rarity": "Legendary",
     "tag1": "多心臓",
     "tag2": "MP",
@@ -884,7 +884,7 @@
   {
     "id": "PRT043",
     "name": "巨殻",
-    "category": "胴",
+    "category": "体",
     "rarity": "Common",
     "tag1": "防御",
     "tag2": "重量",
@@ -905,7 +905,7 @@
   {
     "id": "PRT044",
     "name": "再生胴",
-    "category": "胴",
+    "category": "体",
     "rarity": "Rare",
     "tag1": "再生",
     "tag2": "防御",
@@ -926,7 +926,7 @@
   {
     "id": "PRT045",
     "name": "棘甲",
-    "category": "胴",
+    "category": "体",
     "rarity": "Rare",
     "tag1": "反撃",
     "tag2": "防御",
@@ -947,7 +947,7 @@
   {
     "id": "PRT046",
     "name": "巨殻・改",
-    "category": "胴",
+    "category": "体",
     "rarity": "Epic",
     "tag1": "防御",
     "tag2": "重量",
@@ -968,7 +968,7 @@
   {
     "id": "PRT047",
     "name": "再生胴・異",
-    "category": "胴",
+    "category": "体",
     "rarity": "Epic",
     "tag1": "再生",
     "tag2": "防御",
@@ -989,7 +989,7 @@
   {
     "id": "PRT048",
     "name": "棘甲・極",
-    "category": "胴",
+    "category": "体",
     "rarity": "Legendary",
     "tag1": "反撃",
     "tag2": "防御",
@@ -1010,7 +1010,7 @@
   {
     "id": "PRT049",
     "name": "巨殻・零",
-    "category": "胴",
+    "category": "体",
     "rarity": "Legendary",
     "tag1": "防御",
     "tag2": "重量",
@@ -1178,7 +1178,7 @@
   {
     "id": "PRT057",
     "name": "加速翼",
-    "category": "翼",
+    "category": "羽",
     "rarity": "Common",
     "tag1": "高速",
     "tag2": "翼",
@@ -1199,7 +1199,7 @@
   {
     "id": "PRT058",
     "name": "雷翼",
-    "category": "翼",
+    "category": "羽",
     "rarity": "Rare",
     "tag1": "雷",
     "tag2": "高速",
@@ -1220,7 +1220,7 @@
   {
     "id": "PRT059",
     "name": "黒翼",
-    "category": "翼",
+    "category": "羽",
     "rarity": "Rare",
     "tag1": "吸血",
     "tag2": "暴走",
@@ -1241,7 +1241,7 @@
   {
     "id": "PRT060",
     "name": "加速翼・改",
-    "category": "翼",
+    "category": "羽",
     "rarity": "Epic",
     "tag1": "高速",
     "tag2": "翼",
@@ -1262,7 +1262,7 @@
   {
     "id": "PRT061",
     "name": "雷翼・異",
-    "category": "翼",
+    "category": "羽",
     "rarity": "Epic",
     "tag1": "雷",
     "tag2": "高速",
@@ -1283,7 +1283,7 @@
   {
     "id": "PRT062",
     "name": "黒翼・極",
-    "category": "翼",
+    "category": "羽",
     "rarity": "Legendary",
     "tag1": "吸血",
     "tag2": "暴走",
@@ -1304,7 +1304,7 @@
   {
     "id": "PRT063",
     "name": "加速翼・零",
-    "category": "翼",
+    "category": "羽",
     "rarity": "Legendary",
     "tag1": "高速",
     "tag2": "翼",
@@ -1325,7 +1325,7 @@
   {
     "id": "PRT064",
     "name": "狂戦士角",
-    "category": "角",
+    "category": "頭",
     "rarity": "Common",
     "tag1": "暴走",
     "tag2": "重量",
@@ -1346,7 +1346,7 @@
   {
     "id": "PRT065",
     "name": "穿孔角",
-    "category": "角",
+    "category": "頭",
     "rarity": "Rare",
     "tag1": "貫通",
     "tag2": "重量",
@@ -1367,7 +1367,7 @@
   {
     "id": "PRT066",
     "name": "雷角",
-    "category": "角",
+    "category": "頭",
     "rarity": "Rare",
     "tag1": "雷",
     "tag2": "状態異常",
@@ -1388,7 +1388,7 @@
   {
     "id": "PRT067",
     "name": "狂戦士角・改",
-    "category": "角",
+    "category": "頭",
     "rarity": "Epic",
     "tag1": "暴走",
     "tag2": "重量",
@@ -1409,7 +1409,7 @@
   {
     "id": "PRT068",
     "name": "穿孔角・異",
-    "category": "角",
+    "category": "頭",
     "rarity": "Epic",
     "tag1": "貫通",
     "tag2": "重量",
@@ -1430,7 +1430,7 @@
   {
     "id": "PRT069",
     "name": "雷角・極",
-    "category": "角",
+    "category": "頭",
     "rarity": "Legendary",
     "tag1": "雷",
     "tag2": "状態異常",
@@ -1451,7 +1451,7 @@
   {
     "id": "PRT070",
     "name": "狂戦士角・零",
-    "category": "角",
+    "category": "頭",
     "rarity": "Legendary",
     "tag1": "暴走",
     "tag2": "重量",
@@ -1472,7 +1472,7 @@
   {
     "id": "PRT071",
     "name": "魔力嚢",
-    "category": "器官",
+    "category": "その他",
     "rarity": "Common",
     "tag1": "MP",
     "tag2": "器官",
@@ -1493,7 +1493,7 @@
   {
     "id": "PRT072",
     "name": "毒嚢",
-    "category": "器官",
+    "category": "その他",
     "rarity": "Rare",
     "tag1": "毒",
     "tag2": "器官",
@@ -1514,7 +1514,7 @@
   {
     "id": "PRT073",
     "name": "時間嚢",
-    "category": "器官",
+    "category": "その他",
     "rarity": "Rare",
     "tag1": "時間",
     "tag2": "器官",
@@ -1535,7 +1535,7 @@
   {
     "id": "PRT074",
     "name": "魔力嚢・改",
-    "category": "器官",
+    "category": "その他",
     "rarity": "Epic",
     "tag1": "MP",
     "tag2": "器官",
@@ -1556,7 +1556,7 @@
   {
     "id": "PRT075",
     "name": "毒嚢・異",
-    "category": "器官",
+    "category": "その他",
     "rarity": "Epic",
     "tag1": "毒",
     "tag2": "器官",
@@ -1577,7 +1577,7 @@
   {
     "id": "PRT076",
     "name": "時間嚢・極",
-    "category": "器官",
+    "category": "その他",
     "rarity": "Legendary",
     "tag1": "時間",
     "tag2": "器官",
@@ -1598,7 +1598,7 @@
   {
     "id": "PRT077",
     "name": "魔力嚢・零",
-    "category": "器官",
+    "category": "その他",
     "rarity": "Legendary",
     "tag1": "MP",
     "tag2": "器官",
@@ -1677,6 +1677,111 @@
     "tags": [
       "多段",
       "コア"
+    ]
+  },
+  {
+    "id": "PRT081",
+    "name": "分岐骨",
+    "category": "体",
+    "rarity": "Rare",
+    "tag1": "コア",
+    "tag2": "重量",
+    "baseEffect": "",
+    "ctbEffect": "",
+    "mpEffect": "",
+    "commandInteraction": "",
+    "statusEffect": "",
+    "specialRule": "接続枠+2",
+    "downside": "",
+    "intendedBuild": "拡張",
+    "implementationPriority": "高",
+    "tags": [
+      "コア",
+      "重量"
+    ]
+  },
+  {
+    "id": "PRT082",
+    "name": "増殖核",
+    "category": "コア",
+    "rarity": "Rare",
+    "tag1": "コア",
+    "tag2": "進化",
+    "baseEffect": "",
+    "ctbEffect": "",
+    "mpEffect": "最大MP+10",
+    "commandInteraction": "",
+    "statusEffect": "",
+    "specialRule": "接続枠+2",
+    "downside": "",
+    "intendedBuild": "拡張",
+    "implementationPriority": "高",
+    "tags": [
+      "コア",
+      "進化"
+    ]
+  },
+  {
+    "id": "PRT083",
+    "name": "無限枝",
+    "category": "腕",
+    "rarity": "Epic",
+    "tag1": "コア",
+    "tag2": "多腕",
+    "baseEffect": "",
+    "ctbEffect": "",
+    "mpEffect": "",
+    "commandInteraction": "",
+    "statusEffect": "",
+    "specialRule": "接続枠+3",
+    "downside": "速度-4",
+    "intendedBuild": "拡張",
+    "implementationPriority": "高",
+    "tags": [
+      "コア",
+      "多腕"
+    ]
+  },
+  {
+    "id": "PRT084",
+    "name": "共生腺",
+    "category": "その他",
+    "rarity": "Epic",
+    "tag1": "コア",
+    "tag2": "再生",
+    "baseEffect": "手番開始時HP+3",
+    "ctbEffect": "",
+    "mpEffect": "",
+    "commandInteraction": "",
+    "statusEffect": "",
+    "specialRule": "接続枠+3",
+    "downside": "",
+    "intendedBuild": "拡張",
+    "implementationPriority": "高",
+    "tags": [
+      "コア",
+      "再生"
+    ]
+  },
+  {
+    "id": "PRT085",
+    "name": "原初樹核",
+    "category": "コア",
+    "rarity": "Legendary",
+    "tag1": "コア",
+    "tag2": "進化",
+    "baseEffect": "最大HP+20",
+    "ctbEffect": "",
+    "mpEffect": "",
+    "commandInteraction": "",
+    "statusEffect": "",
+    "specialRule": "接続枠+4",
+    "downside": "",
+    "intendedBuild": "拡張",
+    "implementationPriority": "高",
+    "tags": [
+      "コア",
+      "進化"
     ]
   }
 ]

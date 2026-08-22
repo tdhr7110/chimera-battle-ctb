@@ -7,9 +7,10 @@ import type { CommandDef } from './types';
 // 自由記述はコマンドごとに個別解釈してCommandDefの専用フィールドへ落とし込んでいる
 // (types.tsのコメント参照)。データの変更は必ずExcel側で行い、
 // npm run data:import → npm run data:check の順で反映すること。
-// 解析・適応・変異・挑発・観察・MP吸収の6種は、弱点/属性/ランダム効果プール/敵AI応答
-// といった現行エンジンに無いシステムを要するため、効果テキストの一部を未実装のまま
-// 残している(コマンド自体は登録済み・使用可能・基礎ダメージ/CTは機能する)。
+// MP吸収・挑発・観察・解析・変異の5種はExcelの「効果」列どおりに実装済み
+// (敵MP=Excel「敵」シートの最大MP、弱点=同シートの弱点対策列を使う)。
+// 適応だけは属性システム(現行エンジンに属性の概念が無い)を要するため未実装のまま。
+// コマンド自体は登録済み・使用可能で、基礎ダメージ/CTは機能する。
 //
 // 段階的解放: unlockAlways(通常攻撃・速撃・防御・待機)以外のコマンドは、対応する
 // unlockTagを持つ部位を1つでも装着するまでバトル画面に出てこない。unlockTagは
@@ -46,6 +47,7 @@ export const COMMANDS: CommandDef[] = [
   {
     id: 'CMD003',
     unlockTag: '重量',
+    unlockCount: 2,
     name: '強打',
     icon: '💥',
     category: '攻撃',
@@ -110,6 +112,7 @@ export const COMMANDS: CommandDef[] = [
   {
     id: 'CMD008',
     unlockTag: '重量',
+    unlockCount: 3,
     name: '破砕撃',
     icon: '🔨',
     category: '攻撃',
@@ -136,6 +139,7 @@ export const COMMANDS: CommandDef[] = [
   {
     id: 'CMD010',
     unlockTag: '吸血',
+    unlockCount: 2,
     name: '吸血',
     icon: '🩸',
     category: '攻撃',
@@ -162,6 +166,7 @@ export const COMMANDS: CommandDef[] = [
   {
     id: 'CMD012',
     unlockTag: '時間',
+    unlockCount: 2,
     name: '加速',
     icon: '🌀',
     category: '補助',
@@ -202,6 +207,7 @@ export const COMMANDS: CommandDef[] = [
   {
     id: 'CMD015',
     unlockTag: '時間',
+    unlockCount: 4,
     name: '咆哮',
     icon: '📣',
     category: '妨害',
@@ -242,6 +248,7 @@ export const COMMANDS: CommandDef[] = [
   {
     id: 'CMD018',
     unlockTag: '状態異常',
+    unlockCount: 2,
     name: '出血裂き',
     icon: '🩸',
     category: '攻撃',
@@ -255,6 +262,7 @@ export const COMMANDS: CommandDef[] = [
   {
     id: 'CMD019',
     unlockTag: '状態異常',
+    unlockCount: 3,
     name: '腐食液',
     icon: '🧪',
     category: '妨害',
@@ -268,6 +276,7 @@ export const COMMANDS: CommandDef[] = [
   {
     id: 'CMD020',
     unlockTag: '状態異常',
+    unlockCount: 4,
     name: '盲目粉',
     icon: '🌫️',
     category: '妨害',
@@ -281,6 +290,7 @@ export const COMMANDS: CommandDef[] = [
   {
     id: 'CMD021',
     unlockTag: '状態異常',
+    unlockCount: 4,
     name: '麻痺針',
     icon: '💫',
     category: '妨害',
@@ -294,6 +304,7 @@ export const COMMANDS: CommandDef[] = [
   {
     id: 'CMD022',
     unlockTag: '時間',
+    unlockCount: 3,
     name: '二段加速',
     icon: '🌀',
     category: '補助',
@@ -307,6 +318,7 @@ export const COMMANDS: CommandDef[] = [
   {
     id: 'CMD023',
     unlockTag: '時間',
+    unlockCount: 4,
     name: '時間喰い',
     icon: '⏳',
     category: '攻撃',
@@ -321,6 +333,7 @@ export const COMMANDS: CommandDef[] = [
   {
     id: 'CMD024',
     unlockTag: '時間',
+    unlockCount: 4,
     name: '巻き戻し',
     icon: '⏪',
     category: '補助',
@@ -334,6 +347,7 @@ export const COMMANDS: CommandDef[] = [
   {
     id: 'CMD025',
     unlockTag: 'MP',
+    unlockCount: 2,
     name: 'MP吸収',
     icon: '🕳️',
     category: '攻撃',
@@ -341,7 +355,8 @@ export const COMMANDS: CommandDef[] = [
     powerMult: 1.2,
     mpCost: 8,
     ctWeight: 'standard',
-    description: '敵のMPを奪おうとする攻撃(現状の敵にMPという資源が無いため、通常攻撃として機能する。未実装の特殊効果)。',
+    drainEnemyMp: 12,
+    description: '攻撃しながら敵のMPを最大12奪い、自分のMPにする。敵は危険技にMPを払うので、削るほど大技の間隔が空く。',
   },
   {
     id: 'CMD026',
@@ -359,6 +374,7 @@ export const COMMANDS: CommandDef[] = [
   {
     id: 'CMD027',
     unlockTag: 'MP',
+    unlockCount: 3,
     name: '魔力暴発',
     icon: '💢',
     category: '攻撃',
@@ -385,6 +401,7 @@ export const COMMANDS: CommandDef[] = [
   {
     id: 'CMD029',
     unlockTag: '暴走',
+    unlockCount: 2,
     name: '狂化',
     icon: '💢',
     category: '補助',
@@ -411,6 +428,7 @@ export const COMMANDS: CommandDef[] = [
   {
     id: 'CMD031',
     unlockTag: '再生',
+    unlockCount: 2,
     name: '再生殻',
     icon: '💚',
     category: '防御',
@@ -438,6 +456,7 @@ export const COMMANDS: CommandDef[] = [
   {
     id: 'CMD033',
     unlockTag: '捕食',
+    unlockCount: 2,
     name: '捕食連鎖',
     icon: '🍖',
     category: '攻撃',
@@ -464,6 +483,7 @@ export const COMMANDS: CommandDef[] = [
   {
     id: 'CMD035',
     unlockTag: '多段',
+    unlockCount: 2,
     name: '粉砕連打',
     icon: '💢',
     category: '攻撃',
@@ -478,6 +498,7 @@ export const COMMANDS: CommandDef[] = [
   {
     id: 'CMD036',
     unlockTag: '多段',
+    unlockCount: 3,
     name: '乱撃',
     icon: '🎲',
     category: '攻撃',
@@ -504,6 +525,7 @@ export const COMMANDS: CommandDef[] = [
   {
     id: 'CMD038',
     unlockTag: '多腕',
+    unlockCount: 2,
     name: '腕乱舞',
     icon: '💪',
     category: '攻撃',
@@ -530,6 +552,7 @@ export const COMMANDS: CommandDef[] = [
   {
     id: 'CMD040',
     unlockTag: '炎',
+    unlockCount: 2,
     name: '炎上爆破',
     icon: '🔥',
     category: '攻撃',
@@ -543,6 +566,7 @@ export const COMMANDS: CommandDef[] = [
   {
     id: 'CMD041',
     unlockTag: '毒',
+    unlockCount: 2,
     name: '毒爆',
     icon: '☠️',
     category: '攻撃',
@@ -556,6 +580,7 @@ export const COMMANDS: CommandDef[] = [
   {
     id: 'CMD042',
     unlockTag: '状態異常',
+    unlockCount: 4,
     name: '凍砕',
     icon: '🧊',
     category: '攻撃',
@@ -569,6 +594,7 @@ export const COMMANDS: CommandDef[] = [
   {
     id: 'CMD043',
     unlockTag: '雷',
+    unlockCount: 2,
     name: '雷鎖',
     icon: '⚡',
     category: '攻撃',
@@ -595,6 +621,7 @@ export const COMMANDS: CommandDef[] = [
   {
     id: 'CMD045',
     unlockTag: '吸血',
+    unlockCount: 3,
     name: '血狂い',
     icon: '💢',
     category: '攻撃',
@@ -621,6 +648,7 @@ export const COMMANDS: CommandDef[] = [
   {
     id: 'CMD047',
     unlockTag: '反撃',
+    unlockCount: 2,
     name: '受け流し',
     icon: '🥋',
     category: '防御',
@@ -635,6 +663,7 @@ export const COMMANDS: CommandDef[] = [
   {
     id: 'CMD048',
     unlockTag: '反撃',
+    unlockCount: 3,
     name: '棘返し',
     icon: '🦔',
     category: '防御',
@@ -648,6 +677,7 @@ export const COMMANDS: CommandDef[] = [
   {
     id: 'CMD049',
     unlockTag: '防御',
+    unlockCount: 2,
     name: '挑発',
     icon: '😈',
     category: '補助',
@@ -655,7 +685,8 @@ export const COMMANDS: CommandDef[] = [
     powerMult: 0.0,
     mpCost: 16,
     ctWeight: 'standard',
-    description: '敵を挑発する(現状の敵AIは固定パターンで反応しないため、未実装の特殊効果)。',
+    taunt: true,
+    description: '敵を挑発し、次の1手を「今その敵が撃てる最も強い技」に固定する。何が来るか読めるので、防御や遅延で受ける準備ができる。',
   },
   {
     id: 'CMD050',
@@ -667,11 +698,13 @@ export const COMMANDS: CommandDef[] = [
     powerMult: 0.0,
     mpCost: 0,
     ctWeight: 'standard',
-    description: '敵の次の行動を詳しく観察する(行動順プレビューで既に数手先まで表示されているため、追加効果は無し)。',
+    observeNextActions: 2,
+    description: '敵の次2手を技名まで読み切る。MPを使わず、行動順の予告よりも詳しく分かる。',
   },
   {
     id: 'CMD051',
     unlockTag: '知性',
+    unlockCount: 2,
     name: '解析',
     icon: '🔬',
     category: '補助',
@@ -679,11 +712,13 @@ export const COMMANDS: CommandDef[] = [
     powerMult: 0.0,
     mpCost: 16,
     ctWeight: 'standard',
-    description: '敵の弱点を解析する(弱点システム未実装のため、未実装の特殊効果)。',
+    analyzeEnemy: { turns: 4, damageBonusPct: 30 },
+    description: 'その敵の弱点を暴き、4ターンのあいだ与えるダメージを30%上げる。',
   },
   {
     id: 'CMD052',
     unlockTag: '知性',
+    unlockCount: 3,
     name: '模倣',
     icon: '🌀',
     category: '特殊',
@@ -709,6 +744,7 @@ export const COMMANDS: CommandDef[] = [
   {
     id: 'CMD054',
     unlockTag: '進化',
+    unlockCount: 2,
     name: '変異',
     icon: '🎲',
     category: '特殊',
@@ -716,11 +752,13 @@ export const COMMANDS: CommandDef[] = [
     powerMult: 0.0,
     mpCost: 28,
     ctWeight: 'standard',
-    description: '戦闘中ランダムな部位効果を一時的に得る(ランダム効果プール未実装のため、未実装の特殊効果)。',
+    mutate: true,
+    description: 'この戦闘のあいだだけ、ランダムな部位効果を1つ得る(重ねがけ可能)。何を引くかは撃つまで分からない。',
   },
   {
     id: 'CMD055',
     unlockTag: '高速',
+    unlockCount: 2,
     name: '疾風連打',
     icon: '💨',
     category: '攻撃',
@@ -734,6 +772,7 @@ export const COMMANDS: CommandDef[] = [
   {
     id: 'CMD056',
     unlockTag: '高速',
+    unlockCount: 3,
     name: '瞬歩',
     icon: '🌀',
     category: '補助',
@@ -760,6 +799,7 @@ export const COMMANDS: CommandDef[] = [
   {
     id: 'CMD058',
     unlockTag: '重量',
+    unlockCount: 4,
     name: '地獄突進',
     icon: '👹',
     category: '攻撃',
@@ -772,6 +812,7 @@ export const COMMANDS: CommandDef[] = [
   {
     id: 'CMD059',
     unlockTag: '重量',
+    unlockCount: 4,
     name: '終焉の一撃',
     icon: '💀',
     category: '攻撃',
@@ -784,6 +825,7 @@ export const COMMANDS: CommandDef[] = [
   {
     id: 'CMD060',
     unlockTag: '暴走',
+    unlockCount: 3,
     name: '自壊砲',
     icon: '☄️',
     category: '攻撃',

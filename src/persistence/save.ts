@@ -14,9 +14,12 @@ import { DEFAULT_DIFFICULTY_ID } from '../data/difficulty';
 //     newCommandIds を追加。
 // v4: Phase 5(任意の部位融合)で fusionUsedForBattleIndex / lastFusionPartId を追加。
 // v5: Phase 7(難易度調整)で difficultyId を追加。
+// v6: 融合をレシピ制へ刷新。エリート撃破の回数券だった fusionUsedForBattleIndex を捨て、
+//     declinedFusionIds(断ったレシピ) / pendingAdvance(融合後に次の戦闘へ進むか) を追加。
+// v7: 8戦×4エリア(全32戦)構成へ。同じ敵に当たり続けないよう foughtEnemyIds を追加。
 // いずれも安全な既定値(null / 空配列)を与えられる追加フィールドのみなので、
 // 古いセーブは破棄せず移行する。
-export const SAVE_VERSION = 5;
+export const SAVE_VERSION = 7;
 const SAVE_KEY = 'chimera-battle-ctb:run:v1';
 const INTRO_SEEN_KEY = 'chimera-battle-ctb:intro-seen:v1';
 
@@ -53,19 +56,34 @@ export function migrate(version: number | undefined, state: RunState): RunState 
     v = 3;
   }
   if (v === 3) {
-    // v3 -> v4: Phase 5 の融合用フィールド。過去のエリート撃破を遡って
-    // 「融合済み」にはしない(null始まり = 次のエリートから提示される)。
-    current = {
-      ...current,
-      fusionUsedForBattleIndex: current.fusionUsedForBattleIndex ?? null,
-      lastFusionPartId: current.lastFusionPartId ?? null,
-    };
+    // v3 -> v4: Phase 5 の融合用フィールド。
+    current = { ...current, lastFusionPartId: current.lastFusionPartId ?? null };
     v = 4;
   }
   if (v === 4) {
     // v4 -> v5: 難易度プリセット。既存ランは既定(ふつう)として続行する。
     current = { ...current, difficultyId: current.difficultyId ?? DEFAULT_DIFFICULTY_ID };
     v = 5;
+  }
+  if (v === 5) {
+    // v5 -> v6: レシピ制の融合へ。旧 fusionUsedForBattleIndex は意味を失ったので落とす。
+    // 断ったレシピの記録は無いので空配列から始める(所持部位で成立するものは次の獲得時に提示される)。
+    // pendingAdvance は「融合画面を抜けたら次の戦闘へ進む」の記録なので、途中セーブでは常にfalse。
+    const { fusionUsedForBattleIndex: _dropped, ...rest } = current as RunState & {
+      fusionUsedForBattleIndex?: number | null;
+    };
+    current = {
+      ...(rest as RunState),
+      declinedFusionIds: current.declinedFusionIds ?? [],
+      pendingAdvance: current.pendingAdvance ?? false,
+    };
+    v = 6;
+  }
+  if (v === 6) {
+    // v6 -> v7: 32戦構成。7戦時代の進行度はそのまま引き継ぐ(第3戦なら第3戦のまま、
+    // 全体が32戦へ伸びるだけ)。過去にどの敵と戦ったかは分からないので空配列で始める。
+    current = { ...current, foughtEnemyIds: current.foughtEnemyIds ?? [] };
+    v = 7;
   }
   return v === SAVE_VERSION ? current : null;
 }

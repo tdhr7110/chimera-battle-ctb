@@ -44,6 +44,7 @@ export interface PlayerModifiers {
   onKillMpGain: number;
   utilityCtBonusPct: number;
   utilityMpCostReductionPct: number;
+  equipSlotBonus: number; // 接続枠を増やす部位(equip_slot_bonus)の合計。戦闘には影響せず、装備画面だけが使う
 }
 
 function emptyModifiers(): PlayerModifiers {
@@ -80,6 +81,7 @@ function emptyModifiers(): PlayerModifiers {
     onKillMpGain: 0,
     utilityCtBonusPct: 0,
     utilityMpCostReductionPct: 0,
+    equipSlotBonus: 0,
   };
 }
 
@@ -181,6 +183,9 @@ function applyEffect(mods: PlayerModifiers, e: PartEffect) {
     case 'utility_mp_cost_reduction_pct':
       mods.utilityMpCostReductionPct += e.pct;
       break;
+    case 'equip_slot_bonus':
+      mods.equipSlotBonus += e.amount;
+      break;
   }
 }
 
@@ -197,6 +202,12 @@ export function computePlayerModifiers(equippedParts: PartDef[]): PlayerModifier
     }
   }
   return mods;
+}
+
+// 戦闘中に後から効果を1つ足す(変異コマンド)。装備を組み替えたのではなく、その場限りの
+// 効果を積むだけなので、既に合成済みのPlayerModifiersへ直接適用する。
+export function applyPartEffectToModifiers(mods: PlayerModifiers, effect: PartEffect) {
+  applyEffect(mods, effect);
 }
 
 // TSの制御フロー解析はsyn.countBy.kindでの分岐narrowingをコールバック(filterの引数)の
@@ -237,8 +248,21 @@ export function activeSynergyRuleChanges(equippedParts: PartDef[]): SynergyRuleC
 // ------------------------------------------------------------
 export function isCommandUnlocked(cmd: CommandDef, equippedParts: PartDef[]): boolean {
   if (cmd.unlockAlways) return true;
-  if (!cmd.unlockTag) return true;
-  return equippedParts.some((p) => p.tags.includes(cmd.unlockTag!));
+  const tag = cmd.unlockTag;
+  if (!tag) return true;
+  // 同じタグの部位を何個装着しているかで判定する。必要数はコマンドごと(unlockCount、既定1)。
+  return equippedParts.filter((p) => p.tags.includes(tag)).length >= (cmd.unlockCount ?? 1);
+}
+
+/** UI用: このコマンドの解放条件(必要なタグと個数、現在の充足数)。 */
+export function commandUnlockProgress(cmd: CommandDef, equippedParts: PartDef[]) {
+  const tag = cmd.unlockTag;
+  if (cmd.unlockAlways || !tag) return null;
+  return {
+    tag,
+    need: cmd.unlockCount ?? 1,
+    have: equippedParts.filter((p) => p.tags.includes(tag)).length,
+  };
 }
 
 // 現在の装備で解放されているコマンドID一覧。CtbEngineが戦闘中の選択肢を絞るのに使う。

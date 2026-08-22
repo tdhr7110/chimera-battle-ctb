@@ -1,14 +1,14 @@
 {
   "source": "docs/data/chimera_battle_ctb_redesign_v02_clean.xlsx",
-  "sourceSha256": "c54e4e55333854f3cce1dde461107977a30098348c23833a63baa32dbe7eba67",
+  "sourceSha256": "e1589b45a7995ef7998f343551843c7c215cf60fd14d830ba7a6aa387f9dde1e",
   "counts": {
     "CTB設定": 16,
     "コマンド": 60,
-    "部位": 80,
+    "部位": 85,
     "敵": 45,
     "シナジー": 36,
     "状態異常": 24,
-    "融合": 11,
+    "融合": 13,
     "難易度": 3,
     "代表ビルド": 20
   },

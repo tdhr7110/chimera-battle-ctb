@@ -1,6 +1,6 @@
 import { ENEMIES, getEnemy } from '../data/enemies';
 import { getEnemyDrop, RARE_DROP_CHANCE_PCT } from '../data/enemyDrops';
-import { resolveFusion } from '../data/fusions';
+import { findFusionCandidates, getFusionRecipe } from '../data/fusions';
 import { DEFAULT_DIFFICULTY_ID, getDifficulty } from '../data/difficulty';
 import { PARTS, getPart } from '../data/parts';
 import { getStarter } from '../data/starters';
@@ -15,22 +15,90 @@ import type { EnemyTier, PartDef } from '../data/types';
 // 重要な設計判断:
 //   - 戦闘ロジックそのもの(CtbEngine)は一切変更しない。ここではRunStateと
 //     CtbEngineの間を橋渡しするだけ(装備部位を渡す・終了後のHPを受け取る)。
-//   - 部位に個別の接続コストの概念はまだ無いため、「装着数の上限」(MAX_EQUIPPED_PARTS、
+//   - 部位に個別の接続コストの概念はまだ無いため、「装着数の上限」(maxEquippedParts、
 //     Excel36シナジーの最終段階の必要数に合わせた6)だけで管理する。
 //   - 敵45体はまだ無いため、現行6敵から抽選する
 //     (同じ敵に複数回遭遇することがあるのは既知の暫定仕様)。部位は80種すべて接続済み。
 // ============================================================
 
-export type GamePhase = 'title' | 'starterSelect' | 'prep' | 'enemySelect' | 'battle' | 'reward' | 'commandUnlock' | 'fusion' | 'result';
+export type GamePhase = 'title' | 'starterSelect' | 'prep' | 'enemySelect' | 'battle' | 'reward' | 'commandUnlock' | 'fusion' | 'fusionResult' | 'result';
 
-// 仕様書のTEST18パターン(通常/通常/エリート/通常/中ボス/通常/エリート/ボス)を踏襲しつつ、
-// 現行6敵ではミニボスまで区別できないためboss 1種類にまとめた7戦構成にしている。
-const BATTLE_SEQUENCE: EnemyTier[] = ['normal', 'normal', 'elite', 'normal', 'normal', 'elite', 'boss'];
+// ラン構成: 8戦 × 4エリア = 全32戦。
+//
+// エリアごとに山場の置き方を変えている。エリア1は部位が2〜3個しか無い時間帯なので
+// 通常戦を厚くし、締めもエリート止まり。本物のボスはエリア2以降にだけ置く。
+// (全エリアを同じ「エリート2回 + ボス」にして実測したところ、第3戦と第8戦だけで
+//  半分近くが落ちた。部位が揃う前に山場が2回来るのが原因だったため傾斜を緩めている。)
+//
+// 使う敵は 通常20 / エリート9 / ボス3 で、ロスター(通常24 / エリート14 / ボス7)に収まる。
+// 奥のエリアほど敵が硬く痛くなる(Excel「難易度」シートのエリア倍率)。部位が増えて
+// プレイヤーが伸びるぶんは、コードではなくそちらの数値で吸収する。
+const AREA_PATTERNS: EnemyTier[][] = [
+  // エリア1: 立ち上がり。最初の山場は第5戦、締めはエリート。
+  ['normal', 'normal', 'normal', 'normal', 'elite', 'normal', 'normal', 'elite'],
+  // エリア2〜4: 山場2回 + ボスの標準形。
+  ['normal', 'normal', 'elite', 'normal', 'normal', 'elite', 'normal', 'boss'],
+  ['normal', 'normal', 'elite', 'normal', 'normal', 'elite', 'normal', 'boss'],
+  ['normal', 'normal', 'elite', 'normal', 'normal', 'elite', 'normal', 'boss'],
+];
+export const BATTLES_PER_AREA = AREA_PATTERNS[0].length;
+export const TOTAL_AREAS = AREA_PATTERNS.length;
+
+export interface AreaDef {
+  index: number; // 1始まり
+  name: string;
+  icon: string;
+}
+
+export const AREAS: AreaDef[] = [
+  { index: 1, name: '腐食の巣', icon: '🕳️' },
+  { index: 2, name: '灰の回廊', icon: '🌫️' },
+  { index: 3, name: '崩れた実験場', icon: '⚗️' },
+  { index: 4, name: '原初の心臓', icon: '💗' },
+];
+
+const BATTLE_SEQUENCE: EnemyTier[] = AREA_PATTERNS.flat();
 export const TOTAL_BATTLES = BATTLE_SEQUENCE.length;
 
-// Excel36シナジーの最終段階が「同タグ6個」を要求するため、装着上限は6に設定する
-// (シナジー36接続で確定。それ未満だと最終段階シナジーが永久に到達不能になってしまうため)。
-export const MAX_EQUIPPED_PARTS = 6;
+// レア率の伸び幅を決める基準。Excelの「レア報酬加算_戦ごと」は7戦ラン(=6戦ぶん伸びる)を
+// 前提に書かれた値なので、これを使ってラン全体の伸び幅へ換算する。
+const RARE_RAMP_REFERENCE_BATTLES = 6;
+
+/** 1始まりの戦闘番号から、その戦闘があるエリア番号(1始まり)を返す。 */
+export function areaOfBattle(battleIndex: number): number {
+  const clamped = Math.min(Math.max(1, battleIndex), TOTAL_BATTLES);
+  return Math.floor((clamped - 1) / BATTLES_PER_AREA) + 1;
+}
+
+/** その戦闘があるエリアの定義。 */
+export function areaDefOfBattle(battleIndex: number): AreaDef {
+  return AREAS[areaOfBattle(battleIndex) - 1] ?? AREAS[0];
+}
+
+/** エリアの中で何戦目か(1始まり)。 */
+export function battleInArea(battleIndex: number): number {
+  const clamped = Math.min(Math.max(1, battleIndex), TOTAL_BATTLES);
+  return ((clamped - 1) % BATTLES_PER_AREA) + 1;
+}
+
+// 部位の接続枠の基本値。Excel36シナジーの最終段階が「同タグ6個」を要求するので最低6は要るが、
+// 複数系統を同時に育てられるように12を基本値にしている。
+// ここへ equip_slot_bonus を持つ部位(分岐骨・増殖核など)のぶんが上乗せされる。
+export const BASE_EQUIPPED_PARTS = 12;
+
+/**
+ * いま装着できる部位の数。基本値 + 装着中の部位が持つ接続枠ボーナスの合計。
+ *
+ * 枠を増やす部位を外すと上限も下がるが、その場で強制的に外させることはしない。
+ * 上限を超えている間は「新しく装着できない」だけで、外していけば自然に収まる。
+ */
+export function maxEquippedPartsFor(equipped: PartDef[]): number {
+  return BASE_EQUIPPED_PARTS + computePlayerModifiers(equipped).equipSlotBonus;
+}
+
+export function maxEquippedParts(state: RunState): number {
+  return maxEquippedPartsFor(equippedPartDefs(state));
+}
 export const CORE_HP_BASE = PLAYER_BASE.maxHp;
 export const POST_VICTORY_RECOVERY_PCT = 0.4; // 勝利後の小休止による自然回復割合(TEST18を踏襲した仮値)
 
@@ -51,11 +119,15 @@ export interface RunState {
   enemyCandidateIds: string[];
   dropCandidateIds: string[];
   lastDefeatedEnemyId: string | null; // Phase 1: 報酬画面で「どの敵が落としたか」を示すため
+  // 32戦構成にしたぶん同じ敵に当たりやすくなったので、このランで出した敵を覚えておき、
+  // 候補はまだ出していない敵から優先して選ぶ(足りなくなったらプール全体へ戻る)。
+  foughtEnemyIds: string[];
   lastAcquiredPartId: string | null; // Phase 2: 解放演出で「どの部位のおかげか」を示すため
   pendingUnlockCommandIds: string[]; // Phase 2: 今まさに解放演出で見せるコマンド
   newCommandIds: string[]; // Phase 2: コマンドタブのNEWバッジ(タブを開くと既読になる)
-  fusionUsedForBattleIndex: number | null; // Phase 5: 融合を提示/実行済みの戦闘番号(1エリート1回)
-  lastFusionPartId: string | null; // Phase 5: 直前の融合で得た部位(結果表示用)
+  lastFusionPartId: string | null; // 直前の融合で得た部位(結果演出用)
+  declinedFusionIds: string[]; // 「あとにする」で断ったレシピ(再提示しない)
+  pendingAdvance: boolean; // 融合フローを抜けたら次の戦闘へ進む必要があるか
   difficultyId: string; // Phase 7: 難易度プリセット(Excel「難易度」シート)
   resultOutcome: 'victory' | 'defeat' | null;
   seenIntro: boolean; // 遊び方を一度でも見たか(GAME STARTのたび強制表示しないため)
@@ -74,11 +146,13 @@ export function createTitleState(seenIntro: boolean): RunState {
     enemyCandidateIds: [],
     dropCandidateIds: [],
     lastDefeatedEnemyId: null,
+    foughtEnemyIds: [],
     lastAcquiredPartId: null,
     pendingUnlockCommandIds: [],
     newCommandIds: [],
-    fusionUsedForBattleIndex: null,
     lastFusionPartId: null,
+    declinedFusionIds: [],
+    pendingAdvance: false,
     difficultyId: DEFAULT_DIFFICULTY_ID,
     resultOutcome: null,
     seenIntro,
@@ -134,7 +208,7 @@ function clampMpToMax(state: RunState): RunState {
 
 export function equipPart(state: RunState, partId: string): RunState {
   if (state.equippedPartIds.includes(partId)) return state;
-  if (state.equippedPartIds.length >= MAX_EQUIPPED_PARTS) return state;
+  if (state.equippedPartIds.length >= maxEquippedParts(state)) return state;
   const next = {
     ...state,
     equippedPartIds: [...state.equippedPartIds, partId],
@@ -203,9 +277,13 @@ export function rollDropCandidates(
 
   const normalPool = unowned(drop.bodyPartIds);
   const rarePool = unowned(drop.rareDropPartIds);
+  // レア率の底上げは「ランのどこまで来たか」で決める。Excelの「レア報酬加算_戦ごと」は
+  // 7戦ラン基準の1戦あたりの上がり幅なので、ラン全体の伸び幅(= 加算 × 6戦ぶん)を
+  // 進行度で按分する。こうしておけば7戦から32戦へ伸ばしても終盤のレア率が跳ね上がらない。
+  const progress = TOTAL_BATTLES > 1 ? Math.min(1, Math.max(0, (battleIndex - 1) / (TOTAL_BATTLES - 1))) : 1;
   const rareChance =
     RARE_DROP_CHANCE_PCT[enemy.tier] +
-    Math.max(0, battleIndex - 1) * getDifficulty(difficultyId ?? DEFAULT_DIFFICULTY_ID).rareBonusPerBattle;
+    progress * getDifficulty(difficultyId ?? DEFAULT_DIFFICULTY_ID).rareBonusPerBattle * RARE_RAMP_REFERENCE_BATTLES;
 
   const picked: string[] = [];
   const taken = new Set<string>();
@@ -235,13 +313,24 @@ export function rollDropCandidates(
 
 export function enterEnemySelect(state: RunState): RunState {
   const tier = BATTLE_SEQUENCE[Math.min(state.battleIndex, TOTAL_BATTLES) - 1];
-  const pool = ENEMIES.filter((e) => e.tier === tier);
-  const candidates = pickRandom(pool.length > 0 ? pool : ENEMIES, Math.min(3, pool.length > 0 ? pool.length : ENEMIES.length));
+  const tierPool = ENEMIES.filter((e) => e.tier === tier);
+  const pool = tierPool.length > 0 ? tierPool : ENEMIES;
+
+  // まだこのランで出していない敵を優先する。候補3枠を埋められないほど減ったら、
+  // プール全体から選び直す(通常敵24体でも32戦あれば終盤は一巡してしまうため)。
+  const fought = new Set(state.foughtEnemyIds);
+  const fresh = pool.filter((e) => !fought.has(e.id));
+  const source = fresh.length >= 3 ? fresh : pool;
+
+  const candidates = pickRandom(source, Math.min(3, source.length));
   return { ...state, phase: 'enemySelect', enemyCandidateIds: candidates.map((e) => e.id) };
 }
 
 export function chooseEnemy(state: RunState, enemyId: string): RunState {
-  return { ...state, phase: 'battle', currentEnemyId: enemyId, enemyCandidateIds: [] };
+  const fought = state.foughtEnemyIds.includes(enemyId)
+    ? state.foughtEnemyIds
+    : [...state.foughtEnemyIds, enemyId];
+  return { ...state, phase: 'battle', currentEnemyId: enemyId, enemyCandidateIds: [], foughtEnemyIds: fought };
 }
 
 export function finishBattle(state: RunState, result: 'won' | 'lost', finalHp: number, finalMp: number): RunState {
@@ -282,7 +371,7 @@ export function finishBattle(state: RunState, result: 'won' | 'lost', finalHp: n
 // 演出フェーズ(commandUnlock)へ寄り道する。解放が無ければ従来どおり直接prepへ戻る
 // (中間画面をむやみに増やさない)。
 export function acceptDrop(state: RunState, partId: string, wantEquip: boolean): RunState {
-  const equipped = wantEquip && state.equippedPartIds.length < MAX_EQUIPPED_PARTS;
+  const equipped = wantEquip && state.equippedPartIds.length < maxEquippedParts(state);
   const next = equipped
     ? { ...state, equippedPartIds: [...state.equippedPartIds, partId] }
     : { ...state, inventoryPartIds: [...state.inventoryPartIds, partId] };
@@ -301,68 +390,62 @@ export function acceptDrop(state: RunState, partId: string, wantEquip: boolean):
 }
 
 // ------------------------------------------------------------
-// Phase 5: 任意の部位融合。
+// 部位融合(レシピ制)。
 //
-// 提示条件(強制はしない):
-//   - 直前に倒したのがエリートであること
-//   - 最終戦(ボス)の後ではないこと
-//   - そのエリート撃破につき、まだ融合していないこと(1回まで)
-//   - 素材が2つ以上あること
-// 提示された画面で「そのまま進む」を選べば何も起きない。
+// 「あらかじめ決まった素材が揃ったら融合できる」方式。部位を獲得した直後に
+// 所持部位を見て、成立するレシピがあれば融合画面を挟む。エリート撃破とは無関係。
+//
+// 強制はしない(「あとにする」で素材のまま持ち続けられる)。断ったレシピは
+// declinedFusionIds に積んで、同じものを毎回出し直さないようにする。
 // ------------------------------------------------------------
-export function canOfferFusion(state: RunState): boolean {
-  if (state.fusionUsedForBattleIndex === state.battleIndex) return false; // このエリートでは融合済み
-  if (state.battleIndex >= TOTAL_BATTLES) return false; // 最終ボス撃破後には出さない
-  const enemy = state.lastDefeatedEnemyId ? getEnemy(state.lastDefeatedEnemyId) : undefined;
-  if (enemy?.tier !== 'elite') return false;
-  return ownedPartIds(state).length >= 2;
+
+/** 今そのまま成立する融合のうち、まだ断っていないもの(レア度の高い順)。 */
+export function availableFusions(state: RunState) {
+  const owned = ownedPartIds(state).map((id) => getPart(id)).filter((p): p is PartDef => !!p);
+  return findFusionCandidates(owned).filter((c) => !state.declinedFusionIds.includes(c.recipe.id));
 }
 
-// 融合を実行する。素材2つは所持から取り除かれ(装備中でも外れる)、結果の部位が手に入る。
-// 既に同じ融合部位を持っている場合は素材だけ消えることになるため、呼び出し側(UI)が
-// fusionResultFor()で事前に判定して選べないようにしている。
-export function performFusion(state: RunState, partIdA: string, partIdB: string): RunState {
-  const a = getPart(partIdA);
-  const b = getPart(partIdB);
-  if (!a || !b || partIdA === partIdB) return state;
-  const owned = new Set(ownedPartIds(state));
-  if (!owned.has(partIdA) || !owned.has(partIdB)) return state;
+export function performFusion(state: RunState, recipeId: string): RunState {
+  const recipe = getFusionRecipe(recipeId);
+  const candidate = availableFusions(state).find((c) => c.recipe.id === recipeId);
+  if (!recipe || !candidate) return state;
 
-  const rule = resolveFusion(a, b);
-  const consumed = [partIdA, partIdB];
+  const consumed: string[] = [...candidate.materialIds];
   const equipped = state.equippedPartIds.filter((id) => !consumed.includes(id));
   const inventory = state.inventoryPartIds.filter((id) => !consumed.includes(id));
-  const alreadyHas = [...equipped, ...inventory].includes(rule.id);
 
   // 空きがあればそのまま装着、無ければインベントリへ(通常の部位取得と同じ扱い)。
-  const next: RunState = alreadyHas
-    ? { ...state, equippedPartIds: equipped, inventoryPartIds: inventory }
-    : equipped.length < MAX_EQUIPPED_PARTS
-      ? { ...state, equippedPartIds: [...equipped, rule.id], inventoryPartIds: inventory }
-      : { ...state, equippedPartIds: equipped, inventoryPartIds: [...inventory, rule.id] };
+  const next: RunState =
+    equipped.length < maxEquippedParts(state)
+      ? { ...state, equippedPartIds: [...equipped, recipe.id], inventoryPartIds: inventory }
+      : { ...state, equippedPartIds: equipped, inventoryPartIds: [...inventory, recipe.id] };
 
   // 融合でも装備が変われば新しいコマンドが解放されうるので、NEWバッジには反映する。
   const unlockedIds = newlyUnlockedCommands(equippedPartDefs(state), equippedPartDefs(next)).map((c) => c.id);
-  return advanceToNextBattle(
-    clampMpToMax({
-      ...next,
-      fusionUsedForBattleIndex: state.battleIndex,
-      lastFusionPartId: rule.id,
-      newCommandIds: [...next.newCommandIds, ...unlockedIds],
-    })
-  );
+  return clampMpToMax({
+    ...next,
+    phase: 'fusionResult',
+    lastFusionPartId: recipe.id,
+    newCommandIds: [...next.newCommandIds, ...unlockedIds],
+  });
 }
 
-// 融合せずに進む。
-export function skipFusion(state: RunState): RunState {
-  return advanceToNextBattle({ ...state, fusionUsedForBattleIndex: state.battleIndex });
+/** 融合を断る。そのレシピは以後この画面で提示しない。 */
+export function declineFusion(state: RunState, recipeId: string): RunState {
+  const next = { ...state, declinedFusionIds: [...state.declinedFusionIds, recipeId] };
+  return afterFusionFlow(next);
 }
 
-// UIが「この組み合わせなら何ができるか」を先に見せるための参照用(抽選ではないので副作用なし)。
-export function fusionResultFor(partIdA: string, partIdB: string) {
-  const a = getPart(partIdA);
-  const b = getPart(partIdB);
-  return a && b ? resolveFusion(a, b) : undefined;
+/** 融合結果の演出を閉じたあと。まだ他に成立する融合があれば続けて提示する。 */
+export function dismissFusionResult(state: RunState): RunState {
+  return afterFusionFlow({ ...state, lastFusionPartId: null });
+}
+
+// 融合が絡む一連の流れを抜けたあとの行き先。まだ融合できるなら続けて融合画面、
+// 無ければ通常どおり次の戦闘の準備へ。
+function afterFusionFlow(state: RunState): RunState {
+  if (availableFusions(state).length > 0) return { ...state, phase: 'fusion' };
+  return state.pendingAdvance ? advanceToNextBattle({ ...state, pendingAdvance: false }) : { ...state, phase: 'prep' };
 }
 
 // 解放演出を閉じたら、そこで初めて次の戦闘の準備画面へ進む。
@@ -386,10 +469,13 @@ function advanceToNextBattle(state: RunState): RunState {
   return { ...state, phase: 'prep', battleIndex: state.battleIndex + 1 };
 }
 
-// Phase 5: 報酬(と解放演出)が済んだあと、エリート撃破後だけ融合の提示を1回挟む。
-// 条件を満たさなければ従来どおり直接prepへ進む(中間画面を無闇に増やさない)。
+// 報酬(と解放演出)が済んだあと、成立する融合があれば融合画面を挟む。
+// 無ければ従来どおり直接prepへ進む(中間画面を無闇に増やさない)。
+// 融合画面を経由する場合、次の戦闘へ進むのは融合フローを抜けたあとなので、
+// 「進む予定がある」ことを pendingAdvance に残しておく。
 function afterRewardFlow(state: RunState): RunState {
-  return canOfferFusion(state) ? { ...state, phase: 'fusion' } : advanceToNextBattle(state);
+  if (availableFusions(state).length > 0) return { ...state, phase: 'fusion', pendingAdvance: true };
+  return advanceToNextBattle(state);
 }
 
 export function tierOfCurrentBattle(state: RunState): EnemyTier {

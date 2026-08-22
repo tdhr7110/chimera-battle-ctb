@@ -31,11 +31,13 @@ export const ENEMIES: EnemyDef[] = [
     power: 5,
     evasionPct: 5,
     baseSpeed: 83,
+    maxMp: 27,
+    weakness: '重量技後が隙',
     description: '【高速型】軽量技で手数を稼ぐ。プレイヤーより複数回動くこともある。重量技を撃った直後が隙になる。',
     moves: [
       { id: 'enm001_quick', name: '速撃', icon: '⚡', powerMult: 0.7, ctWeight: 'light', intent: 'ATTACK' },
       { id: 'enm001_wait', name: '待機', icon: '⏸️', powerMult: 0, ctWeight: 'very_light', intent: 'WAIT' },
-      { id: 'enm001_gale', name: '疾風連打', icon: '🌀', powerMult: 0.3, ctWeight: 'light', intent: 'STRONG', applyStatus: { kind: 'vulnerable', magnitude: 15, turns: 2 }, hits: 3, telegraph: '骨犬の動きが加速していく…！' },
+      { id: 'enm001_gale', name: '疾風連打', icon: '🌀', powerMult: 0.3, ctWeight: 'light', intent: 'STRONG', applyStatus: { kind: 'vulnerable', magnitude: 15, turns: 2 }, hits: 3, telegraph: '骨犬の動きが加速していく…！', mpCost: 12 },
     ],
   },
   {
@@ -50,11 +52,13 @@ export const ENEMIES: EnemyDef[] = [
     power: 5,
     evasionPct: 0,
     baseSpeed: 96,
+    maxMp: 34,
+    weakness: '防御/遅延',
     description: '【重量型】強打とチャージからの大技が主体。大技前には長い予告が入るため、防御・遅延で備えたい。',
     moves: [
       { id: 'enm002_smash', name: '強打', icon: '👊', powerMult: 1.3, ctWeight: 'heavy', intent: 'STRONG' },
       { id: 'enm002_charge', name: 'チャージ', icon: '✨', powerMult: 0, ctWeight: 'light', intent: 'CHARGE', telegraph: '肉塊が力を溜めている…！' },
-      { id: 'enm002_final', name: '終焉の一撃', icon: '🌋', powerMult: 2.6, ctWeight: 'very_heavy', intent: 'ULTIMATE', applyStatus: { kind: 'slow', magnitude: 25, turns: 2 }, telegraph: '肉塊が「終焉の一撃」の構え…!!' },
+      { id: 'enm002_final', name: '終焉の一撃', icon: '🌋', powerMult: 2.6, ctWeight: 'very_heavy', intent: 'ULTIMATE', applyStatus: { kind: 'slow', magnitude: 25, turns: 2 }, telegraph: '肉塊が「終焉の一撃」の構え…!!', mpCost: 15 },
     ],
   },
   {
@@ -69,11 +73,13 @@ export const ENEMIES: EnemyDef[] = [
     power: 6,
     evasionPct: 3,
     baseSpeed: 109,
+    maxMp: 41,
+    weakness: '短期決戦/浄化',
     description: '【毒型】毒を蓄積させたうえで、まとめて毒爆を放ってくる。短期決戦か毒の浄化で対策したい。',
     moves: [
       { id: 'enm003_sting', name: '毒針', icon: '🧪', powerMult: 0.6, ctWeight: 'light', intent: 'POISON', applyStatus: { kind: 'poison', magnitude: 4, turns: 4 } },
       { id: 'enm003_wait', name: '待機', icon: '⏸️', powerMult: 0, ctWeight: 'very_light', intent: 'WAIT' },
-      { id: 'enm003_burst', name: '毒爆', icon: '☠️', powerMult: 1.4, ctWeight: 'heavy', intent: 'STRONG', applyStatus: { kind: 'poison', magnitude: 8, turns: 4 }, telegraph: '毒蠍の毒嚢が膨れ上がる…！' },
+      { id: 'enm003_burst', name: '毒爆', icon: '☠️', powerMult: 1.4, ctWeight: 'heavy', intent: 'STRONG', applyStatus: { kind: 'poison', magnitude: 8, turns: 4 }, telegraph: '毒蠍の毒嚢が膨れ上がる…！', mpCost: 18 },
     ],
   },
   {
@@ -88,11 +94,13 @@ export const ENEMIES: EnemyDef[] = [
     power: 6,
     evasionPct: 1,
     baseSpeed: 122,
+    maxMp: 48,
+    weakness: '防御/高速',
     description: '【炎上型】炎上を蓄積させ、大きな炎上爆破で畳みかけてくる。防御や高速で被弾機会を減らしたい。',
     moves: [
       { id: 'enm004_fang', name: '火炎牙', icon: '🔥', powerMult: 0.8, ctWeight: 'standard', intent: 'ATTACK', applyStatus: { kind: 'burn', magnitude: 4, turns: 3 } },
       { id: 'enm004_smash', name: '強打', icon: '👊', powerMult: 1.1, ctWeight: 'heavy', intent: 'STRONG' },
-      { id: 'enm004_burst', name: '炎上爆破', icon: '💥', powerMult: 1.8, ctWeight: 'heavy', intent: 'STRONG', applyStatus: { kind: 'burn', magnitude: 7, turns: 3 }, telegraph: '火炎頭獣が業火をまとい始めた…！' },
+      { id: 'enm004_burst', name: '炎上爆破', icon: '💥', powerMult: 1.8, ctWeight: 'heavy', intent: 'STRONG', applyStatus: { kind: 'burn', magnitude: 7, turns: 3 }, telegraph: '火炎頭獣が業火をまとい始めた…！', mpCost: 22 },
     ],
   },
   {
@@ -107,11 +115,13 @@ export const ENEMIES: EnemyDef[] = [
     power: 7,
     evasionPct: 2,
     baseSpeed: 135,
+    maxMp: 55,
+    weakness: 'MP管理',
     description: '【CT遅延型】プレイヤーの行動順そのものを後ろへ送ってくる。MP管理で技を使い分けたい。',
     moves: [
       { id: 'enm005_strike', name: '遅延打撃', icon: '⏳', powerMult: 0.7, ctWeight: 'standard', intent: 'DELAY', delayTargetBy: 55 },
       { id: 'enm005_eat', name: '時間喰い', icon: '🕳️', powerMult: 0.5, ctWeight: 'standard', intent: 'DELAY', applyStatus: { kind: 'time_wound', magnitude: 20, turns: 3 }, delayTargetBy: 45 },
-      { id: 'enm005_howl', name: '咆哮', icon: '📣', powerMult: 0, ctWeight: 'heavy', intent: 'DEBUFF', applyStatus: { kind: 'fear', magnitude: 15, turns: 3 }, delayTargetBy: 80, telegraph: '時喰い蟲が咆哮の気配を溜めている…！' },
+      { id: 'enm005_howl', name: '咆哮', icon: '📣', powerMult: 0, ctWeight: 'heavy', intent: 'DEBUFF', applyStatus: { kind: 'fear', magnitude: 15, turns: 3 }, delayTargetBy: 80, telegraph: '時喰い蟲が咆哮の気配を溜めている…！', mpCost: 25 },
     ],
   },
   {
@@ -126,12 +136,14 @@ export const ENEMIES: EnemyDef[] = [
     power: 7,
     evasionPct: 2,
     baseSpeed: 73,
+    maxMp: 62,
+    weakness: 'チャージ/状態異常',
     counter: { chancePct: 35, powerMult: 0.7 },
     description: '【反撃型】攻撃を受けると即座に反撃してくる。チャージや状態異常での搦め手が有効。',
     moves: [
       { id: 'enm006_guard', name: '防御', icon: '🛡️', powerMult: 0, ctWeight: 'light', intent: 'GUARD' },
       { id: 'enm006_stance', name: 'カウンター姿勢', icon: '🥋', powerMult: 0, ctWeight: 'light', intent: 'COUNTER_STANCE' },
-      { id: 'enm006_thorn', name: '棘返し', icon: '🦔', powerMult: 1.2, ctWeight: 'standard', intent: 'STRONG' },
+      { id: 'enm006_thorn', name: '棘返し', icon: '🦔', powerMult: 1.2, ctWeight: 'standard', intent: 'STRONG', mpCost: 28 },
     ],
   },
   {
@@ -146,11 +158,13 @@ export const ENEMIES: EnemyDef[] = [
     power: 8,
     evasionPct: 0,
     baseSpeed: 86,
+    maxMp: 69,
+    weakness: '爆発火力',
     description: '【再生型】長期戦になるほど自分を回復させる。爆発力のある一撃で押し切りたい。',
     moves: [
       { id: 'enm007_guard', name: '防御', icon: '🛡️', powerMult: 0, ctWeight: 'light', intent: 'GUARD' },
       { id: 'enm007_shell', name: '再生殻', icon: '🌱', powerMult: 0, ctWeight: 'standard', intent: 'GUARD', selfHeal: { pct: 8 } },
-      { id: 'enm007_undying', name: '不死の構え', icon: '🌟', powerMult: 0.6, ctWeight: 'heavy', intent: 'STRONG', selfApplyStatus: { kind: 'undying', magnitude: 1, turns: 3 }, telegraph: '再生肉壁が致死をも耐える構えを見せた…！' },
+      { id: 'enm007_undying', name: '不死の構え', icon: '🌟', powerMult: 0.6, ctWeight: 'heavy', intent: 'STRONG', selfApplyStatus: { kind: 'undying', magnitude: 1, turns: 3 }, telegraph: '再生肉壁が致死をも耐える構えを見せた…！', mpCost: 31 },
     ],
   },
   {
@@ -165,11 +179,13 @@ export const ENEMIES: EnemyDef[] = [
     power: 8,
     evasionPct: 3,
     baseSpeed: 99,
+    maxMp: 76,
+    weakness: 'MP0技',
     description: '【MP破壊型】プレイヤーのMPを奪ってくる。MP0で使える技を軸に立ち回りたい。',
     moves: [
       { id: 'enm008_drain', name: 'MP吸収', icon: '🕳️', powerMult: 0.5, ctWeight: 'standard', intent: 'DEBUFF', applyStatus: { kind: 'mp_leak', magnitude: 5, turns: 3 } },
       { id: 'enm008_quick', name: '速撃', icon: '⚡', powerMult: 0.7, ctWeight: 'light', intent: 'ATTACK' },
-      { id: 'enm008_burst', name: '魔力暴発', icon: '🔮', powerMult: 1.5, ctWeight: 'heavy', intent: 'STRONG', applyStatus: { kind: 'mp_leak', magnitude: 10, turns: 3 }, telegraph: '魔喰い蛭が魔力を吸い上げている…！' },
+      { id: 'enm008_burst', name: '魔力暴発', icon: '🔮', powerMult: 1.5, ctWeight: 'heavy', intent: 'STRONG', applyStatus: { kind: 'mp_leak', magnitude: 10, turns: 3 }, telegraph: '魔喰い蛭が魔力を吸い上げている…！', mpCost: 34 },
     ],
   },
   {
@@ -184,11 +200,13 @@ export const ENEMIES: EnemyDef[] = [
     power: 9,
     evasionPct: 1,
     baseSpeed: 112,
+    maxMp: 83,
+    weakness: 'フェーズ前に準備',
     description: '【暴走型】HPが減るほど自分を狂化させ、速く激しくなる。フェーズが変わる前に準備したい。',
     moves: [
       { id: 'enm009_smash', name: '強打', icon: '👊', powerMult: 1.1, ctWeight: 'heavy', intent: 'STRONG' },
       { id: 'enm009_frenzy', name: '狂化', icon: '💢', powerMult: 0, ctWeight: 'light', intent: 'BUFF', selfApplyStatus: { kind: 'frenzy', magnitude: 15, turns: 3 } },
-      { id: 'enm009_selfblast', name: '自壊砲', icon: '💣', powerMult: 1.6, ctWeight: 'heavy', intent: 'ULTIMATE', selfApplyStatus: { kind: 'defense_down', magnitude: 10, turns: 2 }, telegraph: '狂走獣が自らを犠牲に力を高めている…！' },
+      { id: 'enm009_selfblast', name: '自壊砲', icon: '💣', powerMult: 1.6, ctWeight: 'heavy', intent: 'ULTIMATE', selfApplyStatus: { kind: 'defense_down', magnitude: 10, turns: 2 }, telegraph: '狂走獣が自らを犠牲に力を高めている…！', mpCost: 37 },
     ],
   },
   {
@@ -203,11 +221,13 @@ export const ENEMIES: EnemyDef[] = [
     power: 9,
     evasionPct: 2,
     baseSpeed: 125,
+    maxMp: 20,
+    weakness: '技順をずらす',
     description: '【知性型】プレイヤーの行動を観察・分析してくる。技の順番を読まれないようにしたい。',
     moves: [
       { id: 'enm010_observe', name: '観察', icon: '👁️', powerMult: 0, ctWeight: 'light', intent: 'DEBUFF', applyStatus: { kind: 'accuracy_down', magnitude: 10, turns: 2 } },
       { id: 'enm010_analyze', name: '解析', icon: '🔍', powerMult: 0.6, ctWeight: 'standard', intent: 'ATTACK', applyStatus: { kind: 'accuracy_down', magnitude: 10, turns: 2 } },
-      { id: 'enm010_mimic', name: '模倣', icon: '🌀', powerMult: 1.5, ctWeight: 'standard', intent: 'STRONG', telegraph: '予知眼球がこちらの構えを見透かしている…！' },
+      { id: 'enm010_mimic', name: '模倣', icon: '🌀', powerMult: 1.5, ctWeight: 'standard', intent: 'STRONG', telegraph: '予知眼球がこちらの構えを見透かしている…！', mpCost: 9 },
     ],
   },
   {
@@ -222,11 +242,13 @@ export const ENEMIES: EnemyDef[] = [
     power: 10,
     evasionPct: 1,
     baseSpeed: 138,
+    maxMp: 27,
+    weakness: '反撃/防御',
     description: '【多段型】連続ヒットのたびにデバフを積み重ねてくる。反撃や防御で被弾数を減らしたい。',
     moves: [
       { id: 'enm011_combo', name: '連撃', icon: '🌀', powerMult: 0.9, ctWeight: 'standard', intent: 'ATTACK', applyStatus: { kind: 'vulnerable', magnitude: 8, turns: 2 }, hits: 3 },
       { id: 'enm011_barrage', name: '粉砕連打', icon: '🔨', powerMult: 1.1, ctWeight: 'heavy', intent: 'STRONG', applyStatus: { kind: 'defense_down', magnitude: 5, turns: 2 }, hits: 4 },
-      { id: 'enm011_dance', name: '腕乱舞', icon: '💫', powerMult: 1.8, ctWeight: 'very_heavy', intent: 'ULTIMATE', applyStatus: { kind: 'vulnerable', magnitude: 10, turns: 3 }, hits: 6, telegraph: '千腕虫の腕が無数に蠢き始めた…！' },
+      { id: 'enm011_dance', name: '腕乱舞', icon: '💫', powerMult: 1.8, ctWeight: 'very_heavy', intent: 'ULTIMATE', applyStatus: { kind: 'vulnerable', magnitude: 10, turns: 3 }, hits: 6, telegraph: '千腕虫の腕が無数に蠢き始めた…！', mpCost: 12 },
     ],
   },
   {
@@ -241,11 +263,13 @@ export const ENEMIES: EnemyDef[] = [
     power: 10,
     evasionPct: 1,
     baseSpeed: 76,
+    maxMp: 34,
+    weakness: 'HP維持',
     description: '【処刑型】プレイヤーの低HPを狙って威力を上げてくる。HP維持を意識したい。',
     moves: [
       { id: 'enm012_shatter', name: '破砕撃', icon: '🔨', powerMult: 1.0, ctWeight: 'standard', intent: 'ATTACK' },
       { id: 'enm012_execute', name: '処刑', icon: '💀', powerMult: 0.8, ctWeight: 'standard', intent: 'STRONG', executeBonus: { hpPctThreshold: 30, bonusMult: 2.2 } },
-      { id: 'enm012_desperate', name: '背水撃', icon: '🩸', powerMult: 1.6, ctWeight: 'heavy', intent: 'ULTIMATE', executeBonus: { hpPctThreshold: 40, bonusMult: 2.5 }, telegraph: '処刑獣がとどめを狙っている…！' },
+      { id: 'enm012_desperate', name: '背水撃', icon: '🩸', powerMult: 1.6, ctWeight: 'heavy', intent: 'ULTIMATE', executeBonus: { hpPctThreshold: 40, bonusMult: 2.5 }, telegraph: '処刑獣がとどめを狙っている…！', mpCost: 15 },
     ],
   },
   {
@@ -260,11 +284,13 @@ export const ENEMIES: EnemyDef[] = [
     power: 11,
     evasionPct: 1,
     baseSpeed: 89,
+    maxMp: 41,
+    weakness: 'CT短縮',
     description: '【氷結型】プレイヤーを凍結させてから大技を放ってくる。CT短縮で凍結の隙を減らしたい。',
     moves: [
       { id: 'enm013_fang', name: '氷結牙', icon: '🧊', powerMult: 0.8, ctWeight: 'standard', intent: 'ATTACK', applyStatus: { kind: 'frozen', magnitude: 20, turns: 2 } },
       { id: 'enm013_shatter', name: '凍砕', icon: '❄️', powerMult: 1.0, ctWeight: 'standard', intent: 'STRONG', applyStatus: { kind: 'frozen', magnitude: 15, turns: 2 } },
-      { id: 'enm013_guard', name: '完全防御', icon: '🛡️', powerMult: 0, ctWeight: 'light', intent: 'GUARD', telegraph: '氷牙狼が完全な守りに入った…！' },
+      { id: 'enm013_guard', name: '完全防御', icon: '🛡️', powerMult: 0, ctWeight: 'light', intent: 'GUARD', telegraph: '氷牙狼が完全な守りに入った…！', mpCost: 18 },
     ],
   },
   {
@@ -279,11 +305,13 @@ export const ENEMIES: EnemyDef[] = [
     power: 11,
     evasionPct: 3,
     baseSpeed: 102,
+    maxMp: 48,
+    weakness: '状態異常対策',
     description: '【感電型】感電を蓄積させ、自身は加速していく。状態異常対策が有効。',
     moves: [
       { id: 'enm014_claw', name: '雷爪', icon: '⚡', powerMult: 0.8, ctWeight: 'standard', intent: 'ATTACK', applyStatus: { kind: 'shock', magnitude: 1, turns: 3 } },
       { id: 'enm014_chain', name: '雷鎖', icon: '🔗', powerMult: 0.6, ctWeight: 'standard', intent: 'DEBUFF', applyStatus: { kind: 'paralyze', magnitude: 20, turns: 1 } },
-      { id: 'enm014_flash', name: '瞬歩', icon: '💨', powerMult: 1.3, ctWeight: 'standard', intent: 'STRONG', selfApplyStatus: { kind: 'haste', magnitude: 30, turns: 2 }, telegraph: '雷翼鳥の姿がかき消えた…！' },
+      { id: 'enm014_flash', name: '瞬歩', icon: '💨', powerMult: 1.3, ctWeight: 'standard', intent: 'STRONG', selfApplyStatus: { kind: 'haste', magnitude: 30, turns: 2 }, telegraph: '雷翼鳥の姿がかき消えた…！', mpCost: 22 },
     ],
   },
   {
@@ -298,11 +326,13 @@ export const ENEMIES: EnemyDef[] = [
     power: 12,
     evasionPct: 2,
     baseSpeed: 115,
+    maxMp: 55,
+    weakness: '柔軟な対応',
     description: '【変異型】戦闘中に姿を変え、行動パターンそのものが変化する。柔軟な対応が求められる。',
     moves: [
       { id: 'enm015_mutate', name: '変異', icon: '🧬', powerMult: 0.8, ctWeight: 'standard', intent: 'ATTACK', applyStatus: { kind: 'vulnerable', magnitude: 10, turns: 2 } },
       { id: 'enm015_adapt', name: '適応', icon: '🛡️', powerMult: 0, ctWeight: 'light', intent: 'GUARD' },
-      { id: 'enm015_mimic', name: '模倣', icon: '🌀', powerMult: 1.5, ctWeight: 'standard', intent: 'STRONG', telegraph: '変異胎の姿が揺らめいている…！' },
+      { id: 'enm015_mimic', name: '模倣', icon: '🌀', powerMult: 1.5, ctWeight: 'standard', intent: 'STRONG', telegraph: '変異胎の姿が揺らめいている…！', mpCost: 25 },
     ],
   },
   {
@@ -317,11 +347,13 @@ export const ENEMIES: EnemyDef[] = [
     power: 13,
     evasionPct: 5,
     baseSpeed: 128,
+    maxMp: 62,
+    weakness: '重量技後が隙',
     description: '【高速型】軽量技で手数を稼ぐ。プレイヤーより複数回動くこともある。重量技を撃った直後が隙になる。',
     moves: [
       { id: 'enm016_quick', name: '速撃', icon: '⚡', powerMult: 0.7, ctWeight: 'light', intent: 'ATTACK' },
       { id: 'enm016_wait', name: '待機', icon: '⏸️', powerMult: 0, ctWeight: 'very_light', intent: 'WAIT' },
-      { id: 'enm016_gale', name: '疾風連打', icon: '🌀', powerMult: 0.3, ctWeight: 'light', intent: 'STRONG', applyStatus: { kind: 'vulnerable', magnitude: 15, turns: 2 }, hits: 3, telegraph: '六脚猟犬の動きが加速していく…！' },
+      { id: 'enm016_gale', name: '疾風連打', icon: '🌀', powerMult: 0.3, ctWeight: 'light', intent: 'STRONG', applyStatus: { kind: 'vulnerable', magnitude: 15, turns: 2 }, hits: 3, telegraph: '六脚猟犬の動きが加速していく…！', mpCost: 28 },
     ],
   },
   {
@@ -336,11 +368,13 @@ export const ENEMIES: EnemyDef[] = [
     power: 13,
     evasionPct: 0,
     baseSpeed: 141,
+    maxMp: 69,
+    weakness: '防御/遅延',
     description: '【重量型】強打とチャージからの大技が主体。大技前には長い予告が入るため、防御・遅延で備えたい。',
     moves: [
       { id: 'enm017_smash', name: '強打', icon: '👊', powerMult: 1.3, ctWeight: 'heavy', intent: 'STRONG' },
       { id: 'enm017_charge', name: 'チャージ', icon: '✨', powerMult: 0, ctWeight: 'light', intent: 'CHARGE', telegraph: '巨腕ゴーレムが力を溜めている…！' },
-      { id: 'enm017_final', name: '終焉の一撃', icon: '🌋', powerMult: 2.6, ctWeight: 'very_heavy', intent: 'ULTIMATE', applyStatus: { kind: 'slow', magnitude: 25, turns: 2 }, telegraph: '巨腕ゴーレムが「終焉の一撃」の構え…!!' },
+      { id: 'enm017_final', name: '終焉の一撃', icon: '🌋', powerMult: 2.6, ctWeight: 'very_heavy', intent: 'ULTIMATE', applyStatus: { kind: 'slow', magnitude: 25, turns: 2 }, telegraph: '巨腕ゴーレムが「終焉の一撃」の構え…!!', mpCost: 31 },
     ],
   },
   {
@@ -355,11 +389,13 @@ export const ENEMIES: EnemyDef[] = [
     power: 14,
     evasionPct: 3,
     baseSpeed: 79,
+    maxMp: 76,
+    weakness: '短期決戦/浄化',
     description: '【毒型】毒を蓄積させたうえで、まとめて毒爆を放ってくる。短期決戦か毒の浄化で対策したい。',
     moves: [
       { id: 'enm018_sting', name: '毒針', icon: '🧪', powerMult: 0.6, ctWeight: 'light', intent: 'POISON', applyStatus: { kind: 'poison', magnitude: 4, turns: 4 } },
       { id: 'enm018_wait', name: '待機', icon: '⏸️', powerMult: 0, ctWeight: 'very_light', intent: 'WAIT' },
-      { id: 'enm018_burst', name: '毒爆', icon: '☠️', powerMult: 1.4, ctWeight: 'heavy', intent: 'STRONG', applyStatus: { kind: 'poison', magnitude: 8, turns: 4 }, telegraph: '毒嚢蜘蛛の毒嚢が膨れ上がる…！' },
+      { id: 'enm018_burst', name: '毒爆', icon: '☠️', powerMult: 1.4, ctWeight: 'heavy', intent: 'STRONG', applyStatus: { kind: 'poison', magnitude: 8, turns: 4 }, telegraph: '毒嚢蜘蛛の毒嚢が膨れ上がる…！', mpCost: 34 },
     ],
   },
   {
@@ -374,11 +410,13 @@ export const ENEMIES: EnemyDef[] = [
     power: 14,
     evasionPct: 1,
     baseSpeed: 92,
+    maxMp: 83,
+    weakness: '防御/高速',
     description: '【炎上型】炎上を蓄積させ、大きな炎上爆破で畳みかけてくる。防御や高速で被弾機会を減らしたい。',
     moves: [
       { id: 'enm019_fang', name: '火炎牙', icon: '🔥', powerMult: 0.8, ctWeight: 'standard', intent: 'ATTACK', applyStatus: { kind: 'burn', magnitude: 4, turns: 3 } },
       { id: 'enm019_smash', name: '強打', icon: '👊', powerMult: 1.1, ctWeight: 'heavy', intent: 'STRONG' },
-      { id: 'enm019_burst', name: '炎上爆破', icon: '💥', powerMult: 1.8, ctWeight: 'heavy', intent: 'STRONG', applyStatus: { kind: 'burn', magnitude: 7, turns: 3 }, telegraph: '灰炎竜が業火をまとい始めた…！' },
+      { id: 'enm019_burst', name: '炎上爆破', icon: '💥', powerMult: 1.8, ctWeight: 'heavy', intent: 'STRONG', applyStatus: { kind: 'burn', magnitude: 7, turns: 3 }, telegraph: '灰炎竜が業火をまとい始めた…！', mpCost: 37 },
     ],
   },
   {
@@ -393,11 +431,13 @@ export const ENEMIES: EnemyDef[] = [
     power: 15,
     evasionPct: 2,
     baseSpeed: 105,
+    maxMp: 20,
+    weakness: 'MP管理',
     description: '【CT遅延型】プレイヤーの行動順そのものを後ろへ送ってくる。MP管理で技を使い分けたい。',
     moves: [
       { id: 'enm020_strike', name: '遅延打撃', icon: '⏳', powerMult: 0.7, ctWeight: 'standard', intent: 'DELAY', delayTargetBy: 55 },
       { id: 'enm020_eat', name: '時間喰い', icon: '🕳️', powerMult: 0.5, ctWeight: 'standard', intent: 'DELAY', applyStatus: { kind: 'time_wound', magnitude: 20, turns: 3 }, delayTargetBy: 45 },
-      { id: 'enm020_howl', name: '咆哮', icon: '📣', powerMult: 0, ctWeight: 'heavy', intent: 'DEBUFF', applyStatus: { kind: 'fear', magnitude: 15, turns: 3 }, delayTargetBy: 80, telegraph: '時計蟲が咆哮の気配を溜めている…！' },
+      { id: 'enm020_howl', name: '咆哮', icon: '📣', powerMult: 0, ctWeight: 'heavy', intent: 'DEBUFF', applyStatus: { kind: 'fear', magnitude: 15, turns: 3 }, delayTargetBy: 80, telegraph: '時計蟲が咆哮の気配を溜めている…！', mpCost: 9 },
     ],
   },
   {
@@ -412,12 +452,14 @@ export const ENEMIES: EnemyDef[] = [
     power: 15,
     evasionPct: 2,
     baseSpeed: 118,
+    maxMp: 27,
+    weakness: 'チャージ/状態異常',
     counter: { chancePct: 35, powerMult: 0.7 },
     description: '【反撃型】攻撃を受けると即座に反撃してくる。チャージや状態異常での搦め手が有効。',
     moves: [
       { id: 'enm021_guard', name: '防御', icon: '🛡️', powerMult: 0, ctWeight: 'light', intent: 'GUARD' },
       { id: 'enm021_stance', name: 'カウンター姿勢', icon: '🥋', powerMult: 0, ctWeight: 'light', intent: 'COUNTER_STANCE' },
-      { id: 'enm021_thorn', name: '棘返し', icon: '🦔', powerMult: 1.2, ctWeight: 'standard', intent: 'STRONG' },
+      { id: 'enm021_thorn', name: '棘返し', icon: '🦔', powerMult: 1.2, ctWeight: 'standard', intent: 'STRONG', mpCost: 12 },
     ],
   },
   {
@@ -432,11 +474,13 @@ export const ENEMIES: EnemyDef[] = [
     power: 16,
     evasionPct: 0,
     baseSpeed: 131,
+    maxMp: 34,
+    weakness: '爆発火力',
     description: '【再生型】長期戦になるほど自分を回復させる。爆発力のある一撃で押し切りたい。',
     moves: [
       { id: 'enm022_guard', name: '防御', icon: '🛡️', powerMult: 0, ctWeight: 'light', intent: 'GUARD' },
       { id: 'enm022_shell', name: '再生殻', icon: '🌱', powerMult: 0, ctWeight: 'standard', intent: 'GUARD', selfHeal: { pct: 8 } },
-      { id: 'enm022_undying', name: '不死の構え', icon: '🌟', powerMult: 0.6, ctWeight: 'heavy', intent: 'STRONG', selfApplyStatus: { kind: 'undying', magnitude: 1, turns: 3 }, telegraph: '不死肉腫が致死をも耐える構えを見せた…！' },
+      { id: 'enm022_undying', name: '不死の構え', icon: '🌟', powerMult: 0.6, ctWeight: 'heavy', intent: 'STRONG', selfApplyStatus: { kind: 'undying', magnitude: 1, turns: 3 }, telegraph: '不死肉腫が致死をも耐える構えを見せた…！', mpCost: 15 },
     ],
   },
   {
@@ -451,11 +495,13 @@ export const ENEMIES: EnemyDef[] = [
     power: 16,
     evasionPct: 3,
     baseSpeed: 144,
+    maxMp: 41,
+    weakness: 'MP0技',
     description: '【MP破壊型】プレイヤーのMPを奪ってくる。MP0で使える技を軸に立ち回りたい。',
     moves: [
       { id: 'enm023_drain', name: 'MP吸収', icon: '🕳️', powerMult: 0.5, ctWeight: 'standard', intent: 'DEBUFF', applyStatus: { kind: 'mp_leak', magnitude: 5, turns: 3 } },
       { id: 'enm023_quick', name: '速撃', icon: '⚡', powerMult: 0.7, ctWeight: 'light', intent: 'ATTACK' },
-      { id: 'enm023_burst', name: '魔力暴発', icon: '🔮', powerMult: 1.5, ctWeight: 'heavy', intent: 'STRONG', applyStatus: { kind: 'mp_leak', magnitude: 10, turns: 3 }, telegraph: '精神喰いが魔力を吸い上げている…！' },
+      { id: 'enm023_burst', name: '魔力暴発', icon: '🔮', powerMult: 1.5, ctWeight: 'heavy', intent: 'STRONG', applyStatus: { kind: 'mp_leak', magnitude: 10, turns: 3 }, telegraph: '精神喰いが魔力を吸い上げている…！', mpCost: 18 },
     ],
   },
   {
@@ -470,11 +516,13 @@ export const ENEMIES: EnemyDef[] = [
     power: 17,
     evasionPct: 1,
     baseSpeed: 82,
+    maxMp: 48,
+    weakness: 'フェーズ前に準備',
     description: '【暴走型】HPが減るほど自分を狂化させ、速く激しくなる。フェーズが変わる前に準備したい。',
     moves: [
       { id: 'enm024_smash', name: '強打', icon: '👊', powerMult: 1.1, ctWeight: 'heavy', intent: 'STRONG' },
       { id: 'enm024_frenzy', name: '狂化', icon: '💢', powerMult: 0, ctWeight: 'light', intent: 'BUFF', selfApplyStatus: { kind: 'frenzy', magnitude: 15, turns: 3 } },
-      { id: 'enm024_selfblast', name: '自壊砲', icon: '💣', powerMult: 1.6, ctWeight: 'heavy', intent: 'ULTIMATE', selfApplyStatus: { kind: 'defense_down', magnitude: 10, turns: 2 }, telegraph: '血狂獣が自らを犠牲に力を高めている…！' },
+      { id: 'enm024_selfblast', name: '自壊砲', icon: '💣', powerMult: 1.6, ctWeight: 'heavy', intent: 'ULTIMATE', selfApplyStatus: { kind: 'defense_down', magnitude: 10, turns: 2 }, telegraph: '血狂獣が自らを犠牲に力を高めている…！', mpCost: 22 },
     ],
   },
   {
@@ -489,18 +537,20 @@ export const ENEMIES: EnemyDef[] = [
     power: 23,
     evasionPct: 2,
     baseSpeed: 95,
+    maxMp: 55,
+    weakness: '技順をずらす',
     description: '【知性型】プレイヤーの行動を観察・分析してくる。技の順番を読まれないようにしたい。',
     moves: [
       { id: 'enm025_observe', name: '観察', icon: '👁️', powerMult: 0, ctWeight: 'light', intent: 'DEBUFF', applyStatus: { kind: 'accuracy_down', magnitude: 10, turns: 2 } },
       { id: 'enm025_analyze', name: '解析', icon: '🔍', powerMult: 0.6, ctWeight: 'standard', intent: 'ATTACK', applyStatus: { kind: 'accuracy_down', magnitude: 10, turns: 2 } },
-      { id: 'enm025_mimic', name: '模倣', icon: '🌀', powerMult: 1.5, ctWeight: 'standard', intent: 'STRONG', telegraph: '演算脳塊がこちらの構えを見透かしている…！' },
+      { id: 'enm025_mimic', name: '模倣', icon: '🌀', powerMult: 1.5, ctWeight: 'standard', intent: 'STRONG', telegraph: '演算脳塊がこちらの構えを見透かしている…！', mpCost: 25 },
     ],
     phases: [
       {
         hpPctThreshold: 50,
         announceText: '演算脳塊の様子が変わった…！行動パターンが変化した！',
         moves: [
-          { id: 'enm025_p2_mimic', name: '模倣', icon: '🌀', powerMult: 1.65, ctWeight: 'standard', intent: 'STRONG', telegraph: '演算脳塊がこちらの構えを見透かしている…！' },
+          { id: 'enm025_p2_mimic', name: '模倣', icon: '🌀', powerMult: 1.65, ctWeight: 'standard', intent: 'STRONG', telegraph: '演算脳塊がこちらの構えを見透かしている…！', mpCost: 25 },
           { id: 'enm025_p2_observe', name: '観察', icon: '👁️', powerMult: 0, ctWeight: 'light', intent: 'DEBUFF', applyStatus: { kind: 'accuracy_down', magnitude: 10, turns: 2 } },
           { id: 'enm025_p2_analyze', name: '解析', icon: '🔍', powerMult: 0.66, ctWeight: 'standard', intent: 'ATTACK', applyStatus: { kind: 'accuracy_down', magnitude: 10, turns: 2 } },
         ],
@@ -519,18 +569,20 @@ export const ENEMIES: EnemyDef[] = [
     power: 24,
     evasionPct: 1,
     baseSpeed: 108,
+    maxMp: 62,
+    weakness: '反撃/防御',
     description: '【多段型】連続ヒットのたびにデバフを積み重ねてくる。反撃や防御で被弾数を減らしたい。',
     moves: [
       { id: 'enm026_combo', name: '連撃', icon: '🌀', powerMult: 0.9, ctWeight: 'standard', intent: 'ATTACK', applyStatus: { kind: 'vulnerable', magnitude: 8, turns: 2 }, hits: 3 },
       { id: 'enm026_barrage', name: '粉砕連打', icon: '🔨', powerMult: 1.1, ctWeight: 'heavy', intent: 'STRONG', applyStatus: { kind: 'defense_down', magnitude: 5, turns: 2 }, hits: 4 },
-      { id: 'enm026_dance', name: '腕乱舞', icon: '💫', powerMult: 1.8, ctWeight: 'very_heavy', intent: 'ULTIMATE', applyStatus: { kind: 'vulnerable', magnitude: 10, turns: 3 }, hits: 6, telegraph: '百手鬼の腕が無数に蠢き始めた…！' },
+      { id: 'enm026_dance', name: '腕乱舞', icon: '💫', powerMult: 1.8, ctWeight: 'very_heavy', intent: 'ULTIMATE', applyStatus: { kind: 'vulnerable', magnitude: 10, turns: 3 }, hits: 6, telegraph: '百手鬼の腕が無数に蠢き始めた…！', mpCost: 28 },
     ],
     phases: [
       {
         hpPctThreshold: 50,
         announceText: '百手鬼の様子が変わった…！行動パターンが変化した！',
         moves: [
-          { id: 'enm026_p2_dance', name: '腕乱舞', icon: '💫', powerMult: 1.98, ctWeight: 'very_heavy', intent: 'ULTIMATE', applyStatus: { kind: 'vulnerable', magnitude: 10, turns: 3 }, hits: 6, telegraph: '百手鬼の腕が無数に蠢き始めた…！' },
+          { id: 'enm026_p2_dance', name: '腕乱舞', icon: '💫', powerMult: 1.98, ctWeight: 'very_heavy', intent: 'ULTIMATE', applyStatus: { kind: 'vulnerable', magnitude: 10, turns: 3 }, hits: 6, telegraph: '百手鬼の腕が無数に蠢き始めた…！', mpCost: 28 },
           { id: 'enm026_p2_combo', name: '連撃', icon: '🌀', powerMult: 0.99, ctWeight: 'standard', intent: 'ATTACK', applyStatus: { kind: 'vulnerable', magnitude: 8, turns: 2 }, hits: 3 },
           { id: 'enm026_p2_barrage', name: '粉砕連打', icon: '🔨', powerMult: 1.21, ctWeight: 'heavy', intent: 'STRONG', applyStatus: { kind: 'defense_down', magnitude: 5, turns: 2 }, hits: 4 },
         ],
@@ -549,18 +601,20 @@ export const ENEMIES: EnemyDef[] = [
     power: 25,
     evasionPct: 1,
     baseSpeed: 121,
+    maxMp: 69,
+    weakness: 'HP維持',
     description: '【処刑型】プレイヤーの低HPを狙って威力を上げてくる。HP維持を意識したい。',
     moves: [
       { id: 'enm027_shatter', name: '破砕撃', icon: '🔨', powerMult: 1.0, ctWeight: 'standard', intent: 'ATTACK' },
       { id: 'enm027_execute', name: '処刑', icon: '💀', powerMult: 0.8, ctWeight: 'standard', intent: 'STRONG', executeBonus: { hpPctThreshold: 30, bonusMult: 2.2 } },
-      { id: 'enm027_desperate', name: '背水撃', icon: '🩸', powerMult: 1.6, ctWeight: 'heavy', intent: 'ULTIMATE', executeBonus: { hpPctThreshold: 40, bonusMult: 2.5 }, telegraph: '断頭獣がとどめを狙っている…！' },
+      { id: 'enm027_desperate', name: '背水撃', icon: '🩸', powerMult: 1.6, ctWeight: 'heavy', intent: 'ULTIMATE', executeBonus: { hpPctThreshold: 40, bonusMult: 2.5 }, telegraph: '断頭獣がとどめを狙っている…！', mpCost: 31 },
     ],
     phases: [
       {
         hpPctThreshold: 50,
         announceText: '断頭獣の様子が変わった…！行動パターンが変化した！',
         moves: [
-          { id: 'enm027_p2_desperate', name: '背水撃', icon: '🩸', powerMult: 1.76, ctWeight: 'heavy', intent: 'ULTIMATE', executeBonus: { hpPctThreshold: 40, bonusMult: 2.5 }, telegraph: '断頭獣がとどめを狙っている…！' },
+          { id: 'enm027_p2_desperate', name: '背水撃', icon: '🩸', powerMult: 1.76, ctWeight: 'heavy', intent: 'ULTIMATE', executeBonus: { hpPctThreshold: 40, bonusMult: 2.5 }, telegraph: '断頭獣がとどめを狙っている…！', mpCost: 31 },
           { id: 'enm027_p2_shatter', name: '破砕撃', icon: '🔨', powerMult: 1.1, ctWeight: 'standard', intent: 'ATTACK' },
           { id: 'enm027_p2_execute', name: '処刑', icon: '💀', powerMult: 0.88, ctWeight: 'standard', intent: 'STRONG', executeBonus: { hpPctThreshold: 30, bonusMult: 2.2 } },
         ],
@@ -579,18 +633,20 @@ export const ENEMIES: EnemyDef[] = [
     power: 25,
     evasionPct: 1,
     baseSpeed: 134,
+    maxMp: 76,
+    weakness: 'CT短縮',
     description: '【氷結型】プレイヤーを凍結させてから大技を放ってくる。CT短縮で凍結の隙を減らしたい。',
     moves: [
       { id: 'enm028_fang', name: '氷結牙', icon: '🧊', powerMult: 0.8, ctWeight: 'standard', intent: 'ATTACK', applyStatus: { kind: 'frozen', magnitude: 20, turns: 2 } },
       { id: 'enm028_shatter', name: '凍砕', icon: '❄️', powerMult: 1.0, ctWeight: 'standard', intent: 'STRONG', applyStatus: { kind: 'frozen', magnitude: 15, turns: 2 } },
-      { id: 'enm028_guard', name: '完全防御', icon: '🛡️', powerMult: 0, ctWeight: 'light', intent: 'GUARD', telegraph: '氷殻亀が完全な守りに入った…！' },
+      { id: 'enm028_guard', name: '完全防御', icon: '🛡️', powerMult: 0, ctWeight: 'light', intent: 'GUARD', telegraph: '氷殻亀が完全な守りに入った…！', mpCost: 34 },
     ],
     phases: [
       {
         hpPctThreshold: 50,
         announceText: '氷殻亀の様子が変わった…！行動パターンが変化した！',
         moves: [
-          { id: 'enm028_p2_guard', name: '完全防御', icon: '🛡️', powerMult: 0, ctWeight: 'light', intent: 'GUARD', telegraph: '氷殻亀が完全な守りに入った…！' },
+          { id: 'enm028_p2_guard', name: '完全防御', icon: '🛡️', powerMult: 0, ctWeight: 'light', intent: 'GUARD', telegraph: '氷殻亀が完全な守りに入った…！', mpCost: 34 },
           { id: 'enm028_p2_fang', name: '氷結牙', icon: '🧊', powerMult: 0.88, ctWeight: 'standard', intent: 'ATTACK', applyStatus: { kind: 'frozen', magnitude: 20, turns: 2 } },
           { id: 'enm028_p2_shatter', name: '凍砕', icon: '❄️', powerMult: 1.1, ctWeight: 'standard', intent: 'STRONG', applyStatus: { kind: 'frozen', magnitude: 15, turns: 2 } },
         ],
@@ -609,18 +665,20 @@ export const ENEMIES: EnemyDef[] = [
     power: 26,
     evasionPct: 3,
     baseSpeed: 72,
+    maxMp: 83,
+    weakness: '状態異常対策',
     description: '【感電型】感電を蓄積させ、自身は加速していく。状態異常対策が有効。',
     moves: [
       { id: 'enm029_claw', name: '雷爪', icon: '⚡', powerMult: 0.8, ctWeight: 'standard', intent: 'ATTACK', applyStatus: { kind: 'shock', magnitude: 1, turns: 3 } },
       { id: 'enm029_chain', name: '雷鎖', icon: '🔗', powerMult: 0.6, ctWeight: 'standard', intent: 'DEBUFF', applyStatus: { kind: 'paralyze', magnitude: 20, turns: 1 } },
-      { id: 'enm029_flash', name: '瞬歩', icon: '💨', powerMult: 1.3, ctWeight: 'standard', intent: 'STRONG', selfApplyStatus: { kind: 'haste', magnitude: 30, turns: 2 }, telegraph: '雷角獣の姿がかき消えた…！' },
+      { id: 'enm029_flash', name: '瞬歩', icon: '💨', powerMult: 1.3, ctWeight: 'standard', intent: 'STRONG', selfApplyStatus: { kind: 'haste', magnitude: 30, turns: 2 }, telegraph: '雷角獣の姿がかき消えた…！', mpCost: 37 },
     ],
     phases: [
       {
         hpPctThreshold: 50,
         announceText: '雷角獣の様子が変わった…！行動パターンが変化した！',
         moves: [
-          { id: 'enm029_p2_flash', name: '瞬歩', icon: '💨', powerMult: 1.43, ctWeight: 'standard', intent: 'STRONG', selfApplyStatus: { kind: 'haste', magnitude: 30, turns: 2 }, telegraph: '雷角獣の姿がかき消えた…！' },
+          { id: 'enm029_p2_flash', name: '瞬歩', icon: '💨', powerMult: 1.43, ctWeight: 'standard', intent: 'STRONG', selfApplyStatus: { kind: 'haste', magnitude: 30, turns: 2 }, telegraph: '雷角獣の姿がかき消えた…！', mpCost: 37 },
           { id: 'enm029_p2_claw', name: '雷爪', icon: '⚡', powerMult: 0.88, ctWeight: 'standard', intent: 'ATTACK', applyStatus: { kind: 'shock', magnitude: 1, turns: 3 } },
           { id: 'enm029_p2_chain', name: '雷鎖', icon: '🔗', powerMult: 0.66, ctWeight: 'standard', intent: 'DEBUFF', applyStatus: { kind: 'paralyze', magnitude: 20, turns: 1 } },
         ],
@@ -639,18 +697,20 @@ export const ENEMIES: EnemyDef[] = [
     power: 27,
     evasionPct: 2,
     baseSpeed: 85,
+    maxMp: 20,
+    weakness: '柔軟な対応',
     description: '【変異型】戦闘中に姿を変え、行動パターンそのものが変化する。柔軟な対応が求められる。',
     moves: [
       { id: 'enm030_mutate', name: '変異', icon: '🧬', powerMult: 0.8, ctWeight: 'standard', intent: 'ATTACK', applyStatus: { kind: 'vulnerable', magnitude: 10, turns: 2 } },
       { id: 'enm030_adapt', name: '適応', icon: '🛡️', powerMult: 0, ctWeight: 'light', intent: 'GUARD' },
-      { id: 'enm030_mimic', name: '模倣', icon: '🌀', powerMult: 1.5, ctWeight: 'standard', intent: 'STRONG', telegraph: '混成獣の姿が揺らめいている…！' },
+      { id: 'enm030_mimic', name: '模倣', icon: '🌀', powerMult: 1.5, ctWeight: 'standard', intent: 'STRONG', telegraph: '混成獣の姿が揺らめいている…！', mpCost: 9 },
     ],
     phases: [
       {
         hpPctThreshold: 50,
         announceText: '混成獣の様子が変わった…！行動パターンが変化した！',
         moves: [
-          { id: 'enm030_p2_mimic', name: '模倣', icon: '🌀', powerMult: 1.65, ctWeight: 'standard', intent: 'STRONG', telegraph: '混成獣の姿が揺らめいている…！' },
+          { id: 'enm030_p2_mimic', name: '模倣', icon: '🌀', powerMult: 1.65, ctWeight: 'standard', intent: 'STRONG', telegraph: '混成獣の姿が揺らめいている…！', mpCost: 9 },
           { id: 'enm030_p2_mutate', name: '変異', icon: '🧬', powerMult: 0.88, ctWeight: 'standard', intent: 'ATTACK', applyStatus: { kind: 'vulnerable', magnitude: 10, turns: 2 } },
           { id: 'enm030_p2_adapt', name: '適応', icon: '🛡️', powerMult: 0, ctWeight: 'light', intent: 'GUARD' },
         ],
@@ -669,18 +729,20 @@ export const ENEMIES: EnemyDef[] = [
     power: 28,
     evasionPct: 5,
     baseSpeed: 98,
+    maxMp: 27,
+    weakness: '重量技後が隙',
     description: '【高速型】軽量技で手数を稼ぐ。プレイヤーより複数回動くこともある。重量技を撃った直後が隙になる。',
     moves: [
       { id: 'enm031_quick', name: '速撃', icon: '⚡', powerMult: 0.7, ctWeight: 'light', intent: 'ATTACK' },
       { id: 'enm031_wait', name: '待機', icon: '⏸️', powerMult: 0, ctWeight: 'very_light', intent: 'WAIT' },
-      { id: 'enm031_gale', name: '疾風連打', icon: '🌀', powerMult: 0.3, ctWeight: 'light', intent: 'STRONG', applyStatus: { kind: 'vulnerable', magnitude: 15, turns: 2 }, hits: 3, telegraph: '瞬足キメラの動きが加速していく…！' },
+      { id: 'enm031_gale', name: '疾風連打', icon: '🌀', powerMult: 0.3, ctWeight: 'light', intent: 'STRONG', applyStatus: { kind: 'vulnerable', magnitude: 15, turns: 2 }, hits: 3, telegraph: '瞬足キメラの動きが加速していく…！', mpCost: 12 },
     ],
     phases: [
       {
         hpPctThreshold: 50,
         announceText: '瞬足キメラの様子が変わった…！行動パターンが変化した！',
         moves: [
-          { id: 'enm031_p2_gale', name: '疾風連打', icon: '🌀', powerMult: 0.33, ctWeight: 'light', intent: 'STRONG', applyStatus: { kind: 'vulnerable', magnitude: 15, turns: 2 }, hits: 3, telegraph: '瞬足キメラの動きが加速していく…！' },
+          { id: 'enm031_p2_gale', name: '疾風連打', icon: '🌀', powerMult: 0.33, ctWeight: 'light', intent: 'STRONG', applyStatus: { kind: 'vulnerable', magnitude: 15, turns: 2 }, hits: 3, telegraph: '瞬足キメラの動きが加速していく…！', mpCost: 12 },
           { id: 'enm031_p2_quick', name: '速撃', icon: '⚡', powerMult: 0.77, ctWeight: 'light', intent: 'ATTACK' },
           { id: 'enm031_p2_wait', name: '待機', icon: '⏸️', powerMult: 0, ctWeight: 'very_light', intent: 'WAIT' },
         ],
@@ -699,18 +761,20 @@ export const ENEMIES: EnemyDef[] = [
     power: 28,
     evasionPct: 0,
     baseSpeed: 111,
+    maxMp: 34,
+    weakness: '防御/遅延',
     description: '【重量型】強打とチャージからの大技が主体。大技前には長い予告が入るため、防御・遅延で備えたい。',
     moves: [
       { id: 'enm032_smash', name: '強打', icon: '👊', powerMult: 1.3, ctWeight: 'heavy', intent: 'STRONG' },
       { id: 'enm032_charge', name: 'チャージ', icon: '✨', powerMult: 0, ctWeight: 'light', intent: 'CHARGE', telegraph: '重神キメラが力を溜めている…！' },
-      { id: 'enm032_final', name: '終焉の一撃', icon: '🌋', powerMult: 2.6, ctWeight: 'very_heavy', intent: 'ULTIMATE', applyStatus: { kind: 'slow', magnitude: 25, turns: 2 }, telegraph: '重神キメラが「終焉の一撃」の構え…!!' },
+      { id: 'enm032_final', name: '終焉の一撃', icon: '🌋', powerMult: 2.6, ctWeight: 'very_heavy', intent: 'ULTIMATE', applyStatus: { kind: 'slow', magnitude: 25, turns: 2 }, telegraph: '重神キメラが「終焉の一撃」の構え…!!', mpCost: 15 },
     ],
     phases: [
       {
         hpPctThreshold: 50,
         announceText: '重神キメラの様子が変わった…！行動パターンが変化した！',
         moves: [
-          { id: 'enm032_p2_final', name: '終焉の一撃', icon: '🌋', powerMult: 2.86, ctWeight: 'very_heavy', intent: 'ULTIMATE', applyStatus: { kind: 'slow', magnitude: 25, turns: 2 }, telegraph: '重神キメラが「終焉の一撃」の構え…!!' },
+          { id: 'enm032_p2_final', name: '終焉の一撃', icon: '🌋', powerMult: 2.86, ctWeight: 'very_heavy', intent: 'ULTIMATE', applyStatus: { kind: 'slow', magnitude: 25, turns: 2 }, telegraph: '重神キメラが「終焉の一撃」の構え…!!', mpCost: 15 },
           { id: 'enm032_p2_smash', name: '強打', icon: '👊', powerMult: 1.43, ctWeight: 'heavy', intent: 'STRONG' },
           { id: 'enm032_p2_charge', name: 'チャージ', icon: '✨', powerMult: 0, ctWeight: 'light', intent: 'CHARGE', telegraph: '重神キメラが力を溜めている…！' },
         ],
@@ -729,18 +793,20 @@ export const ENEMIES: EnemyDef[] = [
     power: 29,
     evasionPct: 3,
     baseSpeed: 124,
+    maxMp: 41,
+    weakness: '短期決戦/浄化',
     description: '【毒型】毒を蓄積させたうえで、まとめて毒爆を放ってくる。短期決戦か毒の浄化で対策したい。',
     moves: [
       { id: 'enm033_sting', name: '毒針', icon: '🧪', powerMult: 0.6, ctWeight: 'light', intent: 'POISON', applyStatus: { kind: 'poison', magnitude: 4, turns: 4 } },
       { id: 'enm033_wait', name: '待機', icon: '⏸️', powerMult: 0, ctWeight: 'very_light', intent: 'WAIT' },
-      { id: 'enm033_burst', name: '毒爆', icon: '☠️', powerMult: 1.4, ctWeight: 'heavy', intent: 'STRONG', applyStatus: { kind: 'poison', magnitude: 8, turns: 4 }, telegraph: '毒王蠍の毒嚢が膨れ上がる…！' },
+      { id: 'enm033_burst', name: '毒爆', icon: '☠️', powerMult: 1.4, ctWeight: 'heavy', intent: 'STRONG', applyStatus: { kind: 'poison', magnitude: 8, turns: 4 }, telegraph: '毒王蠍の毒嚢が膨れ上がる…！', mpCost: 18 },
     ],
     phases: [
       {
         hpPctThreshold: 50,
         announceText: '毒王蠍の様子が変わった…！行動パターンが変化した！',
         moves: [
-          { id: 'enm033_p2_burst', name: '毒爆', icon: '☠️', powerMult: 1.54, ctWeight: 'heavy', intent: 'STRONG', applyStatus: { kind: 'poison', magnitude: 8, turns: 4 }, telegraph: '毒王蠍の毒嚢が膨れ上がる…！' },
+          { id: 'enm033_p2_burst', name: '毒爆', icon: '☠️', powerMult: 1.54, ctWeight: 'heavy', intent: 'STRONG', applyStatus: { kind: 'poison', magnitude: 8, turns: 4 }, telegraph: '毒王蠍の毒嚢が膨れ上がる…！', mpCost: 18 },
           { id: 'enm033_p2_sting', name: '毒針', icon: '🧪', powerMult: 0.66, ctWeight: 'light', intent: 'POISON', applyStatus: { kind: 'poison', magnitude: 4, turns: 4 } },
           { id: 'enm033_p2_wait', name: '待機', icon: '⏸️', powerMult: 0, ctWeight: 'very_light', intent: 'WAIT' },
         ],
@@ -759,18 +825,20 @@ export const ENEMIES: EnemyDef[] = [
     power: 30,
     evasionPct: 1,
     baseSpeed: 137,
+    maxMp: 48,
+    weakness: '防御/高速',
     description: '【炎上型】炎上を蓄積させ、大きな炎上爆破で畳みかけてくる。防御や高速で被弾機会を減らしたい。',
     moves: [
       { id: 'enm034_fang', name: '火炎牙', icon: '🔥', powerMult: 0.8, ctWeight: 'standard', intent: 'ATTACK', applyStatus: { kind: 'burn', magnitude: 4, turns: 3 } },
       { id: 'enm034_smash', name: '強打', icon: '👊', powerMult: 1.1, ctWeight: 'heavy', intent: 'STRONG' },
-      { id: 'enm034_burst', name: '炎上爆破', icon: '💥', powerMult: 1.8, ctWeight: 'heavy', intent: 'STRONG', applyStatus: { kind: 'burn', magnitude: 7, turns: 3 }, telegraph: '炎帝頭が業火をまとい始めた…！' },
+      { id: 'enm034_burst', name: '炎上爆破', icon: '💥', powerMult: 1.8, ctWeight: 'heavy', intent: 'STRONG', applyStatus: { kind: 'burn', magnitude: 7, turns: 3 }, telegraph: '炎帝頭が業火をまとい始めた…！', mpCost: 22 },
     ],
     phases: [
       {
         hpPctThreshold: 50,
         announceText: '炎帝頭の様子が変わった…！行動パターンが変化した！',
         moves: [
-          { id: 'enm034_p2_burst', name: '炎上爆破', icon: '💥', powerMult: 1.98, ctWeight: 'heavy', intent: 'STRONG', applyStatus: { kind: 'burn', magnitude: 7, turns: 3 }, telegraph: '炎帝頭が業火をまとい始めた…！' },
+          { id: 'enm034_p2_burst', name: '炎上爆破', icon: '💥', powerMult: 1.98, ctWeight: 'heavy', intent: 'STRONG', applyStatus: { kind: 'burn', magnitude: 7, turns: 3 }, telegraph: '炎帝頭が業火をまとい始めた…！', mpCost: 22 },
           { id: 'enm034_p2_fang', name: '火炎牙', icon: '🔥', powerMult: 0.88, ctWeight: 'standard', intent: 'ATTACK', applyStatus: { kind: 'burn', magnitude: 4, turns: 3 } },
           { id: 'enm034_p2_smash', name: '強打', icon: '👊', powerMult: 1.21, ctWeight: 'heavy', intent: 'STRONG' },
         ],
@@ -789,18 +857,20 @@ export const ENEMIES: EnemyDef[] = [
     power: 30,
     evasionPct: 2,
     baseSpeed: 75,
+    maxMp: 55,
+    weakness: 'MP管理',
     description: '【CT遅延型】プレイヤーの行動順そのものを後ろへ送ってくる。MP管理で技を使い分けたい。',
     moves: [
       { id: 'enm035_strike', name: '遅延打撃', icon: '⏳', powerMult: 0.7, ctWeight: 'standard', intent: 'DELAY', delayTargetBy: 55 },
       { id: 'enm035_eat', name: '時間喰い', icon: '🕳️', powerMult: 0.5, ctWeight: 'standard', intent: 'DELAY', applyStatus: { kind: 'time_wound', magnitude: 20, turns: 3 }, delayTargetBy: 45 },
-      { id: 'enm035_howl', name: '咆哮', icon: '📣', powerMult: 0, ctWeight: 'heavy', intent: 'DEBUFF', applyStatus: { kind: 'fear', magnitude: 15, turns: 3 }, delayTargetBy: 80, telegraph: '時王が咆哮の気配を溜めている…！' },
+      { id: 'enm035_howl', name: '咆哮', icon: '📣', powerMult: 0, ctWeight: 'heavy', intent: 'DEBUFF', applyStatus: { kind: 'fear', magnitude: 15, turns: 3 }, delayTargetBy: 80, telegraph: '時王が咆哮の気配を溜めている…！', mpCost: 25 },
     ],
     phases: [
       {
         hpPctThreshold: 50,
         announceText: '時王の様子が変わった…！行動パターンが変化した！',
         moves: [
-          { id: 'enm035_p2_howl', name: '咆哮', icon: '📣', powerMult: 0, ctWeight: 'heavy', intent: 'DEBUFF', applyStatus: { kind: 'fear', magnitude: 15, turns: 3 }, delayTargetBy: 88, telegraph: '時王が咆哮の気配を溜めている…！' },
+          { id: 'enm035_p2_howl', name: '咆哮', icon: '📣', powerMult: 0, ctWeight: 'heavy', intent: 'DEBUFF', applyStatus: { kind: 'fear', magnitude: 15, turns: 3 }, delayTargetBy: 88, telegraph: '時王が咆哮の気配を溜めている…！', mpCost: 25 },
           { id: 'enm035_p2_strike', name: '遅延打撃', icon: '⏳', powerMult: 0.77, ctWeight: 'standard', intent: 'DELAY', delayTargetBy: 61 },
           { id: 'enm035_p2_eat', name: '時間喰い', icon: '🕳️', powerMult: 0.55, ctWeight: 'standard', intent: 'DELAY', applyStatus: { kind: 'time_wound', magnitude: 20, turns: 3 }, delayTargetBy: 50 },
         ],
@@ -819,19 +889,21 @@ export const ENEMIES: EnemyDef[] = [
     power: 31,
     evasionPct: 2,
     baseSpeed: 88,
+    maxMp: 62,
+    weakness: 'チャージ/状態異常',
     counter: { chancePct: 40, powerMult: 0.7 },
     description: '【反撃型】攻撃を受けると即座に反撃してくる。チャージや状態異常での搦め手が有効。',
     moves: [
       { id: 'enm036_guard', name: '防御', icon: '🛡️', powerMult: 0, ctWeight: 'light', intent: 'GUARD' },
       { id: 'enm036_stance', name: 'カウンター姿勢', icon: '🥋', powerMult: 0, ctWeight: 'light', intent: 'COUNTER_STANCE' },
-      { id: 'enm036_thorn', name: '棘返し', icon: '🦔', powerMult: 1.2, ctWeight: 'standard', intent: 'STRONG' },
+      { id: 'enm036_thorn', name: '棘返し', icon: '🦔', powerMult: 1.2, ctWeight: 'standard', intent: 'STRONG', mpCost: 28 },
     ],
     phases: [
       {
         hpPctThreshold: 50,
         announceText: '鏡殻王の様子が変わった…！行動パターンが変化した！',
         moves: [
-          { id: 'enm036_p2_thorn', name: '棘返し', icon: '🦔', powerMult: 1.32, ctWeight: 'standard', intent: 'STRONG' },
+          { id: 'enm036_p2_thorn', name: '棘返し', icon: '🦔', powerMult: 1.32, ctWeight: 'standard', intent: 'STRONG', mpCost: 28 },
           { id: 'enm036_p2_guard', name: '防御', icon: '🛡️', powerMult: 0, ctWeight: 'light', intent: 'GUARD' },
           { id: 'enm036_p2_stance', name: 'カウンター姿勢', icon: '🥋', powerMult: 0, ctWeight: 'light', intent: 'COUNTER_STANCE' },
         ],
@@ -850,18 +922,20 @@ export const ENEMIES: EnemyDef[] = [
     power: 32,
     evasionPct: 0,
     baseSpeed: 101,
+    maxMp: 69,
+    weakness: '爆発火力',
     description: '【再生型】長期戦になるほど自分を回復させる。爆発力のある一撃で押し切りたい。',
     moves: [
       { id: 'enm037_guard', name: '防御', icon: '🛡️', powerMult: 0, ctWeight: 'light', intent: 'GUARD' },
       { id: 'enm037_shell', name: '再生殻', icon: '🌱', powerMult: 0, ctWeight: 'standard', intent: 'GUARD', selfHeal: { pct: 8 } },
-      { id: 'enm037_undying', name: '不死の構え', icon: '🌟', powerMult: 0.6, ctWeight: 'heavy', intent: 'STRONG', selfApplyStatus: { kind: 'undying', magnitude: 1, turns: 3 }, telegraph: '再生王が致死をも耐える構えを見せた…！' },
+      { id: 'enm037_undying', name: '不死の構え', icon: '🌟', powerMult: 0.6, ctWeight: 'heavy', intent: 'STRONG', selfApplyStatus: { kind: 'undying', magnitude: 1, turns: 3 }, telegraph: '再生王が致死をも耐える構えを見せた…！', mpCost: 31 },
     ],
     phases: [
       {
         hpPctThreshold: 50,
         announceText: '再生王の様子が変わった…！行動パターンが変化した！',
         moves: [
-          { id: 'enm037_p2_undying', name: '不死の構え', icon: '🌟', powerMult: 0.66, ctWeight: 'heavy', intent: 'STRONG', selfApplyStatus: { kind: 'undying', magnitude: 1, turns: 3 }, telegraph: '再生王が致死をも耐える構えを見せた…！' },
+          { id: 'enm037_p2_undying', name: '不死の構え', icon: '🌟', powerMult: 0.66, ctWeight: 'heavy', intent: 'STRONG', selfApplyStatus: { kind: 'undying', magnitude: 1, turns: 3 }, telegraph: '再生王が致死をも耐える構えを見せた…！', mpCost: 31 },
           { id: 'enm037_p2_guard', name: '防御', icon: '🛡️', powerMult: 0, ctWeight: 'light', intent: 'GUARD' },
           { id: 'enm037_p2_shell', name: '再生殻', icon: '🌱', powerMult: 0, ctWeight: 'standard', intent: 'GUARD', selfHeal: { pct: 9 } },
         ],
@@ -880,18 +954,20 @@ export const ENEMIES: EnemyDef[] = [
     power: 32,
     evasionPct: 3,
     baseSpeed: 114,
+    maxMp: 76,
+    weakness: 'MP0技',
     description: '【MP破壊型】プレイヤーのMPを奪ってくる。MP0で使える技を軸に立ち回りたい。',
     moves: [
       { id: 'enm038_drain', name: 'MP吸収', icon: '🕳️', powerMult: 0.5, ctWeight: 'standard', intent: 'DEBUFF', applyStatus: { kind: 'mp_leak', magnitude: 5, turns: 3 } },
       { id: 'enm038_quick', name: '速撃', icon: '⚡', powerMult: 0.7, ctWeight: 'light', intent: 'ATTACK' },
-      { id: 'enm038_burst', name: '魔力暴発', icon: '🔮', powerMult: 1.5, ctWeight: 'heavy', intent: 'STRONG', applyStatus: { kind: 'mp_leak', magnitude: 10, turns: 3 }, telegraph: '虚無喰いが魔力を吸い上げている…！' },
+      { id: 'enm038_burst', name: '魔力暴発', icon: '🔮', powerMult: 1.5, ctWeight: 'heavy', intent: 'STRONG', applyStatus: { kind: 'mp_leak', magnitude: 10, turns: 3 }, telegraph: '虚無喰いが魔力を吸い上げている…！', mpCost: 34 },
     ],
     phases: [
       {
         hpPctThreshold: 50,
         announceText: '虚無喰いの様子が変わった…！行動パターンが変化した！',
         moves: [
-          { id: 'enm038_p2_burst', name: '魔力暴発', icon: '🔮', powerMult: 1.65, ctWeight: 'heavy', intent: 'STRONG', applyStatus: { kind: 'mp_leak', magnitude: 10, turns: 3 }, telegraph: '虚無喰いが魔力を吸い上げている…！' },
+          { id: 'enm038_p2_burst', name: '魔力暴発', icon: '🔮', powerMult: 1.65, ctWeight: 'heavy', intent: 'STRONG', applyStatus: { kind: 'mp_leak', magnitude: 10, turns: 3 }, telegraph: '虚無喰いが魔力を吸い上げている…！', mpCost: 34 },
           { id: 'enm038_p2_drain', name: 'MP吸収', icon: '🕳️', powerMult: 0.55, ctWeight: 'standard', intent: 'DEBUFF', applyStatus: { kind: 'mp_leak', magnitude: 5, turns: 3 } },
           { id: 'enm038_p2_quick', name: '速撃', icon: '⚡', powerMult: 0.77, ctWeight: 'light', intent: 'ATTACK' },
         ],
@@ -910,18 +986,20 @@ export const ENEMIES: EnemyDef[] = [
     power: 54,
     evasionPct: 1,
     baseSpeed: 127,
+    maxMp: 83,
+    weakness: 'フェーズ前に準備',
     description: '【暴走型】HPが減るほど自分を狂化させ、速く激しくなる。フェーズが変わる前に準備したい。',
     moves: [
       { id: 'enm039_smash', name: '強打', icon: '👊', powerMult: 1.1, ctWeight: 'heavy', intent: 'STRONG' },
       { id: 'enm039_frenzy', name: '狂化', icon: '💢', powerMult: 0, ctWeight: 'light', intent: 'BUFF', selfApplyStatus: { kind: 'frenzy', magnitude: 15, turns: 3 } },
-      { id: 'enm039_selfblast', name: '自壊砲', icon: '💣', powerMult: 1.6, ctWeight: 'heavy', intent: 'ULTIMATE', selfApplyStatus: { kind: 'defense_down', magnitude: 10, turns: 2 }, telegraph: '暴君獣が自らを犠牲に力を高めている…！' },
+      { id: 'enm039_selfblast', name: '自壊砲', icon: '💣', powerMult: 1.6, ctWeight: 'heavy', intent: 'ULTIMATE', selfApplyStatus: { kind: 'defense_down', magnitude: 10, turns: 2 }, telegraph: '暴君獣が自らを犠牲に力を高めている…！', mpCost: 37 },
     ],
     phases: [
       {
         hpPctThreshold: 50,
         announceText: '暴君獣の様子が変わった…！行動パターンが変化した！',
         moves: [
-          { id: 'enm039_p2_selfblast', name: '自壊砲', icon: '💣', powerMult: 1.76, ctWeight: 'heavy', intent: 'ULTIMATE', selfApplyStatus: { kind: 'defense_down', magnitude: 10, turns: 2 }, telegraph: '暴君獣が自らを犠牲に力を高めている…！' },
+          { id: 'enm039_p2_selfblast', name: '自壊砲', icon: '💣', powerMult: 1.76, ctWeight: 'heavy', intent: 'ULTIMATE', selfApplyStatus: { kind: 'defense_down', magnitude: 10, turns: 2 }, telegraph: '暴君獣が自らを犠牲に力を高めている…！', mpCost: 37 },
           { id: 'enm039_p2_smash', name: '強打', icon: '👊', powerMult: 1.21, ctWeight: 'heavy', intent: 'STRONG' },
           { id: 'enm039_p2_frenzy', name: '狂化', icon: '💢', powerMult: 0, ctWeight: 'light', intent: 'BUFF', selfApplyStatus: { kind: 'frenzy', magnitude: 15, turns: 3 } },
         ],
@@ -930,9 +1008,9 @@ export const ENEMIES: EnemyDef[] = [
         hpPctThreshold: 35,
         announceText: '暴君獣が最後の力を振り絞っている…！！',
         moves: [
-          { id: 'enm039_p3_selfblast', name: '自壊砲', icon: '💣', powerMult: 1.89, ctWeight: 'heavy', intent: 'ULTIMATE', selfApplyStatus: { kind: 'defense_down', magnitude: 10, turns: 2 }, telegraph: '暴君獣が自らを犠牲に力を高めている…！' },
+          { id: 'enm039_p3_selfblast', name: '自壊砲', icon: '💣', powerMult: 1.89, ctWeight: 'heavy', intent: 'ULTIMATE', selfApplyStatus: { kind: 'defense_down', magnitude: 10, turns: 2 }, telegraph: '暴君獣が自らを犠牲に力を高めている…！', mpCost: 37 },
           { id: 'enm039_p3_smash', name: '強打', icon: '👊', powerMult: 1.3, ctWeight: 'heavy', intent: 'STRONG' },
-          { id: 'enm039_p3_selfblast_2', name: '自壊砲', icon: '💣', powerMult: 1.89, ctWeight: 'heavy', intent: 'ULTIMATE', selfApplyStatus: { kind: 'defense_down', magnitude: 10, turns: 2 }, telegraph: '暴君獣が自らを犠牲に力を高めている…！' },
+          { id: 'enm039_p3_selfblast_2', name: '自壊砲', icon: '💣', powerMult: 1.89, ctWeight: 'heavy', intent: 'ULTIMATE', selfApplyStatus: { kind: 'defense_down', magnitude: 10, turns: 2 }, telegraph: '暴君獣が自らを犠牲に力を高めている…！', mpCost: 37 },
           { id: 'enm039_p3_frenzy', name: '狂化', icon: '💢', powerMult: 0, ctWeight: 'light', intent: 'BUFF', selfApplyStatus: { kind: 'frenzy', magnitude: 15, turns: 3 } },
         ],
       },
@@ -950,18 +1028,20 @@ export const ENEMIES: EnemyDef[] = [
     power: 55,
     evasionPct: 2,
     baseSpeed: 140,
+    maxMp: 20,
+    weakness: '技順をずらす',
     description: '【知性型】プレイヤーの行動を観察・分析してくる。技の順番を読まれないようにしたい。',
     moves: [
       { id: 'enm040_observe', name: '観察', icon: '👁️', powerMult: 0, ctWeight: 'light', intent: 'DEBUFF', applyStatus: { kind: 'accuracy_down', magnitude: 10, turns: 2 } },
       { id: 'enm040_analyze', name: '解析', icon: '🔍', powerMult: 0.6, ctWeight: 'standard', intent: 'ATTACK', applyStatus: { kind: 'accuracy_down', magnitude: 10, turns: 2 } },
-      { id: 'enm040_mimic', name: '模倣', icon: '🌀', powerMult: 1.5, ctWeight: 'standard', intent: 'STRONG', telegraph: '全視眼がこちらの構えを見透かしている…！' },
+      { id: 'enm040_mimic', name: '模倣', icon: '🌀', powerMult: 1.5, ctWeight: 'standard', intent: 'STRONG', telegraph: '全視眼がこちらの構えを見透かしている…！', mpCost: 9 },
     ],
     phases: [
       {
         hpPctThreshold: 50,
         announceText: '全視眼の様子が変わった…！行動パターンが変化した！',
         moves: [
-          { id: 'enm040_p2_mimic', name: '模倣', icon: '🌀', powerMult: 1.65, ctWeight: 'standard', intent: 'STRONG', telegraph: '全視眼がこちらの構えを見透かしている…！' },
+          { id: 'enm040_p2_mimic', name: '模倣', icon: '🌀', powerMult: 1.65, ctWeight: 'standard', intent: 'STRONG', telegraph: '全視眼がこちらの構えを見透かしている…！', mpCost: 9 },
           { id: 'enm040_p2_observe', name: '観察', icon: '👁️', powerMult: 0, ctWeight: 'light', intent: 'DEBUFF', applyStatus: { kind: 'accuracy_down', magnitude: 10, turns: 2 } },
           { id: 'enm040_p2_analyze', name: '解析', icon: '🔍', powerMult: 0.66, ctWeight: 'standard', intent: 'ATTACK', applyStatus: { kind: 'accuracy_down', magnitude: 10, turns: 2 } },
         ],
@@ -970,9 +1050,9 @@ export const ENEMIES: EnemyDef[] = [
         hpPctThreshold: 35,
         announceText: '全視眼が最後の力を振り絞っている…！！',
         moves: [
-          { id: 'enm040_p3_mimic', name: '模倣', icon: '🌀', powerMult: 1.77, ctWeight: 'standard', intent: 'STRONG', telegraph: '全視眼がこちらの構えを見透かしている…！' },
+          { id: 'enm040_p3_mimic', name: '模倣', icon: '🌀', powerMult: 1.77, ctWeight: 'standard', intent: 'STRONG', telegraph: '全視眼がこちらの構えを見透かしている…！', mpCost: 9 },
           { id: 'enm040_p3_observe', name: '観察', icon: '👁️', powerMult: 0, ctWeight: 'light', intent: 'DEBUFF', applyStatus: { kind: 'accuracy_down', magnitude: 10, turns: 2 } },
-          { id: 'enm040_p3_mimic_2', name: '模倣', icon: '🌀', powerMult: 1.77, ctWeight: 'standard', intent: 'STRONG', telegraph: '全視眼がこちらの構えを見透かしている…！' },
+          { id: 'enm040_p3_mimic_2', name: '模倣', icon: '🌀', powerMult: 1.77, ctWeight: 'standard', intent: 'STRONG', telegraph: '全視眼がこちらの構えを見透かしている…！', mpCost: 9 },
           { id: 'enm040_p3_analyze', name: '解析', icon: '🔍', powerMult: 0.71, ctWeight: 'standard', intent: 'ATTACK', applyStatus: { kind: 'accuracy_down', magnitude: 10, turns: 2 } },
         ],
       },
@@ -990,18 +1070,20 @@ export const ENEMIES: EnemyDef[] = [
     power: 56,
     evasionPct: 1,
     baseSpeed: 78,
+    maxMp: 27,
+    weakness: '反撃/防御',
     description: '【多段型】連続ヒットのたびにデバフを積み重ねてくる。反撃や防御で被弾数を減らしたい。',
     moves: [
       { id: 'enm041_combo', name: '連撃', icon: '🌀', powerMult: 0.9, ctWeight: 'standard', intent: 'ATTACK', applyStatus: { kind: 'vulnerable', magnitude: 8, turns: 2 }, hits: 3 },
       { id: 'enm041_barrage', name: '粉砕連打', icon: '🔨', powerMult: 1.1, ctWeight: 'heavy', intent: 'STRONG', applyStatus: { kind: 'defense_down', magnitude: 5, turns: 2 }, hits: 4 },
-      { id: 'enm041_dance', name: '腕乱舞', icon: '💫', powerMult: 1.8, ctWeight: 'very_heavy', intent: 'ULTIMATE', applyStatus: { kind: 'vulnerable', magnitude: 10, turns: 3 }, hits: 6, telegraph: '千腕王の腕が無数に蠢き始めた…！' },
+      { id: 'enm041_dance', name: '腕乱舞', icon: '💫', powerMult: 1.8, ctWeight: 'very_heavy', intent: 'ULTIMATE', applyStatus: { kind: 'vulnerable', magnitude: 10, turns: 3 }, hits: 6, telegraph: '千腕王の腕が無数に蠢き始めた…！', mpCost: 12 },
     ],
     phases: [
       {
         hpPctThreshold: 50,
         announceText: '千腕王の様子が変わった…！行動パターンが変化した！',
         moves: [
-          { id: 'enm041_p2_dance', name: '腕乱舞', icon: '💫', powerMult: 1.98, ctWeight: 'very_heavy', intent: 'ULTIMATE', applyStatus: { kind: 'vulnerable', magnitude: 10, turns: 3 }, hits: 6, telegraph: '千腕王の腕が無数に蠢き始めた…！' },
+          { id: 'enm041_p2_dance', name: '腕乱舞', icon: '💫', powerMult: 1.98, ctWeight: 'very_heavy', intent: 'ULTIMATE', applyStatus: { kind: 'vulnerable', magnitude: 10, turns: 3 }, hits: 6, telegraph: '千腕王の腕が無数に蠢き始めた…！', mpCost: 12 },
           { id: 'enm041_p2_combo', name: '連撃', icon: '🌀', powerMult: 0.99, ctWeight: 'standard', intent: 'ATTACK', applyStatus: { kind: 'vulnerable', magnitude: 8, turns: 2 }, hits: 3 },
           { id: 'enm041_p2_barrage', name: '粉砕連打', icon: '🔨', powerMult: 1.21, ctWeight: 'heavy', intent: 'STRONG', applyStatus: { kind: 'defense_down', magnitude: 5, turns: 2 }, hits: 4 },
         ],
@@ -1010,9 +1092,9 @@ export const ENEMIES: EnemyDef[] = [
         hpPctThreshold: 35,
         announceText: '千腕王が最後の力を振り絞っている…！！',
         moves: [
-          { id: 'enm041_p3_dance', name: '腕乱舞', icon: '💫', powerMult: 2.12, ctWeight: 'very_heavy', intent: 'ULTIMATE', applyStatus: { kind: 'vulnerable', magnitude: 10, turns: 3 }, hits: 6, telegraph: '千腕王の腕が無数に蠢き始めた…！' },
+          { id: 'enm041_p3_dance', name: '腕乱舞', icon: '💫', powerMult: 2.12, ctWeight: 'very_heavy', intent: 'ULTIMATE', applyStatus: { kind: 'vulnerable', magnitude: 10, turns: 3 }, hits: 6, telegraph: '千腕王の腕が無数に蠢き始めた…！', mpCost: 12 },
           { id: 'enm041_p3_combo', name: '連撃', icon: '🌀', powerMult: 1.06, ctWeight: 'standard', intent: 'ATTACK', applyStatus: { kind: 'vulnerable', magnitude: 8, turns: 2 }, hits: 3 },
-          { id: 'enm041_p3_dance_2', name: '腕乱舞', icon: '💫', powerMult: 2.12, ctWeight: 'very_heavy', intent: 'ULTIMATE', applyStatus: { kind: 'vulnerable', magnitude: 10, turns: 3 }, hits: 6, telegraph: '千腕王の腕が無数に蠢き始めた…！' },
+          { id: 'enm041_p3_dance_2', name: '腕乱舞', icon: '💫', powerMult: 2.12, ctWeight: 'very_heavy', intent: 'ULTIMATE', applyStatus: { kind: 'vulnerable', magnitude: 10, turns: 3 }, hits: 6, telegraph: '千腕王の腕が無数に蠢き始めた…！', mpCost: 12 },
           { id: 'enm041_p3_barrage', name: '粉砕連打', icon: '🔨', powerMult: 1.3, ctWeight: 'heavy', intent: 'STRONG', applyStatus: { kind: 'defense_down', magnitude: 5, turns: 2 }, hits: 4 },
         ],
       },
@@ -1030,18 +1112,20 @@ export const ENEMIES: EnemyDef[] = [
     power: 58,
     evasionPct: 1,
     baseSpeed: 91,
+    maxMp: 34,
+    weakness: 'HP維持',
     description: '【処刑型】プレイヤーの低HPを狙って威力を上げてくる。HP維持を意識したい。',
     moves: [
       { id: 'enm042_shatter', name: '破砕撃', icon: '🔨', powerMult: 1.0, ctWeight: 'standard', intent: 'ATTACK' },
       { id: 'enm042_execute', name: '処刑', icon: '💀', powerMult: 0.8, ctWeight: 'standard', intent: 'STRONG', executeBonus: { hpPctThreshold: 30, bonusMult: 2.2 } },
-      { id: 'enm042_desperate', name: '背水撃', icon: '🩸', powerMult: 1.6, ctWeight: 'heavy', intent: 'ULTIMATE', executeBonus: { hpPctThreshold: 40, bonusMult: 2.5 }, telegraph: '処刑王がとどめを狙っている…！' },
+      { id: 'enm042_desperate', name: '背水撃', icon: '🩸', powerMult: 1.6, ctWeight: 'heavy', intent: 'ULTIMATE', executeBonus: { hpPctThreshold: 40, bonusMult: 2.5 }, telegraph: '処刑王がとどめを狙っている…！', mpCost: 15 },
     ],
     phases: [
       {
         hpPctThreshold: 50,
         announceText: '処刑王の様子が変わった…！行動パターンが変化した！',
         moves: [
-          { id: 'enm042_p2_desperate', name: '背水撃', icon: '🩸', powerMult: 1.76, ctWeight: 'heavy', intent: 'ULTIMATE', executeBonus: { hpPctThreshold: 40, bonusMult: 2.5 }, telegraph: '処刑王がとどめを狙っている…！' },
+          { id: 'enm042_p2_desperate', name: '背水撃', icon: '🩸', powerMult: 1.76, ctWeight: 'heavy', intent: 'ULTIMATE', executeBonus: { hpPctThreshold: 40, bonusMult: 2.5 }, telegraph: '処刑王がとどめを狙っている…！', mpCost: 15 },
           { id: 'enm042_p2_shatter', name: '破砕撃', icon: '🔨', powerMult: 1.1, ctWeight: 'standard', intent: 'ATTACK' },
           { id: 'enm042_p2_execute', name: '処刑', icon: '💀', powerMult: 0.88, ctWeight: 'standard', intent: 'STRONG', executeBonus: { hpPctThreshold: 30, bonusMult: 2.2 } },
         ],
@@ -1050,9 +1134,9 @@ export const ENEMIES: EnemyDef[] = [
         hpPctThreshold: 35,
         announceText: '処刑王が最後の力を振り絞っている…！！',
         moves: [
-          { id: 'enm042_p3_desperate', name: '背水撃', icon: '🩸', powerMult: 1.89, ctWeight: 'heavy', intent: 'ULTIMATE', executeBonus: { hpPctThreshold: 40, bonusMult: 2.5 }, telegraph: '処刑王がとどめを狙っている…！' },
+          { id: 'enm042_p3_desperate', name: '背水撃', icon: '🩸', powerMult: 1.89, ctWeight: 'heavy', intent: 'ULTIMATE', executeBonus: { hpPctThreshold: 40, bonusMult: 2.5 }, telegraph: '処刑王がとどめを狙っている…！', mpCost: 15 },
           { id: 'enm042_p3_shatter', name: '破砕撃', icon: '🔨', powerMult: 1.18, ctWeight: 'standard', intent: 'ATTACK' },
-          { id: 'enm042_p3_desperate_2', name: '背水撃', icon: '🩸', powerMult: 1.89, ctWeight: 'heavy', intent: 'ULTIMATE', executeBonus: { hpPctThreshold: 40, bonusMult: 2.5 }, telegraph: '処刑王がとどめを狙っている…！' },
+          { id: 'enm042_p3_desperate_2', name: '背水撃', icon: '🩸', powerMult: 1.89, ctWeight: 'heavy', intent: 'ULTIMATE', executeBonus: { hpPctThreshold: 40, bonusMult: 2.5 }, telegraph: '処刑王がとどめを狙っている…！', mpCost: 15 },
           { id: 'enm042_p3_execute', name: '処刑', icon: '💀', powerMult: 0.94, ctWeight: 'standard', intent: 'STRONG', executeBonus: { hpPctThreshold: 30, bonusMult: 2.2 } },
         ],
       },
@@ -1070,18 +1154,20 @@ export const ENEMIES: EnemyDef[] = [
     power: 59,
     evasionPct: 1,
     baseSpeed: 104,
+    maxMp: 41,
+    weakness: 'CT短縮',
     description: '【氷結型】プレイヤーを凍結させてから大技を放ってくる。CT短縮で凍結の隙を減らしたい。',
     moves: [
       { id: 'enm043_fang', name: '氷結牙', icon: '🧊', powerMult: 0.8, ctWeight: 'standard', intent: 'ATTACK', applyStatus: { kind: 'frozen', magnitude: 20, turns: 2 } },
       { id: 'enm043_shatter', name: '凍砕', icon: '❄️', powerMult: 1.0, ctWeight: 'standard', intent: 'STRONG', applyStatus: { kind: 'frozen', magnitude: 15, turns: 2 } },
-      { id: 'enm043_guard', name: '完全防御', icon: '🛡️', powerMult: 0, ctWeight: 'light', intent: 'GUARD', telegraph: '氷獄獣が完全な守りに入った…！' },
+      { id: 'enm043_guard', name: '完全防御', icon: '🛡️', powerMult: 0, ctWeight: 'light', intent: 'GUARD', telegraph: '氷獄獣が完全な守りに入った…！', mpCost: 18 },
     ],
     phases: [
       {
         hpPctThreshold: 50,
         announceText: '氷獄獣の様子が変わった…！行動パターンが変化した！',
         moves: [
-          { id: 'enm043_p2_guard', name: '完全防御', icon: '🛡️', powerMult: 0, ctWeight: 'light', intent: 'GUARD', telegraph: '氷獄獣が完全な守りに入った…！' },
+          { id: 'enm043_p2_guard', name: '完全防御', icon: '🛡️', powerMult: 0, ctWeight: 'light', intent: 'GUARD', telegraph: '氷獄獣が完全な守りに入った…！', mpCost: 18 },
           { id: 'enm043_p2_fang', name: '氷結牙', icon: '🧊', powerMult: 0.88, ctWeight: 'standard', intent: 'ATTACK', applyStatus: { kind: 'frozen', magnitude: 20, turns: 2 } },
           { id: 'enm043_p2_shatter', name: '凍砕', icon: '❄️', powerMult: 1.1, ctWeight: 'standard', intent: 'STRONG', applyStatus: { kind: 'frozen', magnitude: 15, turns: 2 } },
         ],
@@ -1090,9 +1176,9 @@ export const ENEMIES: EnemyDef[] = [
         hpPctThreshold: 35,
         announceText: '氷獄獣が最後の力を振り絞っている…！！',
         moves: [
-          { id: 'enm043_p3_guard', name: '完全防御', icon: '🛡️', powerMult: 0, ctWeight: 'light', intent: 'GUARD', telegraph: '氷獄獣が完全な守りに入った…！' },
+          { id: 'enm043_p3_guard', name: '完全防御', icon: '🛡️', powerMult: 0, ctWeight: 'light', intent: 'GUARD', telegraph: '氷獄獣が完全な守りに入った…！', mpCost: 18 },
           { id: 'enm043_p3_fang', name: '氷結牙', icon: '🧊', powerMult: 0.94, ctWeight: 'standard', intent: 'ATTACK', applyStatus: { kind: 'frozen', magnitude: 20, turns: 2 } },
-          { id: 'enm043_p3_guard_2', name: '完全防御', icon: '🛡️', powerMult: 0, ctWeight: 'light', intent: 'GUARD', telegraph: '氷獄獣が完全な守りに入った…！' },
+          { id: 'enm043_p3_guard_2', name: '完全防御', icon: '🛡️', powerMult: 0, ctWeight: 'light', intent: 'GUARD', telegraph: '氷獄獣が完全な守りに入った…！', mpCost: 18 },
           { id: 'enm043_p3_shatter', name: '凍砕', icon: '❄️', powerMult: 1.18, ctWeight: 'standard', intent: 'STRONG', applyStatus: { kind: 'frozen', magnitude: 15, turns: 2 } },
         ],
       },
@@ -1110,18 +1196,20 @@ export const ENEMIES: EnemyDef[] = [
     power: 60,
     evasionPct: 3,
     baseSpeed: 117,
+    maxMp: 48,
+    weakness: '状態異常対策',
     description: '【感電型】感電を蓄積させ、自身は加速していく。状態異常対策が有効。',
     moves: [
       { id: 'enm044_claw', name: '雷爪', icon: '⚡', powerMult: 0.8, ctWeight: 'standard', intent: 'ATTACK', applyStatus: { kind: 'shock', magnitude: 1, turns: 3 } },
       { id: 'enm044_chain', name: '雷鎖', icon: '🔗', powerMult: 0.6, ctWeight: 'standard', intent: 'DEBUFF', applyStatus: { kind: 'paralyze', magnitude: 20, turns: 1 } },
-      { id: 'enm044_flash', name: '瞬歩', icon: '💨', powerMult: 1.3, ctWeight: 'standard', intent: 'STRONG', selfApplyStatus: { kind: 'haste', magnitude: 30, turns: 2 }, telegraph: '雷帝鳥の姿がかき消えた…！' },
+      { id: 'enm044_flash', name: '瞬歩', icon: '💨', powerMult: 1.3, ctWeight: 'standard', intent: 'STRONG', selfApplyStatus: { kind: 'haste', magnitude: 30, turns: 2 }, telegraph: '雷帝鳥の姿がかき消えた…！', mpCost: 22 },
     ],
     phases: [
       {
         hpPctThreshold: 50,
         announceText: '雷帝鳥の様子が変わった…！行動パターンが変化した！',
         moves: [
-          { id: 'enm044_p2_flash', name: '瞬歩', icon: '💨', powerMult: 1.43, ctWeight: 'standard', intent: 'STRONG', selfApplyStatus: { kind: 'haste', magnitude: 30, turns: 2 }, telegraph: '雷帝鳥の姿がかき消えた…！' },
+          { id: 'enm044_p2_flash', name: '瞬歩', icon: '💨', powerMult: 1.43, ctWeight: 'standard', intent: 'STRONG', selfApplyStatus: { kind: 'haste', magnitude: 30, turns: 2 }, telegraph: '雷帝鳥の姿がかき消えた…！', mpCost: 22 },
           { id: 'enm044_p2_claw', name: '雷爪', icon: '⚡', powerMult: 0.88, ctWeight: 'standard', intent: 'ATTACK', applyStatus: { kind: 'shock', magnitude: 1, turns: 3 } },
           { id: 'enm044_p2_chain', name: '雷鎖', icon: '🔗', powerMult: 0.66, ctWeight: 'standard', intent: 'DEBUFF', applyStatus: { kind: 'paralyze', magnitude: 20, turns: 1 } },
         ],
@@ -1130,9 +1218,9 @@ export const ENEMIES: EnemyDef[] = [
         hpPctThreshold: 35,
         announceText: '雷帝鳥が最後の力を振り絞っている…！！',
         moves: [
-          { id: 'enm044_p3_flash', name: '瞬歩', icon: '💨', powerMult: 1.53, ctWeight: 'standard', intent: 'STRONG', selfApplyStatus: { kind: 'haste', magnitude: 30, turns: 2 }, telegraph: '雷帝鳥の姿がかき消えた…！' },
+          { id: 'enm044_p3_flash', name: '瞬歩', icon: '💨', powerMult: 1.53, ctWeight: 'standard', intent: 'STRONG', selfApplyStatus: { kind: 'haste', magnitude: 30, turns: 2 }, telegraph: '雷帝鳥の姿がかき消えた…！', mpCost: 22 },
           { id: 'enm044_p3_claw', name: '雷爪', icon: '⚡', powerMult: 0.94, ctWeight: 'standard', intent: 'ATTACK', applyStatus: { kind: 'shock', magnitude: 1, turns: 3 } },
-          { id: 'enm044_p3_flash_2', name: '瞬歩', icon: '💨', powerMult: 1.53, ctWeight: 'standard', intent: 'STRONG', selfApplyStatus: { kind: 'haste', magnitude: 30, turns: 2 }, telegraph: '雷帝鳥の姿がかき消えた…！' },
+          { id: 'enm044_p3_flash_2', name: '瞬歩', icon: '💨', powerMult: 1.53, ctWeight: 'standard', intent: 'STRONG', selfApplyStatus: { kind: 'haste', magnitude: 30, turns: 2 }, telegraph: '雷帝鳥の姿がかき消えた…！', mpCost: 22 },
           { id: 'enm044_p3_chain', name: '雷鎖', icon: '🔗', powerMult: 0.71, ctWeight: 'standard', intent: 'DEBUFF', applyStatus: { kind: 'paralyze', magnitude: 20, turns: 1 } },
         ],
       },
@@ -1150,18 +1238,20 @@ export const ENEMIES: EnemyDef[] = [
     power: 61,
     evasionPct: 2,
     baseSpeed: 130,
+    maxMp: 55,
+    weakness: '柔軟な対応',
     description: '【変異型】戦闘中に姿を変え、行動パターンそのものが変化する。柔軟な対応が求められる。',
     moves: [
       { id: 'enm045_mutate', name: '変異', icon: '🧬', powerMult: 0.8, ctWeight: 'standard', intent: 'ATTACK', applyStatus: { kind: 'vulnerable', magnitude: 10, turns: 2 } },
       { id: 'enm045_adapt', name: '適応', icon: '🛡️', powerMult: 0, ctWeight: 'light', intent: 'GUARD' },
-      { id: 'enm045_mimic', name: '模倣', icon: '🌀', powerMult: 1.5, ctWeight: 'standard', intent: 'STRONG', telegraph: '原初キメラの姿が揺らめいている…！' },
+      { id: 'enm045_mimic', name: '模倣', icon: '🌀', powerMult: 1.5, ctWeight: 'standard', intent: 'STRONG', telegraph: '原初キメラの姿が揺らめいている…！', mpCost: 25 },
     ],
     phases: [
       {
         hpPctThreshold: 50,
         announceText: '原初キメラの様子が変わった…！行動パターンが変化した！',
         moves: [
-          { id: 'enm045_p2_mimic', name: '模倣', icon: '🌀', powerMult: 1.65, ctWeight: 'standard', intent: 'STRONG', telegraph: '原初キメラの姿が揺らめいている…！' },
+          { id: 'enm045_p2_mimic', name: '模倣', icon: '🌀', powerMult: 1.65, ctWeight: 'standard', intent: 'STRONG', telegraph: '原初キメラの姿が揺らめいている…！', mpCost: 25 },
           { id: 'enm045_p2_mutate', name: '変異', icon: '🧬', powerMult: 0.88, ctWeight: 'standard', intent: 'ATTACK', applyStatus: { kind: 'vulnerable', magnitude: 10, turns: 2 } },
           { id: 'enm045_p2_adapt', name: '適応', icon: '🛡️', powerMult: 0, ctWeight: 'light', intent: 'GUARD' },
         ],
@@ -1170,9 +1260,9 @@ export const ENEMIES: EnemyDef[] = [
         hpPctThreshold: 35,
         announceText: '原初キメラが最後の力を振り絞っている…！！',
         moves: [
-          { id: 'enm045_p3_mimic', name: '模倣', icon: '🌀', powerMult: 1.77, ctWeight: 'standard', intent: 'STRONG', telegraph: '原初キメラの姿が揺らめいている…！' },
+          { id: 'enm045_p3_mimic', name: '模倣', icon: '🌀', powerMult: 1.77, ctWeight: 'standard', intent: 'STRONG', telegraph: '原初キメラの姿が揺らめいている…！', mpCost: 25 },
           { id: 'enm045_p3_mutate', name: '変異', icon: '🧬', powerMult: 0.94, ctWeight: 'standard', intent: 'ATTACK', applyStatus: { kind: 'vulnerable', magnitude: 10, turns: 2 } },
-          { id: 'enm045_p3_mimic_2', name: '模倣', icon: '🌀', powerMult: 1.77, ctWeight: 'standard', intent: 'STRONG', telegraph: '原初キメラの姿が揺らめいている…！' },
+          { id: 'enm045_p3_mimic_2', name: '模倣', icon: '🌀', powerMult: 1.77, ctWeight: 'standard', intent: 'STRONG', telegraph: '原初キメラの姿が揺らめいている…！', mpCost: 25 },
           { id: 'enm045_p3_adapt', name: '適応', icon: '🛡️', powerMult: 0, ctWeight: 'light', intent: 'GUARD' },
         ],
       },

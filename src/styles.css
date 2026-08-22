@@ -234,6 +234,9 @@ button {
   display: flex;
   flex-direction: column;
   gap: 8px;
+  /* 戦闘画面は必ず1画面に収める。余った高さはVS盤面(.stage)が吸う。 */
+  flex: 1;
+  min-height: 0;
 }
 .battle-header {
   display: flex;
@@ -384,11 +387,14 @@ button {
   position: relative;
   display: flex;
   flex-direction: column;
+  justify-content: center;
   gap: 6px;
   padding: 10px;
   background: var(--color-panel);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
+  /* 画面の余りをここが吸うので、小さい端末では縮み、大きい端末では伸びる。 */
+  flex: 1;
   min-height: 190px;
 }
 .stage__combatants {
@@ -744,36 +750,230 @@ button {
   gap: 2px;
 }
 
-.end-overlay {
-  position: absolute;
+/* ============================================================
+   決着の演出(BattleEndOverlay)。戦闘画面の上に全画面でかぶせる。
+   勝利は光を最大限に、敗北は逆に静かに沈める。
+   ============================================================ */
+.bend {
+  position: fixed;
   inset: 0;
-  z-index: 25;
+  z-index: 60;
   display: flex;
-  flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 10px;
-  background: rgba(6, 3, 12, 0.82);
-  border-radius: var(--radius-md);
+  padding: 20px;
+  overflow: hidden;
   border: none;
   cursor: pointer;
   color: var(--color-text);
+  background: radial-gradient(120% 90% at 50% 45%, rgba(20, 10, 40, 0.86), rgba(4, 2, 10, 0.96));
+  --bend-c: #fbbf24;
+  --bend-c2: #fde68a;
 }
-.end-overlay__text {
-  font-size: 1.9rem;
+.bend--lost {
+  background: radial-gradient(120% 90% at 50% 45%, rgba(50, 10, 14, 0.86), rgba(6, 2, 4, 0.97));
+  --bend-c: #f87171;
+  --bend-c2: #fca5a5;
+}
+
+/* 1. 決着の瞬間の白フラッシュ */
+.bend__flash {
+  position: absolute;
+  inset: 0;
+  background: var(--bend-c2);
+  opacity: 0;
+  animation: bendFlash 620ms ease-out forwards;
+}
+.bend--lost .bend__flash { animation-duration: 900ms; }
+@keyframes bendFlash {
+  0% { opacity: 0.85; }
+  100% { opacity: 0; }
+}
+
+/* 2. 回転する光条 */
+.bend__rays {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0;
+  height: 0;
+  animation: bendSpin 26s linear infinite;
+}
+.bend__ray {
+  position: absolute;
+  top: -60vmax;
+  left: -7px;
+  width: 14px;
+  height: 60vmax;
+  transform-origin: 50% 100%;
+  background: linear-gradient(to top, transparent, var(--bend-c));
+  opacity: 0.16;
+  animation: bendRay 900ms ease-out backwards;
+}
+@keyframes bendSpin { to { transform: rotate(360deg); } }
+@keyframes bendRay {
+  0% { opacity: 0; transform-origin: 50% 100%; }
+  60% { opacity: 0.3; }
+  100% { opacity: 0.16; }
+}
+
+/* 3. 三重のショックウェーブ */
+.bend__rings {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+}
+.bend__ring {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 90px;
+  height: 90px;
+  margin: -45px 0 0 -45px;
+  border: 3px solid var(--bend-c);
+  border-radius: 50%;
+  opacity: 0;
+  animation: bendRing 1100ms cubic-bezier(0.15, 0.7, 0.3, 1) forwards;
+}
+.bend__ring--2 { animation-delay: 180ms; border-width: 2px; }
+.bend__ring--3 { animation-delay: 380ms; border-width: 1px; }
+@keyframes bendRing {
+  0% { opacity: 0.9; transform: scale(0.3); }
+  100% { opacity: 0; transform: scale(7); }
+}
+
+/* 4. 外へ飛ぶ粒子 */
+.bend__sparks {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+}
+.bend__spark {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 7px;
+  height: 7px;
+  margin: -3.5px 0 0 -3.5px;
+  background: var(--bend-c2);
+  border-radius: 50%;
+  box-shadow: 0 0 10px var(--bend-c);
+  opacity: 0;
+  animation: bendSpark 1200ms cubic-bezier(0.1, 0.75, 0.3, 1) forwards;
+}
+@keyframes bendSpark {
+  0% { opacity: 1; transform: rotate(var(--a)) translateX(0) scale(1.1); }
+  100% { opacity: 0; transform: rotate(var(--a)) translateX(var(--d)) scale(0.3); }
+}
+
+.bend__body {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  text-align: center;
+}
+
+/* 5. VICTORY を一文字ずつ落とす */
+.bend__word {
+  display: flex;
+  gap: 2px;
+}
+.bend__letter {
+  display: inline-block;
+  font-size: 2.5rem;
   font-weight: 900;
+  letter-spacing: 0.04em;
+  color: var(--bend-c);
+  text-shadow: 0 0 26px var(--bend-c), 0 3px 0 rgba(0, 0, 0, 0.45);
+  animation: bendLetter 520ms cubic-bezier(0.2, 1.5, 0.35, 1) backwards;
 }
-.end-overlay--won .end-overlay__text {
-  color: var(--color-yellow);
-  text-shadow: 0 0 20px rgba(251, 191, 36, 0.7);
+.bend__letter--lost {
+  font-size: 1.9rem;
+  letter-spacing: 0.14em;
+  animation: bendLetterLost 1100ms ease-out backwards;
+  animation-delay: 260ms;
 }
-.end-overlay--lost .end-overlay__text {
-  color: var(--color-enemy);
-  text-shadow: 0 0 20px rgba(248, 113, 113, 0.7);
+@keyframes bendLetter {
+  0% { opacity: 0; transform: translateY(-46px) scale(1.7) rotate(-8deg); }
+  100% { opacity: 1; transform: none; }
 }
-.end-overlay__hint {
-  font-size: 0.75rem;
+@keyframes bendLetterLost {
+  0% { opacity: 0; transform: translateY(-14px); letter-spacing: 0.5em; filter: blur(6px); }
+  100% { opacity: 1; transform: none; }
+}
+
+/* 6. 戦績は遅れて入る */
+.bend__sub {
+  font-size: 0.78rem;
+  color: #e2e8f0;
+  animation: bendUp 460ms ease-out backwards;
+  animation-delay: 620ms;
+}
+.bend__enemy { font-size: 1.1rem; }
+.bend__stats {
+  display: flex;
+  gap: 8px;
+  animation: bendUp 460ms ease-out backwards;
+  animation-delay: 780ms;
+}
+.bend__stat {
+  min-width: 84px;
+  padding: 7px 10px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: var(--radius-md);
+}
+.bend__stat-label {
+  display: block;
+  font-size: 0.52rem;
+  color: #94a3b8;
+  letter-spacing: 0.08em;
+}
+.bend__stat strong {
+  font-size: 1.05rem;
+  color: var(--bend-c2);
+}
+.bend__stat small {
+  font-size: 0.5rem;
+  font-weight: 400;
+  color: #94a3b8;
+}
+@keyframes bendUp {
+  0% { opacity: 0; transform: translateY(12px); }
+  100% { opacity: 1; transform: none; }
+}
+
+.bend__hint {
+  margin-top: 4px;
+  font-size: 0.7rem;
   color: var(--color-text-muted);
+  opacity: 0;
+  transition: opacity 300ms ease;
+}
+.bend__hint--on {
+  opacity: 1;
+  animation: bendBlink 1.8s ease-in-out infinite;
+}
+@keyframes bendBlink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.45; }
+}
+
+/* 動きを減らす設定では、光り物を全部止めて最終状態だけ見せる */
+.bend--still .bend__flash { animation: none; opacity: 0; }
+.bend--still .bend__letter,
+.bend--still .bend__sub,
+.bend--still .bend__stats { animation: none; }
+.bend--still .bend__hint--on { animation: none; }
+@media (prefers-reduced-motion: reduce) {
+  .bend__flash, .bend__rays, .bend__ray, .bend__ring, .bend__spark,
+  .bend__letter, .bend__sub, .bend__stats, .bend__hint--on {
+    animation: none !important;
+  }
+  .bend__flash { opacity: 0; }
 }
 
 /* ============================================================
@@ -1060,7 +1260,10 @@ button {
   position: fixed;
   inset: 0;
   z-index: 40;
-  background: rgba(6, 3, 12, 0.88);
+  overflow: hidden;
+  background:
+    radial-gradient(90% 60% at 50% 38%, rgba(56, 189, 248, 0.12), transparent 70%),
+    rgba(6, 3, 12, 0.9);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -1068,16 +1271,50 @@ button {
   gap: 16px;
   padding: 20px;
 }
+/* 背後で回り続ける光条。カードの後ろで薄く動くだけ。 */
+.reward-screen__rays {
+  position: absolute;
+  top: 38%;
+  left: 50%;
+  width: 0;
+  height: 0;
+  animation: rewardSpin 34s linear infinite;
+}
+.reward-screen__rays span {
+  position: absolute;
+  top: -60vmax;
+  left: -9px;
+  width: 18px;
+  height: 60vmax;
+  transform-origin: 50% 100%;
+  background: linear-gradient(to top, transparent, rgba(125, 211, 252, 0.5));
+  opacity: 0.1;
+}
+@keyframes rewardSpin { to { transform: rotate(360deg); } }
+
+.reward-screen__head {
+  position: relative;
+  z-index: 1;
+  text-align: center;
+  animation: rewardHead 520ms cubic-bezier(0.2, 1.3, 0.35, 1) backwards;
+}
+@keyframes rewardHead {
+  0% { opacity: 0; transform: translateY(-14px) scale(0.9); }
+  100% { opacity: 1; transform: none; }
+}
 .reward-screen__title {
   font-size: 1.4rem;
   font-weight: 900;
+  text-shadow: 0 0 18px rgba(125, 211, 252, 0.5);
 }
 .reward-screen__sub {
   font-size: 0.75rem;
   color: var(--color-text-muted);
-  margin-top: -12px;
+  margin-top: 2px;
 }
 .reward-grid {
+  position: relative;
+  z-index: 1;
   display: flex;
   flex-direction: column;
   gap: 10px;
@@ -1085,6 +1322,8 @@ button {
   max-width: 320px;
 }
 .reward-card {
+  position: relative;
+  overflow: hidden;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -1096,9 +1335,63 @@ button {
   color: var(--color-text);
   cursor: pointer;
   box-shadow: 0 0 16px rgba(56, 189, 248, 0.3);
+  transition: transform 120ms ease, box-shadow 200ms ease;
+  /* 1枚ずつ遅れて滑り込む(遅延はコンポーネント側で指定) */
+  animation: rewardCard 480ms cubic-bezier(0.2, 1.25, 0.35, 1) backwards;
+}
+@keyframes rewardCard {
+  0% { opacity: 0; transform: translateY(26px) scale(0.9); }
+  100% { opacity: 1; transform: none; }
 }
 .reward-card:active {
   transform: scale(0.97);
+}
+
+/* カード左上のランク(S/A/B/C) */
+.reward-card__rank {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 26px;
+  padding: 2px 0 4px;
+  font-size: 0.62rem;
+  font-weight: 900;
+  text-align: center;
+  color: #0f172a;
+  background: var(--color-cyan);
+  border-bottom-right-radius: 8px;
+}
+.reward-card--epic .reward-card__rank { background: #a855f7; color: #faf5ff; }
+.reward-card--legendary .reward-card__rank { background: #f59e0b; }
+
+/* 表面を一度だけ流れる光。当たりのカードは繰り返す。 */
+.reward-card__sheen {
+  position: absolute;
+  top: 0;
+  left: -60%;
+  width: 40%;
+  height: 100%;
+  background: linear-gradient(100deg, transparent, rgba(255, 255, 255, 0.16), transparent);
+  transform: skewX(-18deg);
+  animation: rewardSheen 1400ms ease-out 700ms 1;
+}
+@keyframes rewardSheen {
+  0% { left: -60%; }
+  100% { left: 130%; }
+}
+
+/* いちばんレア度の高い候補だけ、脈打つ縁で強調する */
+.reward-card--top {
+  animation:
+    rewardCard 480ms cubic-bezier(0.2, 1.25, 0.35, 1) backwards,
+    rewardPulse 2.2s ease-in-out 700ms infinite;
+}
+.reward-card--top .reward-card__sheen {
+  animation: rewardSheen 2200ms ease-out 700ms infinite;
+}
+@keyframes rewardPulse {
+  0%, 100% { box-shadow: 0 0 16px rgba(245, 158, 11, 0.35); }
+  50% { box-shadow: 0 0 30px rgba(245, 158, 11, 0.8); }
 }
 .reward-card__icon {
   font-size: 2rem;
@@ -1274,8 +1567,16 @@ button {
 .rarity-badge--rare { background: #1d4ed8; color: #dbeafe; }
 .rarity-badge--epic { background: #7e22ce; color: #f3e8ff; }
 .rarity-badge--legendary { background: #b45309; color: #fef3c7; }
-.reward-card--epic { border-color: #a855f7; }
-.reward-card--legendary { border-color: #f59e0b; }
+.reward-card--epic { border-color: #a855f7; box-shadow: 0 0 18px rgba(168, 85, 247, 0.35); }
+.reward-card--legendary { border-color: #f59e0b; box-shadow: 0 0 20px rgba(245, 158, 11, 0.4); }
+
+@media (prefers-reduced-motion: reduce) {
+  .reward-screen__rays, .reward-screen__head, .reward-card,
+  .reward-card--top, .reward-card__sheen {
+    animation: none !important;
+  }
+  .reward-card__sheen { display: none; }
+}
 
 /* ============================================================
    Phase 2: 部位取得 → コマンド解放の連続演出
@@ -1456,98 +1757,203 @@ button {
 }
 
 /* ============================================================
-   Phase 5: 任意の部位融合(エリート撃破後のみ)
+   部位融合(レシピ制)。素材2つ → 融合部位 の縦フローで見せる。
+   レア度で枠と発光の色が変わり、Legendaryがもっとも強い光になる。
    ============================================================ */
 .fusion-screen {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  justify-content: center;
+  gap: 10px;
+  flex: 1;
+  --fus: #a78bfa;
+  --fus-soft: rgba(167, 139, 250, 0.18);
 }
+.fusion-screen--rare { --fus: #38bdf8; --fus-soft: rgba(56, 189, 248, 0.18); }
+.fusion-screen--epic { --fus: #c084fc; --fus-soft: rgba(192, 132, 252, 0.2); }
+.fusion-screen--legendary { --fus: #fbbf24; --fus-soft: rgba(251, 191, 36, 0.22); }
+
+.fusion-screen__head { text-align: center; }
 .fusion-screen__title {
-  font-size: 1rem;
+  font-size: 1.02rem;
   font-weight: 900;
-  color: #a78bfa;
+  color: var(--fus);
+  text-shadow: 0 0 14px var(--fus-soft);
 }
 .fusion-screen__sub {
+  margin-top: 2px;
   font-size: 0.66rem;
   color: #94a3b8;
   line-height: 1.5;
 }
-.fusion-picker {
+
+/* 同時に複数のレシピが成立したときだけ出る切り替えタブ */
+.fusion-tabs {
   display: flex;
-  flex-wrap: wrap;
   gap: 6px;
-  max-height: 168px;
-  overflow-y: auto;
-  padding: 2px;
+  overflow-x: auto;
+  padding-bottom: 2px;
+  scrollbar-width: none;
 }
-.fusion-part {
+.fusion-tabs::-webkit-scrollbar { display: none; }
+.fusion-tab {
   display: flex;
   align-items: center;
   gap: 4px;
-  padding: 6px 8px;
-  font-size: 0.66rem;
+  flex: 0 0 auto;
+  padding: 5px 9px;
+  font-size: 0.63rem;
   color: var(--color-text);
   background: var(--color-panel-2);
   border: 1px solid var(--color-border);
-  border-radius: 8px;
+  border-radius: 999px;
   cursor: pointer;
 }
-.fusion-part--picked {
-  border-color: #a78bfa;
-  background: rgba(167, 139, 250, 0.18);
+.fusion-tab__icon { font-size: 0.85rem; }
+.fusion-tab--rare.fusion-tab--on { border-color: #38bdf8; background: rgba(56, 189, 248, 0.18); }
+.fusion-tab--epic.fusion-tab--on { border-color: #c084fc; background: rgba(192, 132, 252, 0.2); }
+.fusion-tab--legendary.fusion-tab--on { border-color: #fbbf24; background: rgba(251, 191, 36, 0.2); }
+
+.fusion-flow {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
 }
-.fusion-part__icon { font-size: 1rem; }
-.fusion-part__equipped {
+.fusion-flow__materials {
+  display: flex;
+  align-items: stretch;
+  gap: 22px;
+}
+.fusion-mat {
+  position: relative;
+  width: 104px;
+  padding: 8px 6px;
+  text-align: center;
+  background: var(--color-panel-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+.fusion-mat--rare { border-color: rgba(56, 189, 248, 0.5); }
+.fusion-mat--epic { border-color: rgba(192, 132, 252, 0.5); }
+.fusion-mat--legendary { border-color: rgba(251, 191, 36, 0.55); }
+.fusion-mat__plus {
+  position: absolute;
+  top: 50%;
+  left: -22px;
+  width: 22px;
+  transform: translateY(-50%);
+  text-align: center;
+  font-size: 0.85rem;
+  font-weight: 900;
+  color: var(--fus);
+}
+.fusion-mat__icon { font-size: 1.5rem; line-height: 1.2; }
+.fusion-mat__name {
+  font-size: 0.63rem;
+  font-weight: 700;
+  line-height: 1.3;
+}
+.fusion-mat__type {
+  font-size: 0.52rem;
+  color: #94a3b8;
+}
+.fusion-mat__equipped {
+  display: inline-block;
+  margin-top: 3px;
   padding: 0 4px;
-  font-size: 0.5rem;
+  font-size: 0.48rem;
   color: #0f172a;
   background: #38bdf8;
   border-radius: 3px;
 }
-.fusion-result {
-  min-height: 90px;
-  padding: 8px 10px;
-  background: var(--color-panel);
-  border: 1px solid var(--color-border);
+.fusion-flow__arrow {
+  font-size: 0.9rem;
+  color: var(--fus);
+  animation: fusionArrow 1.4s ease-in-out infinite;
+}
+@keyframes fusionArrow {
+  0%, 100% { transform: translateY(-2px); opacity: 0.55; }
+  50% { transform: translateY(2px); opacity: 1; }
+}
+
+.fusion-out {
+  position: relative;
+  width: 100%;
+  padding: 12px 12px 10px;
+  text-align: center;
+  background:
+    radial-gradient(120% 80% at 50% 0%, var(--fus-soft), transparent 70%),
+    var(--color-panel);
+  border: 1px solid var(--fus);
   border-radius: var(--radius-md);
+  box-shadow: 0 0 22px -8px var(--fus);
 }
-.fusion-result__head {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 0.8rem;
-}
-.fusion-result__icon { font-size: 1.3rem; }
-.fusion-result__type {
-  padding: 0 5px;
-  font-size: 0.55rem;
-  color: #cbd5e1;
-  background: rgba(148, 163, 184, 0.2);
+.fusion-out__badge {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  padding: 1px 6px;
+  font-size: 0.5rem;
+  font-weight: 900;
+  letter-spacing: 0.06em;
+  color: #0f172a;
+  background: var(--fus);
   border-radius: 3px;
 }
-.fusion-result__desc {
-  margin: 4px 0;
+.fusion-out__icon {
+  font-size: 2.4rem;
+  line-height: 1.1;
+  filter: drop-shadow(0 0 10px var(--fus));
+}
+.fusion-out__name {
+  font-size: 0.95rem;
+  font-weight: 900;
+  color: var(--fus);
+}
+.fusion-out__type {
+  font-size: 0.56rem;
+  color: #cbd5e1;
+}
+.fusion-out__desc {
+  margin: 5px 0;
   font-size: 0.62rem;
   color: #94a3b8;
   line-height: 1.5;
 }
-.fusion-result__effects {
+.fusion-out__effects {
   margin: 0;
   padding-left: 16px;
   font-size: 0.62rem;
   line-height: 1.6;
+  text-align: left;
 }
-.fusion-result__warn {
-  margin-top: 6px;
+.fusion-warn {
   font-size: 0.62rem;
   color: #fbbf24;
   line-height: 1.5;
+  text-align: center;
 }
 .fusion-actions {
   display: flex;
   flex-direction: column;
   gap: 6px;
+}
+
+/* 融合成立の演出(AcquireBurstの中身) */
+.burst__fusion-from {
+  margin-bottom: 4px;
+  font-size: 0.62rem;
+  color: #cbd5e1;
+  line-height: 1.6;
+}
+.burst__effects {
+  margin: 6px 0 0;
+  padding-left: 16px;
+  font-size: 0.6rem;
+  color: #cbd5e1;
+  line-height: 1.6;
+  text-align: left;
 }
 
 /* ============================================================
@@ -1864,6 +2270,30 @@ button {
 .bt-dot--done { background: var(--color-purple); border-color: var(--color-purple); }
 .bt-dot--now { background: var(--color-yellow); border-color: #fff3c4; box-shadow: 0 0 8px rgba(251, 191, 36, 0.8); }
 .bt-dot--boss { width: 11px; height: 11px; border-color: var(--color-enemy); }
+.bt-progress__area {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  font-size: 0.55rem;
+  color: #c4b5fd;
+}
+.bt-progress__area-no {
+  padding: 0 4px;
+  font-size: 0.46rem;
+  letter-spacing: 0.06em;
+  color: #0f172a;
+  background: #a78bfa;
+  border-radius: 3px;
+}
+.prep-area {
+  margin-left: 6px;
+  padding: 1px 6px;
+  font-size: 0.6rem;
+  color: #c4b5fd;
+  background: rgba(167, 139, 250, 0.16);
+  border-radius: 999px;
+}
 .bt-progress__turn { font-size: 0.5rem; letter-spacing: 0.14em; color: var(--color-text-muted); }
 
 /* --- 上部ステータス2枚 --- */
@@ -1918,6 +2348,35 @@ button {
 .bt-mp__track { flex: 1; height: 7px; background: #120c1e; border-radius: var(--radius-pill); overflow: hidden; }
 .bt-mp__fill { height: 100%; background: linear-gradient(90deg, #1d4ed8, #38bdf8); transition: width 0.25s ease; }
 .bt-mp__num { font-size: 0.5rem; color: var(--color-text-muted); white-space: nowrap; }
+/* 敵のMP。プレイヤー側と同じ形だが、色だけ敵側に寄せる。 */
+.bt-mp--enemy .bt-mp__fill { background: linear-gradient(90deg, #f472b6, #fb7185); }
+
+/* 観察中の「次の2手」表示 */
+.bt-observed {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  flex-wrap: wrap;
+}
+.bt-observed__arrow {
+  margin: 0 2px;
+  color: var(--color-text-muted);
+}
+.bt-intent-tag--observe {
+  background: rgba(56, 189, 248, 0.22);
+  color: #7dd3fc;
+}
+
+/* 解析中・変異中のチップ */
+.bt-chip--analyzed {
+  background: rgba(56, 189, 248, 0.2);
+  border-color: rgba(56, 189, 248, 0.6);
+}
+.bt-chip--mutation {
+  background: rgba(192, 132, 252, 0.2);
+  border-color: rgba(192, 132, 252, 0.6);
+}
+
 .bt-enemy-intent {
   margin-top: 3px;
   font-size: 0.52rem;
@@ -2279,3 +2738,149 @@ button {
 .burst--still .burst__flash,
 .burst--still .burst__rays,
 .burst--still .burst__ring { display: none; }
+
+/* ============================================================
+   Phase 9: 設定(右上常時)・戦闘画面の小ボタン・ログのポップアップ
+   ============================================================ */
+.settings-fab {
+  position: fixed;
+  top: 12px;
+  right: 12px;
+  z-index: 40;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.15rem;
+  border-radius: 50%;
+  color: var(--color-text);
+  background: var(--color-panel-2);
+  border: 1px solid var(--color-border);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
+  cursor: pointer;
+}
+.settings-fab:active { transform: scale(0.94); }
+
+.settings-card { max-width: 340px; }
+.settings-section {
+  margin-bottom: 12px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--color-border);
+}
+.settings-section__title {
+  margin-bottom: 6px;
+  font-size: 0.6rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  color: var(--color-text-muted);
+}
+.settings-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 8px;
+  text-align: left;
+  color: var(--color-text);
+  background: var(--color-panel);
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  cursor: pointer;
+}
+.settings-row + .settings-row { margin-top: 6px; }
+.settings-row__body { flex: 1; min-width: 0; }
+.settings-row__label { font-size: 0.7rem; font-weight: 700; }
+.settings-row__desc { margin-top: 2px; font-size: 0.55rem; line-height: 1.45; color: var(--color-text-muted); }
+.toggle {
+  flex: 0 0 40px;
+  height: 22px;
+  padding: 2px;
+  border-radius: var(--radius-pill);
+  background: #2a1f40;
+  border: 1px solid var(--color-border);
+  transition: background 0.18s ease;
+}
+.toggle--on { background: var(--color-purple); border-color: #c4b5fd; }
+.toggle__knob {
+  display: block;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #f1e9ff;
+  transition: transform 0.18s ease;
+}
+.toggle--on .toggle__knob { transform: translateX(18px); }
+.settings-slider {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+  padding: 0 4px;
+  font-size: 0.6rem;
+  color: var(--color-text-muted);
+}
+.settings-slider input[type='range'] { flex: 1; min-width: 0; }
+.settings-slider__value { width: 24px; text-align: right; }
+
+/* 戦闘画面の隅に置く小ボタン */
+.stage-btn {
+  position: absolute;
+  bottom: 6px;
+  z-index: 4;
+  padding: 3px 8px;
+  font-size: 0.55rem;
+  font-weight: 800;
+  color: var(--color-text-muted);
+  background: rgba(11, 7, 18, 0.82);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-pill);
+  cursor: pointer;
+  backdrop-filter: blur(2px);
+}
+.stage-btn:active { transform: scale(0.94); }
+.stage-btn--log { left: 6px; }
+.stage-btn--auto { right: 6px; }
+.stage-btn--on {
+  color: #0f172a;
+  background: var(--color-cyan);
+  border-color: #bae6fd;
+  box-shadow: 0 0 10px rgba(56, 189, 248, 0.7);
+}
+
+/* ログのポップアップ */
+.log-modal { max-width: 360px; }
+.log-modal__body {
+  max-height: 46vh;
+  overflow-y: auto;
+  padding: 8px;
+  font-size: 0.58rem;
+  line-height: 1.7;
+  background: #0b0712;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+}
+.log-modal__line + .log-modal__line { border-top: 1px solid rgba(58, 43, 82, 0.5); }
+
+/* 敵の行動を知らせる帯(行動の「間」に出る) */
+.enemy-turn-banner {
+  position: absolute;
+  top: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 5;
+  padding: 4px 14px;
+  font-size: 0.66rem;
+  font-weight: 800;
+  white-space: nowrap;
+  color: #fff;
+  background: linear-gradient(90deg, rgba(185, 28, 28, 0.92), rgba(248, 113, 113, 0.92));
+  border: 1px solid #fca5a5;
+  border-radius: var(--radius-pill);
+  box-shadow: 0 0 16px rgba(248, 113, 113, 0.55);
+  animation: enemy-banner-in 0.25s ease-out;
+}
+@keyframes enemy-banner-in {
+  from { opacity: 0; transform: translate(-50%, -8px); }
+  to { opacity: 1; transform: translate(-50%, 0); }
+}
