@@ -10,6 +10,7 @@
 import raw from './generated-visuals.json';
 import type { ChimeraPartVisual, ChimeraSlotCategory, EnemyVisual } from './types';
 import { SLOT_CATEGORIES } from './types';
+import { applyOverride, bakedOverrideFor } from './overrides';
 
 interface RawManifest {
   canvasSize: number;
@@ -38,9 +39,14 @@ const partsByCategory: Record<ChimeraSlotCategory, ChimeraPartVisual[]> = {
 for (const p of manifest.parts) partsByCategory[p.category].push(p);
 for (const cat of SLOT_CATEGORIES) partsByCategory[cat].sort((a, b) => a.id.localeCompare(b.id));
 
+// overrides.json(コミット済みの確定調整値)を常に適用したうえで返す。
+// ブラウザ内だけの作業中調整(session override)はここでは反映しない。
+// ChimeraCanvas/デバッグパネルはこの戻り値を起点に、さらにsession overrideを重ねる。
 export function getPartVisual(id: string | null | undefined): ChimeraPartVisual | null {
   if (!id) return null;
-  return partsById.get(id) ?? null;
+  const base = partsById.get(id);
+  if (!base) return null;
+  return applyOverride(base, bakedOverrideFor(id));
 }
 
 export function getEnemyVisual(id: string | null | undefined): EnemyVisual | null {

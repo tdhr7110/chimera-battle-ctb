@@ -32,6 +32,23 @@
   color: #ef4444;
 }
 
+/* ドラッグ/ホイール/矢印キーで直感的に調整できるレイヤー(overrides.ts参照)。
+   pointer-eventsは既定でnoneなので、編集可能なレイヤーだけ個別に有効化する。 */
+.proto-chimera-canvas__img--editable {
+  pointer-events: auto;
+  cursor: grab;
+  touch-action: none;
+  outline: 1px dashed rgba(34, 211, 238, 0.85);
+  outline-offset: 2px;
+  filter: drop-shadow(0 0 6px rgba(34, 211, 238, 0.55));
+}
+.proto-chimera-canvas__img--editable:active {
+  cursor: grabbing;
+}
+.proto-chimera-canvas__img--editable:focus-visible {
+  outline-color: #fbbf24;
+}
+
 .proto-chimera-canvas__empty {
   position: absolute;
   inset: 0;

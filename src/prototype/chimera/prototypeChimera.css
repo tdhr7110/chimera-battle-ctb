@@ -65,6 +65,14 @@
   border-color: var(--color-cyan, #38bdf8);
   color: var(--color-cyan, #38bdf8);
 }
+.proto-btn--sm {
+  padding: 5px 10px;
+  font-size: 0.68rem;
+}
+.proto-btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
 
 .proto-mapping {
   background: var(--color-panel, #1a1226);
@@ -108,6 +116,12 @@
   display: flex;
   gap: 10px;
 }
+.proto-builder__drag-hint {
+  margin: 0;
+  font-size: 0.66rem;
+  color: var(--color-cyan, #38bdf8);
+  text-align: center;
+}
 
 .proto-debug-panel {
   background: #05070c;
@@ -136,6 +150,17 @@
 }
 .proto-debug-panel__empty {
   color: var(--color-text-muted, #a996c4);
+}
+.proto-debug-panel__actions {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-top: 10px;
+}
+.proto-debug-panel__copy-status {
+  margin: 6px 0 0;
+  font-size: 0.66rem;
+  color: var(--color-player, #4ade80);
 }
 
 .proto-builder__tabs {
