@@ -95,6 +95,7 @@ SPECS = {
             "敵防御力倍率": "defenseMult", "敵回避率倍率": "evasionMult",
             "プレイヤーHP倍率": "playerHpMult", "戦闘後HP回復率": "postBattleHealPct",
             "戦闘後MP回復倍率": "postBattleMpMult", "レア報酬加算_戦ごと": "rareBonusPerBattle",
+            "エリアHP倍率": "areaHpMults", "エリア威力倍率": "areaPowerMults",
             "説明": "description",
         },
         "numbers": {
