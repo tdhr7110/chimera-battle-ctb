@@ -5,6 +5,7 @@ on:
     branches:
       - main
       - integration/main-game
+      - claude/chimera-7slot-prototype-dbqssf
   workflow_dispatch: {}
 
 concurrency:
@@ -20,8 +21,12 @@ jobs:
     permissions:
       contents: read
     steps:
-      - name: Checkout
+      # ルート配信は常にmainの内容にする(integration/main-gameやプロトタイプ用ブランチへの
+      # pushがトリガーになった場合でも、本番URL直下の内容が入れ替わらないようにするため)。
+      - name: Checkout (main = ルート配信)
         uses: actions/checkout@v4
+        with:
+          ref: main
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -54,6 +59,25 @@ jobs:
           npm run build -- --base=/chimera-battle-ctb/dev/
           mkdir -p ../dist/dev
           cp -r dist/. ../dist/dev/
+
+      # 7スロット・キメラ画像合成プロトタイプ(検証専用、本番のゲーム進行・データには無関係)を
+      # /proto-chimera/ サブパスへ同梱する。上記2つと同じ考え方で、mainのルート配信は変更しない。
+      - name: Checkout prototype branch (7スロット・キメラ画像合成プロトタイプ)
+        uses: actions/checkout@v4
+        continue-on-error: true
+        with:
+          ref: claude/chimera-7slot-prototype-dbqssf
+          path: proto-chimera-branch
+
+      - name: Build prototype branch into /proto-chimera/ subpath
+        if: hashFiles('proto-chimera-branch/package.json') != ''
+        continue-on-error: true
+        run: |
+          cd proto-chimera-branch
+          npm ci
+          npm run build -- --base=/chimera-battle-ctb/proto-chimera/
+          mkdir -p ../dist/proto-chimera
+          cp -r dist/. ../dist/proto-chimera/
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
