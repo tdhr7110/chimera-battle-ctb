@@ -6,6 +6,7 @@ import { ChimeraFigure } from './freeLayer/ChimeraFigure';
 import { getCommand } from '../data/commands';
 import { COMMAND_CATEGORIES, categoryIdForCommand } from '../data/commandCategories';
 import { MAX_EQUIPPED_PARTS } from '../engine/run';
+import { BattleEndOverlay } from './BattleEndOverlay';
 import { getUiPrefs } from '../engine/uiPrefs';
 
 // 参考画像の S/A/C 表記に合わせた、Excelレア度の1文字表現。
@@ -486,16 +487,23 @@ export function BattleScreen({
         </button>
 
         {snapshot.status !== 'ongoing' && (
-          <button
-            type="button"
-            className={`end-overlay end-overlay--${snapshot.status}`}
-            onClick={() =>
-              onExit(snapshot.status === 'won' ? 'won' : 'lost', engineRef.current?.getFinalPlayerHp() ?? 0, engineRef.current?.getFinalPlayerMp() ?? 0)
+          <BattleEndOverlay
+            won={snapshot.status === 'won'}
+            enemyIcon={enemy.icon}
+            enemyName={enemy.name}
+            turnCount={snapshot.turnCount}
+            hp={snapshot.player.hp}
+            maxHp={snapshot.player.maxHp}
+            mp={snapshot.mp.current}
+            maxMp={snapshot.mp.max}
+            onDismiss={() =>
+              onExit(
+                snapshot.status === 'won' ? 'won' : 'lost',
+                engineRef.current?.getFinalPlayerHp() ?? 0,
+                engineRef.current?.getFinalPlayerMp() ?? 0
+              )
             }
-          >
-            <div className="end-overlay__text">{snapshot.status === 'won' ? '勝利！' : '敗北…'}</div>
-            <div className="end-overlay__hint">タップして戻る</div>
-          </button>
+          />
         )}
       </div>
 

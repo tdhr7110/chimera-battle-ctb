@@ -744,36 +744,230 @@ button {
   gap: 2px;
 }
 
-.end-overlay {
-  position: absolute;
+/* ============================================================
+   決着の演出(BattleEndOverlay)。戦闘画面の上に全画面でかぶせる。
+   勝利は光を最大限に、敗北は逆に静かに沈める。
+   ============================================================ */
+.bend {
+  position: fixed;
   inset: 0;
-  z-index: 25;
+  z-index: 60;
   display: flex;
-  flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 10px;
-  background: rgba(6, 3, 12, 0.82);
-  border-radius: var(--radius-md);
+  padding: 20px;
+  overflow: hidden;
   border: none;
   cursor: pointer;
   color: var(--color-text);
+  background: radial-gradient(120% 90% at 50% 45%, rgba(20, 10, 40, 0.86), rgba(4, 2, 10, 0.96));
+  --bend-c: #fbbf24;
+  --bend-c2: #fde68a;
 }
-.end-overlay__text {
-  font-size: 1.9rem;
+.bend--lost {
+  background: radial-gradient(120% 90% at 50% 45%, rgba(50, 10, 14, 0.86), rgba(6, 2, 4, 0.97));
+  --bend-c: #f87171;
+  --bend-c2: #fca5a5;
+}
+
+/* 1. 決着の瞬間の白フラッシュ */
+.bend__flash {
+  position: absolute;
+  inset: 0;
+  background: var(--bend-c2);
+  opacity: 0;
+  animation: bendFlash 620ms ease-out forwards;
+}
+.bend--lost .bend__flash { animation-duration: 900ms; }
+@keyframes bendFlash {
+  0% { opacity: 0.85; }
+  100% { opacity: 0; }
+}
+
+/* 2. 回転する光条 */
+.bend__rays {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0;
+  height: 0;
+  animation: bendSpin 26s linear infinite;
+}
+.bend__ray {
+  position: absolute;
+  top: -60vmax;
+  left: -7px;
+  width: 14px;
+  height: 60vmax;
+  transform-origin: 50% 100%;
+  background: linear-gradient(to top, transparent, var(--bend-c));
+  opacity: 0.16;
+  animation: bendRay 900ms ease-out backwards;
+}
+@keyframes bendSpin { to { transform: rotate(360deg); } }
+@keyframes bendRay {
+  0% { opacity: 0; transform-origin: 50% 100%; }
+  60% { opacity: 0.3; }
+  100% { opacity: 0.16; }
+}
+
+/* 3. 三重のショックウェーブ */
+.bend__rings {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+}
+.bend__ring {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 90px;
+  height: 90px;
+  margin: -45px 0 0 -45px;
+  border: 3px solid var(--bend-c);
+  border-radius: 50%;
+  opacity: 0;
+  animation: bendRing 1100ms cubic-bezier(0.15, 0.7, 0.3, 1) forwards;
+}
+.bend__ring--2 { animation-delay: 180ms; border-width: 2px; }
+.bend__ring--3 { animation-delay: 380ms; border-width: 1px; }
+@keyframes bendRing {
+  0% { opacity: 0.9; transform: scale(0.3); }
+  100% { opacity: 0; transform: scale(7); }
+}
+
+/* 4. 外へ飛ぶ粒子 */
+.bend__sparks {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+}
+.bend__spark {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 7px;
+  height: 7px;
+  margin: -3.5px 0 0 -3.5px;
+  background: var(--bend-c2);
+  border-radius: 50%;
+  box-shadow: 0 0 10px var(--bend-c);
+  opacity: 0;
+  animation: bendSpark 1200ms cubic-bezier(0.1, 0.75, 0.3, 1) forwards;
+}
+@keyframes bendSpark {
+  0% { opacity: 1; transform: rotate(var(--a)) translateX(0) scale(1.1); }
+  100% { opacity: 0; transform: rotate(var(--a)) translateX(var(--d)) scale(0.3); }
+}
+
+.bend__body {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  text-align: center;
+}
+
+/* 5. VICTORY を一文字ずつ落とす */
+.bend__word {
+  display: flex;
+  gap: 2px;
+}
+.bend__letter {
+  display: inline-block;
+  font-size: 2.5rem;
   font-weight: 900;
+  letter-spacing: 0.04em;
+  color: var(--bend-c);
+  text-shadow: 0 0 26px var(--bend-c), 0 3px 0 rgba(0, 0, 0, 0.45);
+  animation: bendLetter 520ms cubic-bezier(0.2, 1.5, 0.35, 1) backwards;
 }
-.end-overlay--won .end-overlay__text {
-  color: var(--color-yellow);
-  text-shadow: 0 0 20px rgba(251, 191, 36, 0.7);
+.bend__letter--lost {
+  font-size: 1.9rem;
+  letter-spacing: 0.14em;
+  animation: bendLetterLost 1100ms ease-out backwards;
+  animation-delay: 260ms;
 }
-.end-overlay--lost .end-overlay__text {
-  color: var(--color-enemy);
-  text-shadow: 0 0 20px rgba(248, 113, 113, 0.7);
+@keyframes bendLetter {
+  0% { opacity: 0; transform: translateY(-46px) scale(1.7) rotate(-8deg); }
+  100% { opacity: 1; transform: none; }
 }
-.end-overlay__hint {
-  font-size: 0.75rem;
+@keyframes bendLetterLost {
+  0% { opacity: 0; transform: translateY(-14px); letter-spacing: 0.5em; filter: blur(6px); }
+  100% { opacity: 1; transform: none; }
+}
+
+/* 6. 戦績は遅れて入る */
+.bend__sub {
+  font-size: 0.78rem;
+  color: #e2e8f0;
+  animation: bendUp 460ms ease-out backwards;
+  animation-delay: 620ms;
+}
+.bend__enemy { font-size: 1.1rem; }
+.bend__stats {
+  display: flex;
+  gap: 8px;
+  animation: bendUp 460ms ease-out backwards;
+  animation-delay: 780ms;
+}
+.bend__stat {
+  min-width: 84px;
+  padding: 7px 10px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: var(--radius-md);
+}
+.bend__stat-label {
+  display: block;
+  font-size: 0.52rem;
+  color: #94a3b8;
+  letter-spacing: 0.08em;
+}
+.bend__stat strong {
+  font-size: 1.05rem;
+  color: var(--bend-c2);
+}
+.bend__stat small {
+  font-size: 0.5rem;
+  font-weight: 400;
+  color: #94a3b8;
+}
+@keyframes bendUp {
+  0% { opacity: 0; transform: translateY(12px); }
+  100% { opacity: 1; transform: none; }
+}
+
+.bend__hint {
+  margin-top: 4px;
+  font-size: 0.7rem;
   color: var(--color-text-muted);
+  opacity: 0;
+  transition: opacity 300ms ease;
+}
+.bend__hint--on {
+  opacity: 1;
+  animation: bendBlink 1.8s ease-in-out infinite;
+}
+@keyframes bendBlink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.45; }
+}
+
+/* 動きを減らす設定では、光り物を全部止めて最終状態だけ見せる */
+.bend--still .bend__flash { animation: none; opacity: 0; }
+.bend--still .bend__letter,
+.bend--still .bend__sub,
+.bend--still .bend__stats { animation: none; }
+.bend--still .bend__hint--on { animation: none; }
+@media (prefers-reduced-motion: reduce) {
+  .bend__flash, .bend__rays, .bend__ray, .bend__ring, .bend__spark,
+  .bend__letter, .bend__sub, .bend__stats, .bend__hint--on {
+    animation: none !important;
+  }
+  .bend__flash { opacity: 0; }
 }
 
 /* ============================================================
@@ -1060,7 +1254,10 @@ button {
   position: fixed;
   inset: 0;
   z-index: 40;
-  background: rgba(6, 3, 12, 0.88);
+  overflow: hidden;
+  background:
+    radial-gradient(90% 60% at 50% 38%, rgba(56, 189, 248, 0.12), transparent 70%),
+    rgba(6, 3, 12, 0.9);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -1068,16 +1265,50 @@ button {
   gap: 16px;
   padding: 20px;
 }
+/* 背後で回り続ける光条。カードの後ろで薄く動くだけ。 */
+.reward-screen__rays {
+  position: absolute;
+  top: 38%;
+  left: 50%;
+  width: 0;
+  height: 0;
+  animation: rewardSpin 34s linear infinite;
+}
+.reward-screen__rays span {
+  position: absolute;
+  top: -60vmax;
+  left: -9px;
+  width: 18px;
+  height: 60vmax;
+  transform-origin: 50% 100%;
+  background: linear-gradient(to top, transparent, rgba(125, 211, 252, 0.5));
+  opacity: 0.1;
+}
+@keyframes rewardSpin { to { transform: rotate(360deg); } }
+
+.reward-screen__head {
+  position: relative;
+  z-index: 1;
+  text-align: center;
+  animation: rewardHead 520ms cubic-bezier(0.2, 1.3, 0.35, 1) backwards;
+}
+@keyframes rewardHead {
+  0% { opacity: 0; transform: translateY(-14px) scale(0.9); }
+  100% { opacity: 1; transform: none; }
+}
 .reward-screen__title {
   font-size: 1.4rem;
   font-weight: 900;
+  text-shadow: 0 0 18px rgba(125, 211, 252, 0.5);
 }
 .reward-screen__sub {
   font-size: 0.75rem;
   color: var(--color-text-muted);
-  margin-top: -12px;
+  margin-top: 2px;
 }
 .reward-grid {
+  position: relative;
+  z-index: 1;
   display: flex;
   flex-direction: column;
   gap: 10px;
@@ -1085,6 +1316,8 @@ button {
   max-width: 320px;
 }
 .reward-card {
+  position: relative;
+  overflow: hidden;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -1096,9 +1329,63 @@ button {
   color: var(--color-text);
   cursor: pointer;
   box-shadow: 0 0 16px rgba(56, 189, 248, 0.3);
+  transition: transform 120ms ease, box-shadow 200ms ease;
+  /* 1枚ずつ遅れて滑り込む(遅延はコンポーネント側で指定) */
+  animation: rewardCard 480ms cubic-bezier(0.2, 1.25, 0.35, 1) backwards;
+}
+@keyframes rewardCard {
+  0% { opacity: 0; transform: translateY(26px) scale(0.9); }
+  100% { opacity: 1; transform: none; }
 }
 .reward-card:active {
   transform: scale(0.97);
+}
+
+/* カード左上のランク(S/A/B/C) */
+.reward-card__rank {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 26px;
+  padding: 2px 0 4px;
+  font-size: 0.62rem;
+  font-weight: 900;
+  text-align: center;
+  color: #0f172a;
+  background: var(--color-cyan);
+  border-bottom-right-radius: 8px;
+}
+.reward-card--epic .reward-card__rank { background: #a855f7; color: #faf5ff; }
+.reward-card--legendary .reward-card__rank { background: #f59e0b; }
+
+/* 表面を一度だけ流れる光。当たりのカードは繰り返す。 */
+.reward-card__sheen {
+  position: absolute;
+  top: 0;
+  left: -60%;
+  width: 40%;
+  height: 100%;
+  background: linear-gradient(100deg, transparent, rgba(255, 255, 255, 0.16), transparent);
+  transform: skewX(-18deg);
+  animation: rewardSheen 1400ms ease-out 700ms 1;
+}
+@keyframes rewardSheen {
+  0% { left: -60%; }
+  100% { left: 130%; }
+}
+
+/* いちばんレア度の高い候補だけ、脈打つ縁で強調する */
+.reward-card--top {
+  animation:
+    rewardCard 480ms cubic-bezier(0.2, 1.25, 0.35, 1) backwards,
+    rewardPulse 2.2s ease-in-out 700ms infinite;
+}
+.reward-card--top .reward-card__sheen {
+  animation: rewardSheen 2200ms ease-out 700ms infinite;
+}
+@keyframes rewardPulse {
+  0%, 100% { box-shadow: 0 0 16px rgba(245, 158, 11, 0.35); }
+  50% { box-shadow: 0 0 30px rgba(245, 158, 11, 0.8); }
 }
 .reward-card__icon {
   font-size: 2rem;
@@ -1274,8 +1561,16 @@ button {
 .rarity-badge--rare { background: #1d4ed8; color: #dbeafe; }
 .rarity-badge--epic { background: #7e22ce; color: #f3e8ff; }
 .rarity-badge--legendary { background: #b45309; color: #fef3c7; }
-.reward-card--epic { border-color: #a855f7; }
-.reward-card--legendary { border-color: #f59e0b; }
+.reward-card--epic { border-color: #a855f7; box-shadow: 0 0 18px rgba(168, 85, 247, 0.35); }
+.reward-card--legendary { border-color: #f59e0b; box-shadow: 0 0 20px rgba(245, 158, 11, 0.4); }
+
+@media (prefers-reduced-motion: reduce) {
+  .reward-screen__rays, .reward-screen__head, .reward-card,
+  .reward-card--top, .reward-card__sheen {
+    animation: none !important;
+  }
+  .reward-card__sheen { display: none; }
+}
 
 /* ============================================================
    Phase 2: 部位取得 → コマンド解放の連続演出
