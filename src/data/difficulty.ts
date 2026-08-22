@@ -78,7 +78,7 @@ const RAW: RawPreset[] = [
     defenseMult: 1.15, evasionMult: 1.2,
     playerHpMult: 0.9, postBattleHealPct: 0.3, postBattleMpMult: 0.85,
     rareBonusPerBattle: 3,
-    areaHpMults: '0.95/1.2/1.6/2.05', areaPowerMults: '0.9/1.1/1.4/1.65',
+    areaHpMults: '0.9/1.2/1.6/2.05', areaPowerMults: '0.85/1.1/1.4/1.65',
     description: 'ビルドが噛み合わないと通常戦でも落ちる。',
   },
 ];
