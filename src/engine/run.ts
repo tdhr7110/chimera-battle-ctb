@@ -1,6 +1,6 @@
 import { ENEMIES, getEnemy } from '../data/enemies';
 import { getEnemyDrop, RARE_DROP_CHANCE_PCT } from '../data/enemyDrops';
-import { resolveFusion } from '../data/fusions';
+import { findFusionCandidates, getFusionRecipe } from '../data/fusions';
 import { DEFAULT_DIFFICULTY_ID, getDifficulty } from '../data/difficulty';
 import { PARTS, getPart } from '../data/parts';
 import { getStarter } from '../data/starters';
@@ -21,7 +21,7 @@ import type { EnemyTier, PartDef } from '../data/types';
 //     (同じ敵に複数回遭遇することがあるのは既知の暫定仕様)。部位は80種すべて接続済み。
 // ============================================================
 
-export type GamePhase = 'title' | 'starterSelect' | 'prep' | 'enemySelect' | 'battle' | 'reward' | 'commandUnlock' | 'fusion' | 'result';
+export type GamePhase = 'title' | 'starterSelect' | 'prep' | 'enemySelect' | 'battle' | 'reward' | 'commandUnlock' | 'fusion' | 'fusionResult' | 'result';
 
 // 仕様書のTEST18パターン(通常/通常/エリート/通常/中ボス/通常/エリート/ボス)を踏襲しつつ、
 // 現行6敵ではミニボスまで区別できないためboss 1種類にまとめた7戦構成にしている。
@@ -54,8 +54,9 @@ export interface RunState {
   lastAcquiredPartId: string | null; // Phase 2: 解放演出で「どの部位のおかげか」を示すため
   pendingUnlockCommandIds: string[]; // Phase 2: 今まさに解放演出で見せるコマンド
   newCommandIds: string[]; // Phase 2: コマンドタブのNEWバッジ(タブを開くと既読になる)
-  fusionUsedForBattleIndex: number | null; // Phase 5: 融合を提示/実行済みの戦闘番号(1エリート1回)
-  lastFusionPartId: string | null; // Phase 5: 直前の融合で得た部位(結果表示用)
+  lastFusionPartId: string | null; // 直前の融合で得た部位(結果演出用)
+  declinedFusionIds: string[]; // 「あとにする」で断ったレシピ(再提示しない)
+  pendingAdvance: boolean; // 融合フローを抜けたら次の戦闘へ進む必要があるか
   difficultyId: string; // Phase 7: 難易度プリセット(Excel「難易度」シート)
   resultOutcome: 'victory' | 'defeat' | null;
   seenIntro: boolean; // 遊び方を一度でも見たか(GAME STARTのたび強制表示しないため)
@@ -77,8 +78,9 @@ export function createTitleState(seenIntro: boolean): RunState {
     lastAcquiredPartId: null,
     pendingUnlockCommandIds: [],
     newCommandIds: [],
-    fusionUsedForBattleIndex: null,
     lastFusionPartId: null,
+    declinedFusionIds: [],
+    pendingAdvance: false,
     difficultyId: DEFAULT_DIFFICULTY_ID,
     resultOutcome: null,
     seenIntro,
@@ -301,68 +303,62 @@ export function acceptDrop(state: RunState, partId: string, wantEquip: boolean):
 }
 
 // ------------------------------------------------------------
-// Phase 5: 任意の部位融合。
+// 部位融合(レシピ制)。
 //
-// 提示条件(強制はしない):
-//   - 直前に倒したのがエリートであること
-//   - 最終戦(ボス)の後ではないこと
-//   - そのエリート撃破につき、まだ融合していないこと(1回まで)
-//   - 素材が2つ以上あること
-// 提示された画面で「そのまま進む」を選べば何も起きない。
+// 「あらかじめ決まった素材が揃ったら融合できる」方式。部位を獲得した直後に
+// 所持部位を見て、成立するレシピがあれば融合画面を挟む。エリート撃破とは無関係。
+//
+// 強制はしない(「あとにする」で素材のまま持ち続けられる)。断ったレシピは
+// declinedFusionIds に積んで、同じものを毎回出し直さないようにする。
 // ------------------------------------------------------------
-export function canOfferFusion(state: RunState): boolean {
-  if (state.fusionUsedForBattleIndex === state.battleIndex) return false; // このエリートでは融合済み
-  if (state.battleIndex >= TOTAL_BATTLES) return false; // 最終ボス撃破後には出さない
-  const enemy = state.lastDefeatedEnemyId ? getEnemy(state.lastDefeatedEnemyId) : undefined;
-  if (enemy?.tier !== 'elite') return false;
-  return ownedPartIds(state).length >= 2;
+
+/** 今そのまま成立する融合のうち、まだ断っていないもの(レア度の高い順)。 */
+export function availableFusions(state: RunState) {
+  const owned = ownedPartIds(state).map((id) => getPart(id)).filter((p): p is PartDef => !!p);
+  return findFusionCandidates(owned).filter((c) => !state.declinedFusionIds.includes(c.recipe.id));
 }
 
-// 融合を実行する。素材2つは所持から取り除かれ(装備中でも外れる)、結果の部位が手に入る。
-// 既に同じ融合部位を持っている場合は素材だけ消えることになるため、呼び出し側(UI)が
-// fusionResultFor()で事前に判定して選べないようにしている。
-export function performFusion(state: RunState, partIdA: string, partIdB: string): RunState {
-  const a = getPart(partIdA);
-  const b = getPart(partIdB);
-  if (!a || !b || partIdA === partIdB) return state;
-  const owned = new Set(ownedPartIds(state));
-  if (!owned.has(partIdA) || !owned.has(partIdB)) return state;
+export function performFusion(state: RunState, recipeId: string): RunState {
+  const recipe = getFusionRecipe(recipeId);
+  const candidate = availableFusions(state).find((c) => c.recipe.id === recipeId);
+  if (!recipe || !candidate) return state;
 
-  const rule = resolveFusion(a, b);
-  const consumed = [partIdA, partIdB];
+  const consumed: string[] = [...candidate.materialIds];
   const equipped = state.equippedPartIds.filter((id) => !consumed.includes(id));
   const inventory = state.inventoryPartIds.filter((id) => !consumed.includes(id));
-  const alreadyHas = [...equipped, ...inventory].includes(rule.id);
 
   // 空きがあればそのまま装着、無ければインベントリへ(通常の部位取得と同じ扱い)。
-  const next: RunState = alreadyHas
-    ? { ...state, equippedPartIds: equipped, inventoryPartIds: inventory }
-    : equipped.length < MAX_EQUIPPED_PARTS
-      ? { ...state, equippedPartIds: [...equipped, rule.id], inventoryPartIds: inventory }
-      : { ...state, equippedPartIds: equipped, inventoryPartIds: [...inventory, rule.id] };
+  const next: RunState =
+    equipped.length < MAX_EQUIPPED_PARTS
+      ? { ...state, equippedPartIds: [...equipped, recipe.id], inventoryPartIds: inventory }
+      : { ...state, equippedPartIds: equipped, inventoryPartIds: [...inventory, recipe.id] };
 
   // 融合でも装備が変われば新しいコマンドが解放されうるので、NEWバッジには反映する。
   const unlockedIds = newlyUnlockedCommands(equippedPartDefs(state), equippedPartDefs(next)).map((c) => c.id);
-  return advanceToNextBattle(
-    clampMpToMax({
-      ...next,
-      fusionUsedForBattleIndex: state.battleIndex,
-      lastFusionPartId: rule.id,
-      newCommandIds: [...next.newCommandIds, ...unlockedIds],
-    })
-  );
+  return clampMpToMax({
+    ...next,
+    phase: 'fusionResult',
+    lastFusionPartId: recipe.id,
+    newCommandIds: [...next.newCommandIds, ...unlockedIds],
+  });
 }
 
-// 融合せずに進む。
-export function skipFusion(state: RunState): RunState {
-  return advanceToNextBattle({ ...state, fusionUsedForBattleIndex: state.battleIndex });
+/** 融合を断る。そのレシピは以後この画面で提示しない。 */
+export function declineFusion(state: RunState, recipeId: string): RunState {
+  const next = { ...state, declinedFusionIds: [...state.declinedFusionIds, recipeId] };
+  return afterFusionFlow(next);
 }
 
-// UIが「この組み合わせなら何ができるか」を先に見せるための参照用(抽選ではないので副作用なし)。
-export function fusionResultFor(partIdA: string, partIdB: string) {
-  const a = getPart(partIdA);
-  const b = getPart(partIdB);
-  return a && b ? resolveFusion(a, b) : undefined;
+/** 融合結果の演出を閉じたあと。まだ他に成立する融合があれば続けて提示する。 */
+export function dismissFusionResult(state: RunState): RunState {
+  return afterFusionFlow({ ...state, lastFusionPartId: null });
+}
+
+// 融合が絡む一連の流れを抜けたあとの行き先。まだ融合できるなら続けて融合画面、
+// 無ければ通常どおり次の戦闘の準備へ。
+function afterFusionFlow(state: RunState): RunState {
+  if (availableFusions(state).length > 0) return { ...state, phase: 'fusion' };
+  return state.pendingAdvance ? advanceToNextBattle({ ...state, pendingAdvance: false }) : { ...state, phase: 'prep' };
 }
 
 // 解放演出を閉じたら、そこで初めて次の戦闘の準備画面へ進む。
@@ -386,10 +382,13 @@ function advanceToNextBattle(state: RunState): RunState {
   return { ...state, phase: 'prep', battleIndex: state.battleIndex + 1 };
 }
 
-// Phase 5: 報酬(と解放演出)が済んだあと、エリート撃破後だけ融合の提示を1回挟む。
-// 条件を満たさなければ従来どおり直接prepへ進む(中間画面を無闇に増やさない)。
+// 報酬(と解放演出)が済んだあと、成立する融合があれば融合画面を挟む。
+// 無ければ従来どおり直接prepへ進む(中間画面を無闇に増やさない)。
+// 融合画面を経由する場合、次の戦闘へ進むのは融合フローを抜けたあとなので、
+// 「進む予定がある」ことを pendingAdvance に残しておく。
 function afterRewardFlow(state: RunState): RunState {
-  return canOfferFusion(state) ? { ...state, phase: 'fusion' } : advanceToNextBattle(state);
+  if (availableFusions(state).length > 0) return { ...state, phase: 'fusion', pendingAdvance: true };
+  return advanceToNextBattle(state);
 }
 
 export function tierOfCurrentBattle(state: RunState): EnemyTier {

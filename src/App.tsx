@@ -7,6 +7,7 @@ import { BattleScreen } from './ui/BattleScreen';
 import { RewardScreen } from './ui/RewardScreen';
 import { CommandUnlockScreen } from './ui/CommandUnlockScreen';
 import { FusionScreen } from './ui/FusionScreen';
+import { FusionResultScreen } from './ui/FusionResultScreen';
 import { ResultScreen } from './ui/ResultScreen';
 import { CodexModal } from './ui/CodexModal';
 import {
@@ -17,9 +18,11 @@ import {
   enterEnemySelect,
   equipPart,
   markCommandsSeen,
+  availableFusions,
+  declineFusion,
+  dismissFusionResult,
   performFusion,
   setDifficulty,
-  skipFusion,
   equippedPartDefs,
   finishBattle,
   markIntroSeen,
@@ -295,13 +298,21 @@ export default function App() {
 
       {state.phase === 'fusion' && (
         <FusionScreen
-          state={state}
-          onFuse={(a, b) => {
+          candidates={availableFusions(state)}
+          equippedPartIds={state.equippedPartIds}
+          onFuse={(recipeId) => {
             playSE('part');
             recordFusionPerformed();
-            setState((s) => performFusion(s, a, b));
+            setState((s) => performFusion(s, recipeId));
           }}
-          onSkip={() => setState((s) => skipFusion(s))}
+          onDecline={(recipeId) => setState((s) => declineFusion(s, recipeId))}
+        />
+      )}
+
+      {state.phase === 'fusionResult' && state.lastFusionPartId && (
+        <FusionResultScreen
+          partId={state.lastFusionPartId}
+          onDone={() => setState((s) => dismissFusionResult(s))}
         />
       )}
 

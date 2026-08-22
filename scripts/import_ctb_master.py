@@ -75,10 +75,12 @@ SPECS = {
         "arrays": {"mainSources"},
     },
     # Phase 5(任意の部位融合)で追加。素材タグA/Bが空の行はワイルドカード(既定の融合結果)。
+    # Phase 10: レシピ表へ作り直し。条件種別が「タグ」なら素材A/Bはタグ、「部位」なら部位ID。
     "融合": {
         "file": "fusions.json",
         "columns": {
-            "ID": "id", "融合名": "name", "アイコン": "icon", "素材タグA": "tagA", "素材タグB": "tagB",
+            "ID": "id", "融合名": "name", "アイコン": "icon", "レア度": "rarity", "条件種別": "matchKind",
+            "素材A": "matA", "素材B": "matB",
             "カテゴリ": "category", "継承タグ": "tags", "効果": "effect", "説明": "description",
         },
         "arrays": {"tags"},
