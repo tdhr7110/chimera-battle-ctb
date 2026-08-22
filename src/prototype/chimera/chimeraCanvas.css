@@ -1,0 +1,89 @@
+/* プロトタイプ専用: 7スロット・キメラ合成キャンバスのスタイル。
+   本番の src/styles.css / freeLayerCanvas.css には一切手を入れず、完全に独立させている。
+   基準キャンバスは256x256(仕様書16章)で、コンテナのCSSサイズはこの比率を保ったまま
+   外側から自由に変更できる(全キメラで同じキャンバス座標を使うため)。 */
+
+.proto-chimera-canvas {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1 / 1;
+}
+
+.proto-chimera-canvas__flip {
+  position: absolute;
+  inset: 0;
+  transform-origin: 50% 50%;
+}
+
+.proto-chimera-canvas__img,
+.proto-chimera-canvas__img-fallback {
+  position: absolute;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+  pointer-events: none;
+  user-select: none;
+}
+
+.proto-chimera-canvas__img-fallback {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.2em;
+  color: #ef4444;
+}
+
+.proto-chimera-canvas__empty {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #64748b;
+  font-size: 0.75rem;
+}
+
+.proto-chimera-canvas__debug {
+  position: absolute;
+  inset: 0;
+  z-index: 9999;
+  pointer-events: none;
+}
+
+.proto-chimera-canvas__anchor {
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  margin: -5px 0 0 -5px;
+}
+.proto-chimera-canvas__anchor::before,
+.proto-chimera-canvas__anchor::after {
+  content: '';
+  position: absolute;
+  background: #22d3ee;
+  box-shadow: 0 0 2px rgba(0, 0, 0, 0.9);
+}
+.proto-chimera-canvas__anchor::before {
+  left: 0;
+  top: 4px;
+  width: 10px;
+  height: 2px;
+}
+.proto-chimera-canvas__anchor::after {
+  left: 4px;
+  top: 0;
+  width: 2px;
+  height: 10px;
+}
+.proto-chimera-canvas__anchor-label {
+  position: absolute;
+  top: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 8px;
+  line-height: 1;
+  white-space: nowrap;
+  color: #22d3ee;
+  background: rgba(0, 0, 0, 0.6);
+  padding: 1px 3px;
+  border-radius: 3px;
+}
