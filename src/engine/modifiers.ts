@@ -237,8 +237,21 @@ export function activeSynergyRuleChanges(equippedParts: PartDef[]): SynergyRuleC
 // ------------------------------------------------------------
 export function isCommandUnlocked(cmd: CommandDef, equippedParts: PartDef[]): boolean {
   if (cmd.unlockAlways) return true;
-  if (!cmd.unlockTag) return true;
-  return equippedParts.some((p) => p.tags.includes(cmd.unlockTag!));
+  const tag = cmd.unlockTag;
+  if (!tag) return true;
+  // 同じタグの部位を何個装着しているかで判定する。必要数はコマンドごと(unlockCount、既定1)。
+  return equippedParts.filter((p) => p.tags.includes(tag)).length >= (cmd.unlockCount ?? 1);
+}
+
+/** UI用: このコマンドの解放条件(必要なタグと個数、現在の充足数)。 */
+export function commandUnlockProgress(cmd: CommandDef, equippedParts: PartDef[]) {
+  const tag = cmd.unlockTag;
+  if (cmd.unlockAlways || !tag) return null;
+  return {
+    tag,
+    need: cmd.unlockCount ?? 1,
+    have: equippedParts.filter((p) => p.tags.includes(tag)).length,
+  };
 }
 
 // 現在の装備で解放されているコマンドID一覧。CtbEngineが戦闘中の選択肢を絞るのに使う。

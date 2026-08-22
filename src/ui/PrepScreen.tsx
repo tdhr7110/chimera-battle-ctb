@@ -3,7 +3,7 @@ import { PARTS, getPart } from '../data/parts';
 import { COMMANDS } from '../data/commands';
 import { SYNERGIES } from '../data/synergies';
 import { PLAYER_BASE } from '../engine/ctbEngine';
-import { activeSynergies, computePlayerModifiers, isCommandUnlocked, synergyPartCount } from '../engine/modifiers';
+import { activeSynergies, commandUnlockProgress, computePlayerModifiers, isCommandUnlocked, synergyPartCount } from '../engine/modifiers';
 import { CT_WEIGHT_LABEL } from '../data/types';
 import { currentMaxHp, currentMaxMp, equippedPartDefs, MAX_EQUIPPED_PARTS, TOTAL_BATTLES, tierOfCurrentBattle, type RunState } from '../engine/run';
 
@@ -197,7 +197,7 @@ export function PrepScreen({
         {tab === 'commands' && (
           <div className="command-tab">
             <p className="muted" style={{ fontSize: '0.65rem' }}>
-              対応するタグの部位を1つでも装着すると解放される({unlockedCount}/{COMMANDS.length}解放中)。
+              同じタグの部位を集めるほど、その系統の深いコマンドが順に解放される({unlockedCount}/{COMMANDS.length}解放中)。
             </p>
             {COMMANDS.map((cmd) => {
               const unlocked = isCommandUnlocked(cmd, equippedDefs);
@@ -214,7 +214,10 @@ export function PrepScreen({
                       {isNew && <span className="command-tab__new">NEW</span>}
                     </div>
                     <div className="command-tab__desc">
-                      {unlocked ? cmd.description : `「${cmd.unlockTag}」タグの部位を装着すると解放`}
+                      {unlocked ? cmd.description : (() => {
+                        const p = commandUnlockProgress(cmd, equippedDefs);
+                        return p ? `「${p.tag}」タグの部位 ${p.have}/${p.need} 個で解放` : '解放条件不明';
+                      })()}
                     </div>
                   </div>
                   <div className="command-tab__stats">

@@ -31,7 +31,13 @@ import {
 // player_turn)は従来通り。engine自体はタイマーを持たない純粋な状態機械。
 // ============================================================
 
-export type CtbPhase = 'battle_start' | 'order_reveal' | 'enemy_first_announce' | 'player_turn' | 'ended';
+export type CtbPhase =
+  | 'battle_start'
+  | 'order_reveal'
+  | 'enemy_first_announce'
+  | 'player_turn'
+  | 'enemy_pending' // stepwise: プレイヤーの行動が終わり、敵の行動が1つ以上待っている
+  | 'ended';
 export type CtbStatus = 'ongoing' | 'won' | 'lost';
 
 export type CtbEvent =
@@ -1027,7 +1033,16 @@ export class CtbEngine {
   // ------------------------------------------------------------
   // 外部API
   // ------------------------------------------------------------
-  useCommand(commandId: string): { ok: boolean; reason?: string } {
+  /**
+   * コマンドを実行する。
+   *
+   * 既定では従来どおり、敵の行動まで一気に解決してプレイヤーの手番へ戻す。
+   * opts.stepwise = true のときは自分の行動だけを解決して 'enemy_pending' で止まり、
+   * 敵の行動は stepEnemyTurn() を呼ぶたびに1つずつ進む。
+   * UI が「自分の行動 → 一拍 → 敵の行動」と見せるためのモードで、
+   * 解決の中身・乱数の使い方は完全に同じ(止まる位置が違うだけ)。
+   */
+  useCommand(commandId: string, opts?: { stepwise?: boolean }): { ok: boolean; reason?: string } {
     if (this.status !== 'ongoing') return { ok: false, reason: '戦闘は終了しています' };
     if (this.phase !== 'player_turn') return { ok: false, reason: 'まだ行動順ではありません' };
     const cmd = getCommand(commandId);
@@ -1096,8 +1111,38 @@ export class CtbEngine {
     this.turnCount += 1;
 
     if (this.checkEnd()) return { ok: true };
+    if (opts?.stepwise) {
+      // 次に動くのが自分ならそのまま手番へ。敵なら 'enemy_pending' で一旦止める。
+      this.phase = this.firstActingSide() === 'player' ? 'player_turn' : 'enemy_pending';
+      if (this.phase === 'player_turn') {
+        this.tickStatusesAtTurnStart('player');
+        this.checkEnd();
+      }
+      return { ok: true };
+    }
     this.resolveUntilPlayerOrEnd();
     return { ok: true };
+  }
+
+  /**
+   * stepwiseモード用: 待機中の敵の行動を1つだけ解決する。
+   * 解決後、次に動くのが自分なら 'player_turn' へ、まだ敵なら 'enemy_pending' のまま。
+   * @returns さらに敵の行動が続くなら true
+   */
+  stepEnemyTurn(): boolean {
+    if (this.phase !== 'enemy_pending' || this.status !== 'ongoing') return false;
+    this.tickStatusesAtTurnStart('enemy');
+    if (this.checkEnd()) return false;
+    this.resolveEnemyAttack();
+    if (this.checkEnd()) return false;
+    if (this.firstActingSide() === 'player') {
+      this.tickStatusesAtTurnStart('player');
+      if (this.checkEnd()) return false;
+      this.phase = 'player_turn';
+      return false;
+    }
+    this.phase = 'enemy_pending';
+    return true;
   }
 
   previewOrder(commandId: string | null, steps: number = CTB_PREVIEW_STEPS): OrderSlot[] {

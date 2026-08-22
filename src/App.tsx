@@ -37,7 +37,7 @@ import { clearRunState, loadIntroSeen, loadRunState, saveIntroSeen, saveRunState
 import { markEnemyDefeated, markEnemyEncountered, markPartsDiscovered } from './engine/codex';
 import { loadCodexState, saveCodexState } from './persistence/codex';
 import { initAudioUnlock, playSE } from './engine/soundManager';
-import { AudioSettingsButton } from './ui/AudioSettingsButton';
+import { SettingsButton } from './ui/SettingsButton';
 import { MetricsPanel } from './ui/MetricsPanel';
 import {
   metricsViewerEnabled, recordBattleEnd, recordDrop, recordEnemyChosen,
@@ -118,6 +118,7 @@ export default function App() {
     return (
       <div className="app-root">
         {incompatibleBanner}
+        <SettingsButton />
         <div className="select-screen">
           <h1>🧬 続きのランがあります</h1>
           <p className="select-screen__lead">
@@ -153,7 +154,7 @@ export default function App() {
   return (
     <div className="app-root">
       {incompatibleBanner}
-      <AudioSettingsButton />
+      <SettingsButton />
       {/* Phase 6: 計測ビューアは開発ビルドか ?metrics=1 のときだけ。通常のプレイ画面には出さない。 */}
       {metricsViewerEnabled() && state.phase !== 'battle' && (
         <button type="button" className="metrics-fab" onClick={() => setShowMetrics(true)} title="バランス計測">
