@@ -294,7 +294,13 @@ export interface EnemyDef {
 // (英語識別子への変換を挟むと、Excel更新のたびに対応表がずれるリスクがあるため)。
 // PartEffectはExcelの基礎効果/CTB効果/MP効果/コマンド連動列を個別解釈した結果。
 // ------------------------------------------------------------
-export type PartType = '頭' | '目' | '口' | '腕' | '脚' | '心臓' | '胴' | '尻尾' | '翼' | '角' | '器官' | 'コア';
+// 部位カテゴリ8種(Excel「部位」シートのカテゴリ列)。
+// 旧12種(頭/目/口/腕/脚/心臓/胴/尻尾/翼/角/器官/コア)を「体のどこに付くか」の
+// 一つの軸で8つへ統合した。目・口・角は頭、脚は足、胴は体、心臓はコア、翼は羽、
+// 器官はその他へ寄せている。
+// 見た目のレイヤーは ui/freeLayer/layerFromParts.ts が同じカテゴリの部位を別々の
+// 接続点へ振り分けるので、頭を複数付けても同じ絵が重なるだけにはならない。
+export type PartType = '頭' | '腕' | '足' | '体' | 'コア' | '尻尾' | '羽' | 'その他';
 export type PartTag =
   | 'MP'
   | 'コア'
@@ -359,7 +365,10 @@ export type PartEffect =
   | { kind: 'low_hp_mp_regen_per_turn'; hpPctThreshold: number; amount: number } // 暴走シナジー: 低HP時、自分の手番開始時にMPも回復
   | { kind: 'on_kill_mp_gain'; amount: number } // 捕食シナジー: 敵撃破時、MPも回復
   | { kind: 'utility_ct_bonus_pct'; pct: number } // 知性シナジー: 補助系コマンド(powerMult<=0)のCTをさらに短縮
-  | { kind: 'utility_mp_cost_reduction_pct'; pct: number }; // 知性シナジー: 補助系コマンドのMPコストを軽減
+  | { kind: 'utility_mp_cost_reduction_pct'; pct: number }
+  // 分岐骨・増殖核系: 部位の接続枠そのものを増やす。自分も1枠を使うので実質の増分は amount-1。
+  // 戦闘中の数値には一切関わらず、装備画面の上限だけを動かす。
+  | { kind: 'equip_slot_bonus'; amount: number }; // 知性シナジー: 補助系コマンドのMPコストを軽減
 
 // Excel「部位」シートの「レア度」列。効果の数値自体はレア度でスケールしないが(parts.tsの
 // ヘッダ参照)、敵ドロップの「通常枠/レア枠」の振り分けにはこのExcel値をそのまま使う。

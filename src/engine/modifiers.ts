@@ -44,6 +44,7 @@ export interface PlayerModifiers {
   onKillMpGain: number;
   utilityCtBonusPct: number;
   utilityMpCostReductionPct: number;
+  equipSlotBonus: number; // 接続枠を増やす部位(equip_slot_bonus)の合計。戦闘には影響せず、装備画面だけが使う
 }
 
 function emptyModifiers(): PlayerModifiers {
@@ -80,6 +81,7 @@ function emptyModifiers(): PlayerModifiers {
     onKillMpGain: 0,
     utilityCtBonusPct: 0,
     utilityMpCostReductionPct: 0,
+    equipSlotBonus: 0,
   };
 }
 
@@ -180,6 +182,9 @@ function applyEffect(mods: PlayerModifiers, e: PartEffect) {
       break;
     case 'utility_mp_cost_reduction_pct':
       mods.utilityMpCostReductionPct += e.pct;
+      break;
+    case 'equip_slot_bonus':
+      mods.equipSlotBonus += e.amount;
       break;
   }
 }

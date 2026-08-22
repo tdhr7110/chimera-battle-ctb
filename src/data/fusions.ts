@@ -43,7 +43,7 @@ export const FUSION_RECIPES: FusionRecipe[] = [
     match: { kind: 'tag', a: '炎', b: '攻撃' },
     requirementLabel: '「炎」の部位 ＋ 「攻撃」の部位',
     result: {
-      id: 'FUS101', name: '灼熱牙', icon: '🔥', type: '口', rarity: 'Rare', tags: ['炎', '攻撃'],
+      id: 'FUS101', name: '灼熱牙', icon: '🔥', type: '頭', rarity: 'Rare', tags: ['炎', '攻撃'],
       effects: [
         { kind: 'power_bonus_all_pct', pct: 18 },
         { kind: 'on_hit_apply_status', status: { kind: 'burn', magnitude: 4, turns: 3 } },
@@ -56,7 +56,7 @@ export const FUSION_RECIPES: FusionRecipe[] = [
     match: { kind: 'tag', a: '毒', b: '状態異常' },
     requirementLabel: '「毒」の部位 ＋ 「状態異常」の部位',
     result: {
-      id: 'FUS102', name: '猛毒腺', icon: '☠️', type: '器官', rarity: 'Rare', tags: ['毒', '状態異常'],
+      id: 'FUS102', name: '猛毒腺', icon: '☠️', type: 'その他', rarity: 'Rare', tags: ['毒', '状態異常'],
       effects: [
         { kind: 'on_hit_apply_status', status: { kind: 'poison', magnitude: 4, turns: 4 } },
         { kind: 'status_magnitude_bonus', target: 'poison', flatAmount: 3 },
@@ -69,7 +69,7 @@ export const FUSION_RECIPES: FusionRecipe[] = [
     match: { kind: 'tag', a: '高速', b: '防御' },
     requirementLabel: '「高速」の部位 ＋ 「防御」の部位',
     result: {
-      id: 'FUS103', name: '疾風装甲', icon: '🛡️', type: '胴', rarity: 'Rare', tags: ['高速', '防御'],
+      id: 'FUS103', name: '疾風装甲', icon: '🛡️', type: '体', rarity: 'Rare', tags: ['高速', '防御'],
       effects: [
         { kind: 'speed_flat', amount: 12 },
         { kind: 'defense_flat_bonus', amount: 6 },
@@ -96,7 +96,7 @@ export const FUSION_RECIPES: FusionRecipe[] = [
     match: { kind: 'tag', a: '反撃', b: '重量' },
     requirementLabel: '「反撃」の部位 ＋ 「重量」の部位',
     result: {
-      id: 'FUS105', name: '反射棘甲', icon: '🌵', type: '胴', rarity: 'Rare', tags: ['反撃', '重量'],
+      id: 'FUS105', name: '反射棘甲', icon: '🌵', type: '体', rarity: 'Rare', tags: ['反撃', '重量'],
       effects: [
         { kind: 'reflect_on_hit_pct', pct: 26 },
         { kind: 'defense_flat_bonus', amount: 6 },
@@ -110,7 +110,7 @@ export const FUSION_RECIPES: FusionRecipe[] = [
     match: { kind: 'tag', a: '捕食', b: '吸血' },
     requirementLabel: '「捕食」の部位 ＋ 「吸血」の部位',
     result: {
-      id: 'FUS106', name: '捕食顎', icon: '🦈', type: '口', rarity: 'Rare', tags: ['捕食', '吸血'],
+      id: 'FUS106', name: '捕食顎', icon: '🦈', type: '頭', rarity: 'Rare', tags: ['捕食', '吸血'],
       effects: [
         { kind: 'lifesteal_bonus_pct', pct: 25 },
         { kind: 'on_kill_mp_gain', amount: 10 },
@@ -139,7 +139,7 @@ export const FUSION_RECIPES: FusionRecipe[] = [
     match: { kind: 'tag', a: '知性', b: '貫通' },
     requirementLabel: '「知性」の部位 ＋ 「貫通」の部位',
     result: {
-      id: 'FUS202', name: '解析角', icon: '🧠', type: '角', rarity: 'Epic', tags: ['知性', '貫通'],
+      id: 'FUS202', name: '解析角', icon: '🧠', type: '頭', rarity: 'Epic', tags: ['知性', '貫通'],
       effects: [
         { kind: 'utility_ct_bonus_pct', pct: -20 },
         { kind: 'ignore_defense_pct', pct: 35 },
@@ -153,7 +153,7 @@ export const FUSION_RECIPES: FusionRecipe[] = [
     match: { kind: 'tag', a: '雷', b: '高速' },
     requirementLabel: '「雷」の部位 ＋ 「高速」の部位',
     result: {
-      id: 'FUS203', name: '雷光眼', icon: '⚡', type: '目', rarity: 'Epic', tags: ['雷', '高速'],
+      id: 'FUS203', name: '雷光眼', icon: '⚡', type: '頭', rarity: 'Epic', tags: ['雷', '高速'],
       effects: [
         { kind: 'accuracy_bonus_pct', pct: 15 },
         { kind: 'ct_mult_all_pct', pct: -11 },
@@ -167,7 +167,7 @@ export const FUSION_RECIPES: FusionRecipe[] = [
     match: { kind: 'tag', a: '暴走', b: '再生' },
     requirementLabel: '「暴走」の部位 ＋ 「再生」の部位',
     result: {
-      id: 'FUS204', name: '暴走再生心', icon: '💢', type: '心臓', rarity: 'Epic', tags: ['暴走', '再生'],
+      id: 'FUS204', name: '暴走再生心', icon: '💢', type: 'コア', rarity: 'Epic', tags: ['暴走', '再生'],
       effects: [
         { kind: 'low_hp_ct_bonus', hpPctThreshold: 50, ctMultPct: -20 },
         { kind: 'passive_regen_per_turn', amount: 5 },
@@ -183,7 +183,7 @@ export const FUSION_RECIPES: FusionRecipe[] = [
     match: { kind: 'part', a: 'PRT013', b: 'PRT028' },
     requirementLabel: '処刑眼・極 ＋ 多腕・零',
     result: {
-      id: 'FUS301', name: '終焉の顎', icon: '🐲', type: '口', rarity: 'Legendary', tags: ['処刑', '多段', '攻撃'],
+      id: 'FUS301', name: '終焉の顎', icon: '🐲', type: '頭', rarity: 'Legendary', tags: ['処刑', '多段', '攻撃'],
       effects: [
         { kind: 'bonus_hits_flat', amount: 1 },
         { kind: 'power_bonus_all_pct', pct: 22 },
@@ -212,7 +212,7 @@ export const FUSION_RECIPES: FusionRecipe[] = [
     match: { kind: 'part', a: 'PRT069', b: 'PRT068' },
     requirementLabel: '雷角・極 ＋ 穿孔角・異',
     result: {
-      id: 'FUS303', name: '雷神角', icon: '🌩️', type: '角', rarity: 'Legendary', tags: ['雷', '貫通', '状態異常'],
+      id: 'FUS303', name: '雷神角', icon: '🌩️', type: '頭', rarity: 'Legendary', tags: ['雷', '貫通', '状態異常'],
       effects: [
         { kind: 'ignore_defense_pct', pct: 45 },
         { kind: 'power_bonus_all_pct', pct: 20 },

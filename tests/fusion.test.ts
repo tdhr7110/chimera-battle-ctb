@@ -252,4 +252,4 @@ assert(Array.isArray(migrated!.declinedFusionIds) && migrated!.declinedFusionIds
   '移行後 declinedFusionIds が空配列で入る');
 assert(migrated!.pendingAdvance === false, '移行後 pendingAdvance が false で入る');
 assert(!('fusionUsedForBattleIndex' in (migrated as object)), '旧 fusionUsedForBattleIndex が落ちている');
-assert(SAVE_VERSION === 6, `SAVE_VERSION が 6 (${SAVE_VERSION})`);
+assert(SAVE_VERSION >= 6, `v5のセーブが現行版(v${SAVE_VERSION})まで移行できる`);

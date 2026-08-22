@@ -16,9 +16,10 @@ import { DEFAULT_DIFFICULTY_ID } from '../data/difficulty';
 // v5: Phase 7(難易度調整)で difficultyId を追加。
 // v6: 融合をレシピ制へ刷新。エリート撃破の回数券だった fusionUsedForBattleIndex を捨て、
 //     declinedFusionIds(断ったレシピ) / pendingAdvance(融合後に次の戦闘へ進むか) を追加。
+// v7: 8戦×4エリア(全32戦)構成へ。同じ敵に当たり続けないよう foughtEnemyIds を追加。
 // いずれも安全な既定値(null / 空配列)を与えられる追加フィールドのみなので、
 // 古いセーブは破棄せず移行する。
-export const SAVE_VERSION = 6;
+export const SAVE_VERSION = 7;
 const SAVE_KEY = 'chimera-battle-ctb:run:v1';
 const INTRO_SEEN_KEY = 'chimera-battle-ctb:intro-seen:v1';
 
@@ -77,6 +78,12 @@ export function migrate(version: number | undefined, state: RunState): RunState 
       pendingAdvance: current.pendingAdvance ?? false,
     };
     v = 6;
+  }
+  if (v === 6) {
+    // v6 -> v7: 32戦構成。7戦時代の進行度はそのまま引き継ぐ(第3戦なら第3戦のまま、
+    // 全体が32戦へ伸びるだけ)。過去にどの敵と戦ったかは分からないので空配列で始める。
+    current = { ...current, foughtEnemyIds: current.foughtEnemyIds ?? [] };
+    v = 7;
   }
   return v === SAVE_VERSION ? current : null;
 }

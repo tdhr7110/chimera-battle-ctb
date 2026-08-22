@@ -14,40 +14,56 @@ import type { PartDef, PartType } from '../../data/types';
 // 素材側のカテゴリ(public/assets/chimera-layers/anchor-layouts.json のキー)。
 export type LayerCategory = 'arm' | 'wing' | 'horn' | 'tail' | 'leg' | 'back' | 'face' | 'armor' | 'eye' | 'organ';
 
-// 現行の12カテゴリ → 素材カテゴリ。
-// 素材側に「口」「頭」に相当する専用レイヤーはjaw-crescent(face)しか無いため、
-// 頭は角(horn)、口は顔(face)へ寄せている。心臓・器官はどちらも内臓(organ)で、
-// コアは背面のスパイン(back)を使う。
-const PART_TYPE_TO_LAYER: Record<PartType, LayerCategory> = {
-  頭: 'horn',
-  目: 'eye',
-  口: 'face',
-  腕: 'arm',
-  脚: 'leg',
-  心臓: 'organ',
-  胴: 'armor',
-  尻尾: 'tail',
-  翼: 'wing',
-  角: 'horn',
-  器官: 'organ',
-  コア: 'back',
+// 部位カテゴリ(8種) → 素材カテゴリ(接続点)。
+//
+// カテゴリを8つへ統合したので、1カテゴリが複数の接続点に対応することがある。
+// とくに「頭」は旧 頭/目/口/角 を全部束ねているため、素材側では 角・顔・目 の
+// 3か所へ順番に振り分ける。こうしないと頭部位を3つ付けても同じ絵が重なるだけで、
+// 「獲得したら対応する場所に絵が増える」という手応えが失われてしまう。
+//
+// 素材側に専用レイヤーが無いカテゴリは意味の近い接続点へ寄せている
+// (体=armor、その他=organ、コア=organとback)。
+const PART_TYPE_TO_LAYERS: Record<PartType, LayerCategory[]> = {
+  頭: ['horn', 'face', 'eye'],
+  腕: ['arm'],
+  足: ['leg'],
+  体: ['armor'],
+  コア: ['organ', 'back'],
+  尻尾: ['tail'],
+  羽: ['wing'],
+  その他: ['organ'],
 };
 
+/** そのカテゴリの部位を1つだけ付けたときの置き場所。 */
 export function layerCategoryForPartType(type: PartType): LayerCategory {
-  return PART_TYPE_TO_LAYER[type];
+  return PART_TYPE_TO_LAYERS[type][0];
 }
 
 /**
- * 装着部位から、カテゴリごとの表示個数を求める純粋関数。
- * 同じカテゴリへ複数の部位が写像される場合(頭+角、心臓+器官)は素直に合算し、
+ * 装着部位から、接続点ごとの表示個数を求める純粋関数。
+ *
+ * 同じカテゴリの部位が複数あるときは、そのカテゴリに割り当てられた接続点へ
+ * 順番に配っていく(頭が3つなら 角→顔→目)。並び順は部位IDでソートしてから
+ * 決めるので、装備の並べ替えだけでは見た目が変わらない。
  * anchor-layouts.json の接続点の数を超えた分はFreeLayerFigure側で切り詰められる。
  */
 export function layerCountsFromParts(parts: PartDef[]): Record<string, number> {
   const counts: Record<string, number> = {};
+  const byType = new Map<PartType, PartDef[]>();
   for (const part of parts) {
-    const category = PART_TYPE_TO_LAYER[part.type];
-    if (!category) continue;
-    counts[category] = (counts[category] ?? 0) + 1;
+    const list = byType.get(part.type);
+    if (list) list.push(part);
+    else byType.set(part.type, [part]);
+  }
+  for (const [type, list] of byType) {
+    const anchors = PART_TYPE_TO_LAYERS[type];
+    if (!anchors) continue;
+    [...list]
+      .sort((a, b) => a.id.localeCompare(b.id))
+      .forEach((_, i) => {
+        const category = anchors[i % anchors.length];
+        counts[category] = (counts[category] ?? 0) + 1;
+      });
   }
   return counts;
 }

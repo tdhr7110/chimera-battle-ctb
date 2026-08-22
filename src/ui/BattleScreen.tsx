@@ -5,7 +5,7 @@ import { ENEMY_INTENT_LABEL, STATUS_LABEL } from '../data/types';
 import { ChimeraFigure } from './freeLayer/ChimeraFigure';
 import { getCommand } from '../data/commands';
 import { COMMAND_CATEGORIES, categoryIdForCommand } from '../data/commandCategories';
-import { MAX_EQUIPPED_PARTS } from '../engine/run';
+import { areaDefOfBattle, battleInArea, BATTLES_PER_AREA, maxEquippedPartsFor, TOTAL_AREAS, TOTAL_BATTLES } from '../engine/run';
 import { BattleEndOverlay } from './BattleEndOverlay';
 import { getUiPrefs } from '../engine/uiPrefs';
 
@@ -57,6 +57,10 @@ export function BattleScreen({
   totalBattles?: number;
   onExit: (result: 'won' | 'lost', finalHp: number, finalMp: number) => void;
 }) {
+  // エリア表示。第何戦かからエリアとエリア内の位置を引く(表示専用)。
+  const area = areaDefOfBattle(battleIndex ?? 1);
+  const stepInArea = battleInArea(battleIndex ?? 1);
+
   const engineRef = useRef<CtbEngine | null>(null);
   const [snapshot, setSnapshot] = useState<CtbSnapshot | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -334,15 +338,23 @@ export function BattleScreen({
         </div>
         <div className="bt-progress">
           <div className="bt-progress__label">
-            第{battleIndex ?? 1}戦 / 全{totalBattles ?? 7}戦
+            第{battleIndex ?? 1}戦 / 全{totalBattles ?? TOTAL_BATTLES}戦
+          </div>
+          {/* 全32戦ぶんの点を並べると潰れてしまうので、点は「今いるエリアの8戦」だけ出し、
+              ラン全体の位置はエリア名とエリア番号で示す。 */}
+          <div className="bt-progress__area">
+            {area.icon} {area.name}
+            <span className="bt-progress__area-no">
+              AREA {area.index}/{TOTAL_AREAS}
+            </span>
           </div>
           <div className="bt-progress__dots">
-            {Array.from({ length: totalBattles ?? 7 }, (_, i) => (
+            {Array.from({ length: BATTLES_PER_AREA }, (_, i) => (
               <span
                 key={i}
-                className={`bt-dot${i + 1 < (battleIndex ?? 1) ? ' bt-dot--done' : ''}${
-                  i + 1 === (battleIndex ?? 1) ? ' bt-dot--now' : ''
-                }${i + 1 === (totalBattles ?? 7) ? ' bt-dot--boss' : ''}`}
+                className={`bt-dot${i + 1 < stepInArea ? ' bt-dot--done' : ''}${
+                  i + 1 === stepInArea ? ' bt-dot--now' : ''
+                }${i + 1 === BATTLES_PER_AREA ? ' bt-dot--boss' : ''}`}
               />
             ))}
           </div>
@@ -657,7 +669,7 @@ export function BattleScreen({
         <div className="bt-parts__head">
           <span>装備中のパーツ</span>
           <span className="bt-parts__cap">
-            装着枠 {equippedParts.length} / {MAX_EQUIPPED_PARTS}
+            装着枠 {equippedParts.length} / {maxEquippedPartsFor(equippedParts)}
           </span>
         </div>
         <div className="bt-parts__row">

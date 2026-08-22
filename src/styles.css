@@ -2270,6 +2270,30 @@ button {
 .bt-dot--done { background: var(--color-purple); border-color: var(--color-purple); }
 .bt-dot--now { background: var(--color-yellow); border-color: #fff3c4; box-shadow: 0 0 8px rgba(251, 191, 36, 0.8); }
 .bt-dot--boss { width: 11px; height: 11px; border-color: var(--color-enemy); }
+.bt-progress__area {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  font-size: 0.55rem;
+  color: #c4b5fd;
+}
+.bt-progress__area-no {
+  padding: 0 4px;
+  font-size: 0.46rem;
+  letter-spacing: 0.06em;
+  color: #0f172a;
+  background: #a78bfa;
+  border-radius: 3px;
+}
+.prep-area {
+  margin-left: 6px;
+  padding: 1px 6px;
+  font-size: 0.6rem;
+  color: #c4b5fd;
+  background: rgba(167, 139, 250, 0.16);
+  border-radius: 999px;
+}
 .bt-progress__turn { font-size: 0.5rem; letter-spacing: 0.14em; color: var(--color-text-muted); }
 
 /* --- 上部ステータス2枚 --- */

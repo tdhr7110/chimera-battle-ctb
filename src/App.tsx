@@ -17,6 +17,7 @@ import {
   dismissCommandUnlock,
   enterEnemySelect,
   equipPart,
+  areaOfBattle,
   markCommandsSeen,
   availableFusions,
   declineFusion,
@@ -237,7 +238,7 @@ export default function App() {
         state.currentEnemyId &&
         (() => {
           // Phase 7: 戦闘へ渡す敵だけ難易度倍率を適用する(図鑑・ドロップは素の値を見る)。
-          const enemy = getTunedEnemy(state.currentEnemyId, state.difficultyId);
+          const enemy = getTunedEnemy(state.currentEnemyId, state.difficultyId, areaOfBattle(state.battleIndex));
           if (!enemy) return null;
           return (
             <BattleScreen
