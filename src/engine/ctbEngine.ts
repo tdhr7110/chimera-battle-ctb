@@ -1327,15 +1327,6 @@ export class CtbEngine {
     const nextMove = this.currentEnemyMove();
     const bigIncoming = nextMove.intent === 'ULTIMATE' || nextMove.intent === 'STRONG';
 
-    // 瀕死なら守る。大技が来るなら遅延で押し返すか防御する。
-    if (hpPct < 0.25) return guard;
-    if (bigIncoming) {
-      const delayStrike = getCommand('CMD011')!;
-      const preview = this.commandPreview(delayStrike);
-      if (this.unlockedCommandIds.has(delayStrike.id) && preview.usable && Math.random() < 0.6) return delayStrike;
-      if (hpPct < 0.6) return guard;
-    }
-
     // 解放済み・いま撃てるコマンドを全部評価する。
     const candidates = COMMANDS.filter((c) => this.unlockedCommandIds.has(c.id)).map((cmd) => ({
       cmd,
@@ -1343,6 +1334,36 @@ export class CtbEngine {
     }));
     const usable = candidates.filter((c) => c.preview.usable);
     if (usable.length === 0) return guard;
+
+    // いま出せる最大ダメージ。準備系(解析・変異)の価値を「何ダメージぶんか」に
+    // 換算するための物差しに使う。
+    const bestDmg = usable.reduce((m, c) => Math.max(m, c.preview.damageEstimate ?? 0), 0);
+
+    // 瀕死なら立て直す。防御しかないなら防御だが、継続回復や吸血が撃てるならそちらが優先。
+    // 防御は被害を減らすだけで、削られたHPは戻らないため。
+    if (hpPct < 0.25) {
+      const recovery = usable.filter(
+        ({ cmd, preview }) =>
+          cmd.applySelfStatus?.kind === 'regen' || (cmd.lifestealPct && (preview.damageEstimate ?? 0) > 0)
+      );
+      if (recovery.length > 0) {
+        // 吸血は当たらないと戻らないので、回復量の見積が大きいほうを採る。
+        const best = recovery.reduce((m, c) =>
+          (c.cmd.lifestealPct ?? 0) * (c.preview.damageEstimate ?? 0) >
+          (m.cmd.lifestealPct ?? 0) * (m.preview.damageEstimate ?? 0)
+            ? c
+            : m
+        );
+        return best.cmd;
+      }
+      return guard;
+    }
+    if (bigIncoming) {
+      const delayStrike = getCommand('CMD011')!;
+      const preview = this.commandPreview(delayStrike);
+      if (this.unlockedCommandIds.has(delayStrike.id) && preview.usable && Math.random() < 0.6) return delayStrike;
+      if (hpPct < 0.6) return guard;
+    }
 
     // 期待値 = 見積ダメージ / CTの重さ。CTBは「1回の強さ」ではなく「時間あたりの強さ」で
     // competeするので、重い技はその分割り引いて評価する。
@@ -1353,6 +1374,29 @@ export class CtbEngine {
         let score = dmg / ctCost;
         // 状態異常を撒けるなら少し加点(継続ダメージ・弱体の分)。
         if (cmd.applyStatus) score += 3 / ctCost;
+
+        // --- 準備系のコマンドを「何ダメージぶんの価値か」に換算する ---
+        // 解析: 残りの戦闘で2発ぶんは強化が乗る前提。もう解析済みなら価値なし。
+        // 相手が残りわずかなら、1手使うより殴り切ったほうが早いので手を出さない。
+        if (cmd.analyzeEnemy) {
+          const worth = this.enemy.analyzed || this.enemy.hp <= bestDmg * 2
+            ? 0
+            : (bestDmg * cmd.analyzeEnemy.damageBonusPct) / 100 * 2;
+          score = worth / ctCost;
+        }
+        // 変異: 効果はこの戦闘のあいだ続くので、長引きそうなときほど価値が高い。
+        if (cmd.mutate) {
+          score = this.enemy.hp > bestDmg * 4 ? (bestDmg * 0.5) / ctCost : 0;
+        }
+        // MP吸収: ダメージに加え、戻ってくるMPぶんも価値に含める(MPが渇いているほど大きい)。
+        if (cmd.drainEnemyMp) {
+          const gained = Math.min(cmd.drainEnemyMp, this.enemy.mp, this.player.maxMp - this.mp);
+          score += gained / 2 / ctCost;
+        }
+        // 挑発・観察はAUTOには使いこなせない(挑発は最強技を呼び込むだけになり、
+        // 観察は情報を活かす先が無い)。人間が手動で使うためのコマンドとして扱う。
+        if (cmd.taunt || cmd.observeNextActions) score = 0;
+
         // とどめを刺せるなら最優先。
         if (dmg >= this.enemy.hp) score += 1000;
         return { cmd, score };

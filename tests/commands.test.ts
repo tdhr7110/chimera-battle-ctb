@@ -13,6 +13,7 @@
 import { CtbEngine } from '../src/engine/ctbEngine.ts';
 import { COMMANDS, getCommand } from '../src/data/commands.ts';
 import { ENEMIES, getEnemy } from '../src/data/enemies.ts';
+import { PARTS } from '../src/data/parts.ts';
 import type { EnemyDef, PartDef } from '../src/data/types.ts';
 
 function assert(cond: boolean, msg: string) {
@@ -232,5 +233,41 @@ assert(freeFallback, '全45体にMP不要の技が最低1つある(MP切れで�
   assert(
     unimplemented.length === 1 && unimplemented[0].id === 'CMD053',
     `未実装と書かれているのは適応だけ (${unimplemented.map((c) => `${c.id} ${c.name}`).join(', ')})`
+  );
+}
+
+// ------------------------------------------------------------
+// AUTO が新コマンドを妥当に扱うか
+//
+// 挑発と観察はAUTOには使いこなせない(挑発は最強技を呼び込むだけ、観察は情報を
+// 活かす先が無い)ので、選択肢に入っていても選ばないことを確かめる。
+// ------------------------------------------------------------
+{
+  const picks = new Map<string, number>();
+  let turns = 0;
+  // 判断を見たいので、実戦に近い装備(レア度上位6個)を積んだ状態で回す。
+  const rank: Record<string, number> = { Common: 0, Rare: 1, Epic: 2, Legendary: 3 };
+  const loadout = [...PARTS].sort((a, b) => rank[b.rarity] - rank[a.rarity]).slice(0, 6);
+  for (const def of ENEMIES) {
+    const e = mk(def, loadout);
+    for (let i = 0; i < 60; i++) {
+      const s = e.getSnapshot();
+      if (s.status !== 'ongoing' || s.phase !== 'player_turn') {
+        if (s.phase === 'enemy_pending') { e.stepEnemyTurn(); continue; }
+        break;
+      }
+      const cmd = e.decideAutoCommand();
+      picks.set(cmd.id, (picks.get(cmd.id) ?? 0) + 1);
+      turns += 1;
+      e.useCommand(cmd.id, { stepwise: true });
+    }
+  }
+  assert(turns > 100, `AUTOの手を十分な数だけ観測できた (${turns}手)`);
+  assert((picks.get('CMD049') ?? 0) === 0, `AUTOは挑発を選ばない (${picks.get('CMD049') ?? 0}回)`);
+  assert((picks.get('CMD050') ?? 0) === 0, `AUTOは観察を選ばない (${picks.get('CMD050') ?? 0}回)`);
+  // 解析とMP吸収は状況次第で選ぶ。まったく選ばないなら評価式が死んでいる。
+  assert(
+    (picks.get('CMD051') ?? 0) + (picks.get('CMD025') ?? 0) > 0,
+    `AUTOは解析やMP吸収を状況に応じて選ぶ (解析${picks.get('CMD051') ?? 0} / MP吸収${picks.get('CMD025') ?? 0})`
   );
 }
