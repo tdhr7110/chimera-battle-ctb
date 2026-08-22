@@ -234,6 +234,9 @@ button {
   display: flex;
   flex-direction: column;
   gap: 8px;
+  /* 戦闘画面は必ず1画面に収める。余った高さはVS盤面(.stage)が吸う。 */
+  flex: 1;
+  min-height: 0;
 }
 .battle-header {
   display: flex;
@@ -384,11 +387,14 @@ button {
   position: relative;
   display: flex;
   flex-direction: column;
+  justify-content: center;
   gap: 6px;
   padding: 10px;
   background: var(--color-panel);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
+  /* 画面の余りをここが吸うので、小さい端末では縮み、大きい端末では伸びる。 */
+  flex: 1;
   min-height: 190px;
 }
 .stage__combatants {
