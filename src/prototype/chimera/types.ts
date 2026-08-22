@@ -23,11 +23,18 @@ export const SLOT_LABEL: Record<ChimeraSlotCategory, { jp: string; en: string; i
 
 // 仕様書5章のChimeraPartVisual。id/name/category/image/anchorX/anchorY/scale/zIndexは
 // 仕様書の指定どおり。加えて、6章の「個別画像ごとの微調整はoffsetX/offsetY/scale程度」を
-// 実現するための任意フィールド(offsetX/offsetY)と、アスペクト比を保ったまま拡縮するために
-// ビルド時に測っておいた自然画素サイズ(width/height)を持たせている。
+// 実現するための任意フィールド(offsetX/offsetY)を持たせている。
+//
+// 画像の後日差し替えやすさのため、width/height/scaleはビルド時の画素数を「焼き込んで」
+// 使わない設計にしている(layout.tsのコメント参照)。width/heightは参考表示用のメタ情報
+// (デバッグパネルの「source size」表示等)、scaleは「カテゴリの基準サイズ(=ブラウザが
+// 実際に読み込んだ画像のnaturalHeightから自動計算)に対する倍率」という意味の任意フィールド
+// (省略時は1=基準サイズのまま)。そのため、public/assets/prototype-chimera/parts/配下の
+// PNGを後から別解像度の絵に差し替えても、リビルド無しでサイズ・アンカーが自動的に合う。
 //
 // anchorX/anchorYの単位: この画像自身のbbox内における0〜1の割合(ピボット位置)。
 // 例: head の anchorX=0.82 は「画像の右寄り(=首側)をCATEGORY_ANCHORSへ合わせる」という意味。
+// 差し替え後の画像でも、この「割合」は解像度に依存しないため引き続き有効に働く。
 export interface ChimeraPartVisual {
   id: string;
   name: string;
@@ -36,12 +43,12 @@ export interface ChimeraPartVisual {
   image: string; // public/ からの相対パス
   anchorX: number;
   anchorY: number;
-  scale: number;
   zIndex: number;
+  scale?: number; // カテゴリ基準サイズに対する倍率(省略時1)。ドラッグ/ホイール調整やoverrides.jsonが使う。
   offsetX?: number;
   offsetY?: number;
-  width: number;
-  height: number;
+  width?: number; // 参考情報(ビルド時点の画素幅)。描画には使わない。
+  height?: number; // 参考情報(ビルド時点の画素高さ)。描画には使わない。
 }
 
 export interface EnemyVisual {
@@ -56,6 +63,7 @@ export interface EnemyVisual {
 export interface ChimeraVisualManifest {
   canvasSize: number;
   categoryAnchors: Record<ChimeraSlotCategory, { x: number; y: number }>;
+  categoryTargetHeight: Record<ChimeraSlotCategory, number>;
   parts: ChimeraPartVisual[];
   enemies: EnemyVisual[];
 }

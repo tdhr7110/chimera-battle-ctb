@@ -15,6 +15,7 @@ import { applyOverride, bakedOverrideFor } from './overrides';
 interface RawManifest {
   canvasSize: number;
   categoryAnchors: Record<ChimeraSlotCategory, { x: number; y: number }>;
+  categoryTargetHeight: Record<ChimeraSlotCategory, number>;
   parts: ChimeraPartVisual[];
   enemies: EnemyVisual[];
 }
@@ -23,6 +24,10 @@ const manifest = raw as RawManifest;
 
 export const CANVAS_SIZE = manifest.canvasSize;
 export const CATEGORY_ANCHORS = manifest.categoryAnchors;
+// カテゴリの「基準の高さ」(canvas px)。実際の描画スケールはこれを、ブラウザが読み込んだ
+// 画像の実ピクセル高さ(naturalHeight)で割って求める(layout.ts参照)。画像を後から
+// 別解像度へ差し替えても、この基準の高さに自動で合わせ直される。
+export const CATEGORY_TARGET_HEIGHT = manifest.categoryTargetHeight;
 
 const partsById = new Map(manifest.parts.map((p) => [p.id, p] as const));
 const enemiesById = new Map(manifest.enemies.map((e) => [e.id, e] as const));

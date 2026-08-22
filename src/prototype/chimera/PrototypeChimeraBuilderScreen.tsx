@@ -3,7 +3,7 @@
 // 本番のPrepScreen/BattleScreenとは完全に独立した検証用UI。
 // ============================================================
 import { useEffect, useState } from 'react';
-import { ChimeraCanvas } from './ChimeraCanvas';
+import { ChimeraCanvas, getCachedNaturalSize } from './ChimeraCanvas';
 import { partsForCategory, getPartVisual } from './manifest';
 import { applyOverride, loadSessionOverrides, saveSessionOverrides, type OverrideMap, type PartOverride } from './overrides';
 import { randomLoadout } from './randomChimera';
@@ -76,6 +76,16 @@ export function PrototypeChimeraBuilderScreen({
     ? applyOverride(activePartVisualBase, activePartId ? sessionOverrides[activePartId] : undefined)
     : null;
   const options = partsForCategory(activeCategory);
+
+  // ChimeraCanvas側の読み込みキャッシュが埋まるタイミングはこのコンポーネントの
+  // 再描画とは独立しているため、部位を切り替えた直後にもう一度だけ描画し直して
+  // 「live size」表示を追従させる(デバッグ表示の利便性のみが目的)。
+  const [, bumpLiveSizeTick] = useState(0);
+  useEffect(() => {
+    const id = requestAnimationFrame(() => bumpLiveSizeTick((t) => t + 1));
+    return () => cancelAnimationFrame(id);
+  }, [activePartId]);
+  const liveSize = activePartVisual ? getCachedNaturalSize(activePartVisual.image) : null;
   const hasOwnOverride = activePartId != null && activePartId in sessionOverrides;
   const overrideCount = Object.keys(sessionOverrides).length;
 
@@ -167,13 +177,16 @@ export function PrototypeChimeraBuilderScreen({
                   {Math.round(activePartVisual.offsetX ?? 0)} / {Math.round(activePartVisual.offsetY ?? 0)}
                   {hasOwnOverride ? ' *' : ''}
                 </dd>
-                <dt>scale</dt>
-                <dd>{activePartVisual.scale.toFixed(3)}</dd>
+                <dt>scale(倍率)</dt>
+                <dd>
+                  ×{(activePartVisual.scale ?? 1).toFixed(3)}
+                  {hasOwnOverride ? ' *' : ''}
+                </dd>
                 <dt>zIndex</dt>
                 <dd>{activePartVisual.zIndex}</dd>
-                <dt>source size</dt>
+                <dt>live size</dt>
                 <dd>
-                  {activePartVisual.width} × {activePartVisual.height}px
+                  {liveSize ? `${liveSize.w} × ${liveSize.h}px` : '読み込み中…'}
                 </dd>
               </dl>
               <div className="proto-debug-panel__actions">

@@ -17,7 +17,15 @@
 出力:
   - public/assets/prototype-chimera/parts/<category>/<PRTxxx>.png
   - public/assets/prototype-chimera/enemies/<ENMxxx>.png
-  - src/prototype/chimera/generated-visuals.json (visual manifest: anchor/scale/zIndex等)
+  - src/prototype/chimera/generated-visuals.json (visual manifest: anchor/zIndex等)
+
+差し替えやすさについて: 各部位のwidth/height/scaleはこのJSONに焼き込まない
+(=ビルド時点の画素サイズに依存させない)。実際のレンダリングは、画像がブラウザに
+読み込まれた時点のnaturalWidth/naturalHeightと、ここで決めるカテゴリ別の目標高さ
+(CATEGORY_TARGET_HEIGHT_PX)から実行時に自動計算する。そのため、後から
+public/assets/prototype-chimera/parts/<category>/PRTxxx.png を任意の解像度の
+新しい絵に上書きするだけで、リビルド不要でサイズ・アンカーが自動的に合う
+(width/height/scaleフィールドは互換性のため参考情報として残すが、描画には使わない)。
 """
 import json
 import os
@@ -159,8 +167,6 @@ def build_parts():
         ids_sorted = sorted(by_slot[slot], key=lambda p: p['id'])
         pool = pool_manifest[slot]
         pivot_fx, pivot_fy = CATEGORY_PIVOT_FRACTION[slot]
-        target_h = CATEGORY_TARGET_HEIGHT_PX[slot]
-        anchor = CATEGORY_ANCHORS[slot]
         z = CATEGORY_Z_INDEX[slot]
 
         out_dir = os.path.join(OUT_PARTS_DIR, slot)
@@ -173,11 +179,10 @@ def build_parts():
             dst_path = os.path.join(out_dir, dst_name)
             shutil.copyfile(src_path, dst_path)
 
-            # 保存済みマニフェストの値ではなく、実際にコピーしたファイルの現在の寸法を使う
-            # (bodyカテゴリはtrim_body_head_crops()で頭部分をトリミング済みのため寸法が変わっている)。
+            # width/heightは参考情報のみ(実際の描画はブラウザ側でnaturalWidth/Heightを
+            # 読み直して行うため、ここで焼き込んだ数値がズレても表示は壊れない)。
             with Image.open(dst_path) as im:
                 w, h = im.size
-            scale = round(target_h / h, 4)
             visuals.append({
                 'id': p['id'],
                 'name': p['name'],
@@ -186,7 +191,6 @@ def build_parts():
                 'image': f'assets/prototype-chimera/parts/{slot}/{dst_name}',
                 'anchorX': pivot_fx,
                 'anchorY': pivot_fy,
-                'scale': scale,
                 'zIndex': z,
                 'width': w,
                 'height': h,
@@ -242,6 +246,7 @@ def main():
     manifest = {
         'canvasSize': CANVAS_SIZE,
         'categoryAnchors': CATEGORY_ANCHORS,
+        'categoryTargetHeight': CATEGORY_TARGET_HEIGHT_PX,
         'parts': parts_visuals,
         'enemies': enemy_visuals,
     }

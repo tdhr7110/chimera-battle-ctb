@@ -10,6 +10,12 @@
 // editableCategory を指定すると、そのカテゴリのレイヤーだけドラッグ(位置)・ホイール(拡縮)・
 // 矢印キー(微調整)で直感的に動かせるようにする。数値をJSON/コードへ直接書く代わりの
 // 調整手段(overrides.ts の session override)。
+//
+// 画像の差し替えやすさのため、各レイヤーのサイズはビルド時の値ではなく、ブラウザが実際に
+// 読み込んだ画像のnaturalWidth/naturalHeightから毎回計算する(layout.ts参照)。そのため
+// このコンポーネントは「まだ実寸を知らない画像」をモジュール内キャッシュ
+// (naturalSizeCache)に問い合わせ、初回だけ読み込み完了を待ってから配置する。
+// キャッシュはURL単位なので、同じファイルを何度選び直しても2回目以降は待ちが発生しない。
 // ============================================================
 import { useEffect, useRef, useState } from 'react';
 import { computePartStyle, anchorDotPct } from './layout';
@@ -17,6 +23,38 @@ import { getPartVisual, CANVAS_SIZE } from './manifest';
 import { applyOverride, type OverrideMap, type PartOverride } from './overrides';
 import { SLOT_CATEGORIES, SLOT_LABEL, type ChimeraLoadout, type ChimeraPartVisual, type ChimeraSlotCategory } from './types';
 import './chimeraCanvas.css';
+
+const naturalSizeCache = new Map<string, { w: number; h: number }>();
+const inFlight = new Set<string>();
+
+function resolveSrc(image: string): string {
+  return `${import.meta.env.BASE_URL}${image}`;
+}
+
+// デバッグパネルが「実際に今読み込まれている画像の実寸」を表示できるようにするための参照。
+export function getCachedNaturalSize(image: string): { w: number; h: number } | null {
+  return naturalSizeCache.get(resolveSrc(image)) ?? null;
+}
+
+function useNaturalSizeTick() {
+  const [, setTick] = useState(0);
+  return () => setTick((t) => t + 1);
+}
+
+function ensureNaturalSize(src: string, onReady: () => void) {
+  if (naturalSizeCache.has(src) || inFlight.has(src)) return;
+  inFlight.add(src);
+  const img = new Image();
+  img.onload = () => {
+    naturalSizeCache.set(src, { w: img.naturalWidth, h: img.naturalHeight });
+    inFlight.delete(src);
+    onReady();
+  };
+  img.onerror = () => {
+    inFlight.delete(src);
+  };
+  img.src = src;
+}
 
 export function ChimeraCanvas({
   loadout,
@@ -37,21 +75,28 @@ export function ChimeraCanvas({
 }) {
   const flipRef = useRef<HTMLDivElement>(null);
   const dragRef = useRef<{ pointerId: number; startX: number; startY: number; startOffsetX: number; startOffsetY: number } | null>(null);
+  const bumpTick = useNaturalSizeTick();
 
   const layers = SLOT_CATEGORIES.map((category) => {
     const basePart = getPartVisual(loadout[category]);
     if (!basePart) return null;
     const part = applyOverride(basePart, sessionOverrides?.[basePart.id]);
-    const style = computePartStyle(part);
-    return { category, part, style };
+    const src = resolveSrc(part.image);
+    const natural = naturalSizeCache.get(src);
+    if (!natural) {
+      ensureNaturalSize(src, bumpTick);
+      return null; // 実寸判明までこのレイヤーは描画しない(キャッシュ済みなら次のtickで即描画)
+    }
+    const style = computePartStyle(part, natural.w, natural.h);
+    return { category, part, natural, style };
   }).filter((x): x is NonNullable<typeof x> => x !== null);
   layers.sort((a, b) => a.style.zIndex - b.style.zIndex);
 
   // 素材は右向きが基準。facing='left'を明示的に指定したときだけ全体を反転する。
   const mirrored = facing === 'left';
 
-  function currentPartFor(category: ChimeraSlotCategory): ChimeraPartVisual | null {
-    return layers.find((l) => l.category === category)?.part ?? null;
+  function currentLayerFor(category: ChimeraSlotCategory) {
+    return layers.find((l) => l.category === category) ?? null;
   }
 
   function handlePointerDown(e: React.PointerEvent<HTMLImageElement>, part: ChimeraPartVisual) {
@@ -68,14 +113,14 @@ export function ChimeraCanvas({
 
   function handlePointerMove(e: React.PointerEvent<HTMLImageElement>) {
     const drag = dragRef.current;
-    const part = currentPartFor(editableCategory as ChimeraSlotCategory);
-    if (!drag || drag.pointerId !== e.pointerId || !onAdjustPart || !flipRef.current || !part) return;
+    const layer = editableCategory ? currentLayerFor(editableCategory) : null;
+    if (!drag || drag.pointerId !== e.pointerId || !onAdjustPart || !flipRef.current || !layer) return;
     const rectWidth = flipRef.current.getBoundingClientRect().width || CANVAS_SIZE;
     const canvasPerPx = CANVAS_SIZE / rectWidth;
     const sign = mirrored ? -1 : 1;
     const dx = (e.clientX - drag.startX) * canvasPerPx * sign;
     const dy = (e.clientY - drag.startY) * canvasPerPx;
-    onAdjustPart(part.id, { offsetX: drag.startOffsetX + dx, offsetY: drag.startOffsetY + dy, scale: part.scale });
+    onAdjustPart(layer.part.id, { offsetX: drag.startOffsetX + dx, offsetY: drag.startOffsetY + dy, scale: layer.part.scale ?? 1 });
   }
 
   function handlePointerUp() {
@@ -86,7 +131,7 @@ export function ChimeraCanvas({
     if (!onAdjustPart) return;
     e.preventDefault();
     const factor = 1 - e.deltaY * 0.0012;
-    const nextScale = Math.min(4, Math.max(0.15, part.scale * factor));
+    const nextScale = Math.min(4, Math.max(0.15, (part.scale ?? 1) * factor));
     onAdjustPart(part.id, { offsetX: part.offsetX ?? 0, offsetY: part.offsetY ?? 0, scale: nextScale });
   }
 
@@ -101,7 +146,7 @@ export function ChimeraCanvas({
     else if (e.key === 'ArrowDown') dy = step;
     else return;
     e.preventDefault();
-    onAdjustPart(part.id, { offsetX: (part.offsetX ?? 0) + dx, offsetY: (part.offsetY ?? 0) + dy, scale: part.scale });
+    onAdjustPart(part.id, { offsetX: (part.offsetX ?? 0) + dx, offsetY: (part.offsetY ?? 0) + dy, scale: part.scale ?? 1 });
   }
 
   return (
@@ -176,7 +221,7 @@ function ChimeraLayerImg({
 }) {
   const [failed, setFailed] = useState(false);
   const imgRef = useRef<HTMLImageElement>(null);
-  const fullSrc = `${import.meta.env.BASE_URL}${src}`;
+  const fullSrc = resolveSrc(src);
 
   // Reactのsynthetic onWheelはpassiveリスナーとして登録されるため、ホイールで拡縮する間
   // ページ自体がスクロールしてしまう(=preventDefault()が効かない)。ネイティブの
