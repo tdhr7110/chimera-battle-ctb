@@ -5,7 +5,6 @@ on:
     branches:
       - main
       - integration/main-game
-      - claude/chimera-7slot-prototype-dbqssf
   workflow_dispatch: {}
 
 concurrency:
@@ -62,6 +61,12 @@ jobs:
 
       # 7スロット・キメラ画像合成プロトタイプ(検証専用、本番のゲーム進行・データには無関係)を
       # /proto-chimera/ サブパスへ同梱する。上記2つと同じ考え方で、mainのルート配信は変更しない。
+      # 注: このブランチ自体はon.push.branchesに含めていない
+      # (github-pages環境の保護ルールで、許可済みブランチ(main/integration/main-game)以外からの
+      # 配信=deployジョブが拒否されるため)。そのため、このステップはmain/integration/main-gameへの
+      # pushやworkflow_dispatchなど「許可済みブランチからトリガーされた実行」でのみ動く。
+      # プロトタイプブランチへのpush自体をトリガーにしたい場合は、リポジトリのSettings→
+      # Environments→github-pages→Deployment branches and tagsにこのブランチ名を追加する必要がある。
       - name: Checkout prototype branch (7スロット・キメラ画像合成プロトタイプ)
         uses: actions/checkout@v4
         continue-on-error: true
