@@ -245,9 +245,15 @@ assert(freeFallback, '全45体にMP不要の技が最低1つある(MP切れで�
 {
   const picks = new Map<string, number>();
   let turns = 0;
-  // 判断を見たいので、実戦に近い装備(レア度上位6個)を積んだ状態で回す。
+  // 判断を見たいので、実戦に近い装備を積んだ状態で回す。
+  // 接続枠を増やすだけの部位(equip_slot_bonus)は戦闘の数値に何も足さないので、
+  // 「レア度上位」で拾ってしまうとプレイヤーが弱くなり、戦闘が短くなって
+  // 準備系コマンドの出番自体が消えてしまう。そのため装備候補から外す。
   const rank: Record<string, number> = { Common: 0, Rare: 1, Epic: 2, Legendary: 3 };
-  const loadout = [...PARTS].sort((a, b) => rank[b.rarity] - rank[a.rarity]).slice(0, 6);
+  const loadout = [...PARTS]
+    .filter((p) => !p.effects.some((e) => e.kind === 'equip_slot_bonus'))
+    .sort((a, b) => rank[b.rarity] - rank[a.rarity])
+    .slice(0, 6);
   for (const def of ENEMIES) {
     const e = mk(def, loadout);
     for (let i = 0; i < 60; i++) {
